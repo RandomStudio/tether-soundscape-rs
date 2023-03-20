@@ -1,18 +1,22 @@
+use audio::Host;
 use nannou::prelude::*;
 use nannou_audio as audio;
 use nannou_audio::Buffer;
 
-
 struct Model {
-    stream: audio::Stream<Audio>,
+    audio_host: Host,
+    streams: Vec<audio::Stream<Audio>>,
 }
 
+type Callback = fn();
 struct Audio {
-    sounds: Vec<audrey::read::BufFileReader>,
+    sound: audrey::read::BufFileReader,
+    is_completed: bool,
+    on_completed: Callback,
 }
 
 fn main() {
-    nannou::app(model).run();
+    nannou::app(model).update(update).run();
 }
 
 fn model(app: &App) -> Model {
@@ -26,26 +30,18 @@ fn model(app: &App) -> Model {
     // Initialise the audio host so we can spawn an audio stream.
     let audio_host = audio::Host::new();
 
-    // Initialise the state that we want to live on the audio thread.
-    let sounds = vec![];
-    let model = Audio { sounds };
-    let stream = audio_host
-        .new_output_stream(model)
-        .render(audio)
-        .build()
-        .unwrap();
-
-    stream.play().unwrap();
-
-    Model { stream }
+    Model {
+        audio_host,
+        streams: Vec::new(),
+    }
 }
 
 fn audio(audio: &mut Audio, buffer: &mut Buffer) {
-    let mut have_ended = vec![];
-    let len_frames = buffer.len_frames();
+    if !audio.is_completed {
+        let len_frames = buffer.len_frames();
 
-    // Sum all of the sounds onto the buffer.
-    for (i, sound) in audio.sounds.iter_mut().enumerate() {
+        let sound = &mut audio.sound;
+        // Sum all of the sounds onto the buffer.
         let mut frame_count = 0;
         let file_frames = sound.frames::<[f32; 2]>().filter_map(Result::ok);
         for (frame, file_frame) in buffer.frames_mut().zip(file_frames) {
@@ -57,37 +53,61 @@ fn audio(audio: &mut Audio, buffer: &mut Buffer) {
 
         // If the sound yielded less samples than are in the buffer, it must have ended.
         if frame_count < len_frames {
-            have_ended.push(i);
+            audio.is_completed = true;
+            println!("Sound ended!");
+            (audio.on_completed)();
         }
-    }
-
-    // Remove all sounds that have ended.
-    for i in have_ended.into_iter().rev() {
-        audio.sounds.remove(i);
     }
 }
 
+fn simple_callback() {
+    println!("Boo!");
+}
 
 fn key_pressed(app: &App, model: &mut Model, key: Key) {
-    match key {
-        // Start playing another instance of the sound.
-        Key::Space => {
-            let assets = app.assets_path().expect("could not find assets directory");
-            let path = assets.join("sounds").join("Sky River Sound - Pacific Northwest Forests - Rainforest Ambience Soft Wind Light Rain Birds Tweeting.wav");
-            let sound = audrey::open(path).expect("failed to load sound");
-            model
-                .stream
+    if key == Key::Space {
+        let assets = app.assets_path().expect("could not find assets directory");
+        let path = assets.join("sounds").join("frog.wav");
+        if let Ok(sound) = audrey::open(path) {
+            let audio_model = Audio {
+                sound,
+                is_completed: false,
+                on_completed: simple_callback,
+            };
+            // Initialise the state that we want to live on the audio thread.
+            let stream = model
+                .audio_host
+                .new_output_stream(audio_model)
+                .render(audio)
+                .sample_rate(96000)
+                .build()
+                .unwrap();
+
+            stream
                 .send(move |audio| {
-                    audio.sounds.push(sound);
+                    // audio.sound = sound;
+                    println!("audio model: {}", audio.is_completed);
                 })
                 .ok();
+
+            model.streams.push(stream);
+        } else {
+            panic!("Failed to load sound");
         }
-        _ => {}
     }
 }
 
-fn view(_app: &App, _model: &Model, frame: Frame) {
-    frame.clear(DIMGRAY);
+fn update(app: &App, model: &mut Model, update: Update) {
+    // if let Some(completed) = model.streams.iter().find(|s| s.is_paused()) {
+    //     println!("Completed stream");
+    // }
 }
 
+fn view(app: &App, model: &Model, frame: Frame) {
+    let draw = app.draw();
 
+    draw.background().color(DARKSLATEGREY);
+    draw.text(&format!("playing {} sounds", model.streams.len()));
+
+    draw.to_frame(app, &frame).unwrap();
+}
