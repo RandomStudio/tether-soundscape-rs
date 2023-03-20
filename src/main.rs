@@ -98,37 +98,34 @@ fn audio(audio: &mut Audio, buffer: &mut Buffer) {
             ));
             sound.state = AudioState::Complete();
         } else {
-            let progress = frame_count.to_f32().unwrap() / len_frames.to_f32().unwrap();
-            sound.state = AudioState::Playing(progress);
+            // TODO: progress should be calculated from file frames?
+
+            // let progress = frame_count.to_f32().unwrap() / len_frames.to_f32().unwrap();
+            // sound.state = AudioState::Playing(progress);
         }
-
-        // if sound.state != AudioState::Complete() {
-        //     let progress = frame_count.to_f32().unwrap() / len_frames.to_f32().unwrap();
-        //     let clip_info = AudioClipInfo {
-        //         id: sound.id,
-        //         state: AudioState::Playing(progress),
-        //     };
-        //     audio.sender.send(clip_info).unwrap();
-        //     sound.state = AudioState::Playing(progress);
-        // }
     }
 
-    // Remove all sounds that have ended.
-    for (i, clip_info) in have_ended.into_iter().rev() {
-        println!("Removing and notifying for completed clip #{}", i);
-        audio.sounds.remove(i);
-        audio.sender.send(clip_info).unwrap();
+    if !have_ended.is_empty() {
+        // Remove all sounds that have ended.
+        for (i, clip_info) in have_ended.into_iter().rev() {
+            println!(
+                "Removing and notifying for completed clip #{}",
+                clip_info.id
+            );
+            audio.sounds.remove(i);
+            audio.sender.send(clip_info).unwrap();
+        }
+    } else {
+        for sound in &audio.sounds {
+            if let AudioState::Playing(progress) = sound.state {
+                let clip_info = AudioClipInfo {
+                    id: sound.id,
+                    state: AudioState::Playing(progress),
+                };
+                audio.sender.send(clip_info).unwrap();
+            }
+        }
     }
-
-    // for sound in &audio.sounds {
-    //     if let AudioState::Playing(progress) = sound.state {
-    //         let clip_info = AudioClipInfo {
-    //             id: sound.id,
-    //             state: AudioState::Playing(progress),
-    //         };
-    //         audio.sender.send(clip_info).unwrap();
-    //     }
-    // }
 }
 
 fn key_pressed(app: &App, model: &mut Model, key: Key) {
