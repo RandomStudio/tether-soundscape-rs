@@ -98,10 +98,9 @@ fn audio(audio: &mut Audio, buffer: &mut Buffer) {
             ));
             sound.state = AudioState::Complete();
         } else {
-            // TODO: progress should be calculated from file frames?
-
-            // let progress = frame_count.to_f32().unwrap() / len_frames.to_f32().unwrap();
-            // sound.state = AudioState::Playing(progress);
+            // TODO: calculate progress
+            // You may need to calculate total frames/samples (once) at load, save this,
+            // inc a counter of each frame and use this as fraction to calculate progress
         }
     }
 
