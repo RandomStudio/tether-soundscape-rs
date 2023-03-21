@@ -5,14 +5,15 @@ use nannou::prelude::*;
 use nannou_audio as audio;
 use nannou_audio::Buffer;
 use rtrb::{Consumer, Producer, RingBuffer};
-use settings::load_sample_bank;
+use settings::{get_sound_asset_path, load_sample_bank, AudioClipOnDisk};
 
 mod settings;
 
 struct Model {
     consumer: Consumer<ClipUpdate>,
     stream: audio::Stream<Audio>,
-    clips: Vec<AudioClipMetadata>,
+    clips_available: Vec<AudioClipOnDisk>,
+    clips_playing: Vec<AudioClipMetadata>,
 }
 
 enum PlaybackState {
@@ -75,7 +76,8 @@ fn model(app: &App) -> Model {
 
     Model {
         stream,
-        clips: load_sample_bank(Path::new("./test_bank.json")),
+        clips_available: load_sample_bank(app, Path::new("./test_bank.json")),
+        clips_playing: Vec::new(),
         consumer,
     }
 }
@@ -125,6 +127,39 @@ fn audio(audio: &mut Audio, buffer: &mut Buffer) {
     }
 }
 
+fn trigger_clip(app: &App, model: &mut Model, name: &str) {
+    if let Some(clip_matched) = model
+        .clips_available
+        .iter()
+        .find(|c| c.name().eq_ignore_ascii_case(name))
+    {
+        let path_str = get_sound_asset_path(app, clip_matched.path());
+        if let Ok(reader) = audrey::open(Path::new(&path_str)) {
+            let id = model.clips_playing.len();
+            let new_clip = BufferedClip {
+                id,
+                reader,
+                frames_played: 0,
+                last_update_sent: std::time::SystemTime::now(),
+            };
+            model.clips_playing.push(AudioClipMetadata {
+                id,
+                name: String::from(clip_matched.name()),
+                length: clip_matched.length().unwrap_or(0),
+                state: PlaybackState::Ready(),
+            });
+            model
+                .stream
+                .send(move |audio| {
+                    audio.sounds.push(new_clip);
+                })
+                .ok();
+        } else {
+            println!("No clip found with name {}", name);
+        }
+    }
+}
+
 fn key_pressed(app: &App, model: &mut Model, key: Key) {
     match key {
         Key::Space => {
@@ -134,26 +169,8 @@ fn key_pressed(app: &App, model: &mut Model, key: Key) {
                 model.stream.pause().expect("failed to pause stream");
             }
         }
-        Key::Key1 => {
-            let assets = app.assets_path().expect("could not find assets directory");
-            let path = assets.join("sounds").join("frog.wav");
-            if let Ok(reader) = audrey::open(path) {
-                if let Some(clip_matched) = model.clips.iter().find(|c| c.id == 0) {
-                    let new_clip = BufferedClip {
-                        id: clip_matched.id,
-                        reader,
-                        frames_played: 0,
-                        last_update_sent: std::time::SystemTime::now(),
-                    };
-                    model
-                        .stream
-                        .send(move |audio| {
-                            audio.sounds.push(new_clip);
-                        })
-                        .ok();
-                }
-            }
-        }
+        Key::Key1 => trigger_clip(app, model, "frog"),
+        Key::Key2 => trigger_clip(app, model, "mice"),
         _ => {}
     }
 }
@@ -163,14 +180,20 @@ fn update(_app: &App, model: &mut Model, _update: Update) {
         let (id, state) = receive;
         match state {
             PlaybackState::Complete() => {
+                println!("Complete state received for clip ID {}", id);
                 if let Some(to_update) = model
-                    .clips
+                    .clips_playing
                     .iter()
                     .enumerate()
                     .find(|(_i, clip_meta)| clip_meta.id == id)
                 {
-                    let (index, _info) = to_update;
-                    model.clips[index].state = PlaybackState::Complete();
+                    let (index, info) = to_update;
+                    println!(
+                        "Complete state matches clip with playing index {} and ID {}",
+                        index, info.id
+                    );
+                    model.clips_playing[index].state = PlaybackState::Complete();
+                    model.clips_playing.remove(index);
                 } else {
                     panic!("No match for clip id {}", id);
                 }
@@ -178,13 +201,13 @@ fn update(_app: &App, model: &mut Model, _update: Update) {
             PlaybackState::Playing(frames_played) => {
                 // println!("Got Playing state: {}", frames_played);
                 if let Some(to_update) = model
-                    .clips
+                    .clips_playing
                     .iter()
                     .enumerate()
                     .find(|(_i, clip_meta)| clip_meta.id == id)
                 {
                     let (index, _c) = to_update;
-                    model.clips[index].state = PlaybackState::Playing(frames_played);
+                    model.clips_playing[index].state = PlaybackState::Playing(frames_played);
                 }
             }
             PlaybackState::Ready() => {}
@@ -196,7 +219,7 @@ fn view(app: &App, model: &Model, frame: Frame) {
     let draw = app.draw();
 
     draw.background().color(DARKSLATEGREY);
-    draw.text(&format!("playing {} sounds", model.clips.len()));
+    draw.text(&format!("playing {} sounds", model.clips_playing.len()));
 
     let stream_state = if model.stream.is_playing() {
         "playing "
@@ -206,7 +229,21 @@ fn view(app: &App, model: &Model, frame: Frame) {
     draw.text(stream_state).y(45.);
 
     let start_y = -45.;
-    for (i, c) in model.clips.iter().enumerate() {
+
+    let available_x = -100.;
+    for (i, c) in model.clips_available.iter().enumerate() {
+        let length = match c.length() {
+            Some(frames) => format!("{} fr", frames),
+            None => String::from("unknown"),
+        };
+        draw.text(&format!("{} : {}", c.name(), &length))
+            .left_justify()
+            .x(available_x)
+            .y(start_y - (i * 15).to_f32().unwrap());
+    }
+
+    let playing_x = 100.;
+    for (i, c) in model.clips_playing.iter().enumerate() {
         let state_text = match c.state {
             PlaybackState::Playing(frames_played) => {
                 let progress = frames_played.to_f32().unwrap() / c.length.to_f32().unwrap();
@@ -217,6 +254,7 @@ fn view(app: &App, model: &Model, frame: Frame) {
         };
         draw.text(&format!("#{}({}): ({})", c.id, &c.name, state_text))
             .left_justify()
+            .x(playing_x)
             .y(start_y - (i * 15).to_f32().unwrap());
     }
 

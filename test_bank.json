@@ -1,10 +1,14 @@
 [
   {
     "name": "frog",
-    "path": "./assets/sounds/frog.wav"
+    "path": "frog.wav"
+  },
+  {
+    "name": "mice",
+    "path": "mice.wav"
   },
   {
     "name": "squirrel",
-    "path": "./assets/sounds/squirrel.wav"
+    "path": "squirrel.wav"
   }
 ]
