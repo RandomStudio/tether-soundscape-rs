@@ -1,7 +1,7 @@
 use std::path::Path;
 use std::time::Duration;
 
-use nannou::prelude::*;
+use nannou::{event, prelude::*};
 use nannou_audio as audio;
 use nannou_audio::Buffer;
 use rtrb::{Consumer, Producer, RingBuffer};
@@ -13,7 +13,8 @@ struct Model {
     consumer: Consumer<ClipUpdate>,
     stream: audio::Stream<Audio>,
     clips_available: Vec<AudioClipOnDisk>,
-    clips_playing: Vec<AudioClipMetadata>,
+    clips_playing: Vec<CurrentlyPlayingClip>,
+    shift_key_down: bool,
 }
 
 enum PlaybackState {
@@ -29,11 +30,12 @@ struct BufferedClip {
     last_update_sent: std::time::SystemTime,
 }
 
-pub struct AudioClipMetadata {
+pub struct CurrentlyPlayingClip {
     id: usize,
     name: String,
     length: usize,
     state: PlaybackState,
+    should_loop: bool,
 }
 
 /// ID of the clip, followed by "state"
@@ -54,6 +56,7 @@ fn model(app: &App) -> Model {
     // Create a window to receive key pressed events.
     app.new_window()
         .key_pressed(key_pressed)
+        .key_released(key_released)
         .view(view)
         .build()
         .unwrap();
@@ -79,6 +82,7 @@ fn model(app: &App) -> Model {
         clips_available: load_sample_bank(app, Path::new("./test_bank.json")),
         clips_playing: Vec::new(),
         consumer,
+        shift_key_down: false,
     }
 }
 
@@ -127,7 +131,7 @@ fn audio(audio: &mut Audio, buffer: &mut Buffer) {
     }
 }
 
-fn get_highest_id(clips: &[AudioClipMetadata]) -> usize {
+fn get_highest_id(clips: &[CurrentlyPlayingClip]) -> usize {
     let mut highest_so_far = 0;
     for el in clips {
         if el.id >= highest_so_far {
@@ -137,15 +141,20 @@ fn get_highest_id(clips: &[AudioClipMetadata]) -> usize {
     highest_so_far
 }
 
-fn trigger_clip(app: &App, model: &mut Model, name: &str) {
-    if let Some(clip_matched) = model
-        .clips_available
+fn trigger_clip(
+    app: &App,
+    clips_available: &Vec<AudioClipOnDisk>,
+    clips_playing: &mut Vec<CurrentlyPlayingClip>,
+    name: &str,
+    should_loop: bool,
+) -> Result<BufferedClip, ()> {
+    if let Some(clip_matched) = clips_available
         .iter()
         .find(|c| c.name().eq_ignore_ascii_case(name))
     {
         let path_str = get_sound_asset_path(app, clip_matched.path());
         if let Ok(reader) = audrey::open(Path::new(&path_str)) {
-            let id = get_highest_id(&model.clips_playing);
+            let id = get_highest_id(&clips_playing);
 
             println!(
                 "Start playback for clip name {}, given playing ID #{}",
@@ -158,23 +167,26 @@ fn trigger_clip(app: &App, model: &mut Model, name: &str) {
                 frames_played: 0,
                 last_update_sent: std::time::SystemTime::now(),
             };
-            model.clips_playing.push(AudioClipMetadata {
+            clips_playing.push(CurrentlyPlayingClip {
                 id,
                 name: String::from(clip_matched.name()),
                 length: clip_matched.length().unwrap_or(0),
                 state: PlaybackState::Ready(),
+                should_loop,
             });
-            model
-                .stream
-                .send(move |audio| {
-                    audio.sounds.push(new_clip);
-                })
-                .ok();
+            Ok(new_clip)
         } else {
             println!("No clip found with name {}", name);
+            Err(())
         }
+    } else {
+        Err(())
     }
 }
+
+// fn play(stream: Stream<Audio>, new_clip: BufferedClip) {
+
+// }
 
 fn key_pressed(app: &App, model: &mut Model, key: Key) {
     match key {
@@ -185,14 +197,52 @@ fn key_pressed(app: &App, model: &mut Model, key: Key) {
                 model.stream.pause().expect("failed to pause stream");
             }
         }
-        Key::Key1 => trigger_clip(app, model, "frog"),
-        Key::Key2 => trigger_clip(app, model, "mice"),
-        Key::Key3 => trigger_clip(app, model, "squirrel"),
+        Key::Key1 => {
+            if let Ok(new_clip) = trigger_clip(
+                app,
+                &model.clips_available,
+                &mut model.clips_playing,
+                "frog",
+                model.shift_key_down,
+            ) {
+                model
+                    .stream
+                    .send(move |audio| {
+                        audio.sounds.push(new_clip);
+                    })
+                    .ok();
+            }
+        }
+        // Key::Key2 => trigger_clip(
+        //     app,
+        //     &model.clips_available,
+        //     &mut model.clips_playing,
+        //     model.stream,
+        //     "mice",
+        //     model.shift_key_down,
+        // ),
+        // Key::Key2 => trigger_clip(
+        //     app,
+        //     &model.clips_available,
+        //     &mut model.clips_playing,
+        //     model.stream,
+        //     "squirrel",
+        //     model.shift_key_down,
+        // ),
+        Key::LShift => {
+            model.shift_key_down = true;
+        }
         _ => {}
     }
 }
 
-fn update(_app: &App, model: &mut Model, _update: Update) {
+fn key_released(_app: &App, model: &mut Model, key: Key) {
+    if key == Key::LShift {
+        model.shift_key_down = false;
+    }
+}
+
+fn update(app: &App, model: &mut Model, _update: Update) {
     if let Ok(receive) = model.consumer.pop() {
         let (id, state) = receive;
         match state {
@@ -211,6 +261,10 @@ fn update(_app: &App, model: &mut Model, _update: Update) {
                     );
                     model.clips_playing[index].state = PlaybackState::Complete();
                     model.clips_playing.remove(index);
+
+                    // if (info.should_loop) {
+                    //     trigger_clip(app, model, &info.name, true);
+                    // }
                 } else {
                     panic!("No match for clip id {}", id);
                 }
@@ -235,7 +289,11 @@ fn update(_app: &App, model: &mut Model, _update: Update) {
 fn view(app: &App, model: &Model, frame: Frame) {
     let draw = app.draw();
 
-    draw.background().color(DARKSLATEGREY);
+    draw.background().color(if model.shift_key_down {
+        SLATEGREY
+    } else {
+        DARKSLATEGREY
+    });
     draw.text(&format!("playing {} sounds", model.clips_playing.len()));
 
     let stream_state = if model.stream.is_playing() {
