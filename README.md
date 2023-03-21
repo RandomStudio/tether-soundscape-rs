@@ -1,15 +1,17 @@
 # Tether Soundscape rs
 
-A multi-layered audio player, remote-controllable from Tether, to create soundscapes.
+A multi-layered audio sequencer, remote-controllable via Tether, to create soundscapes.
 
-Using Rust because:
-- Minimal memory/CPU footprint
+Using 🦀 Rust because:
+- Minimal memory/CPU footprint for high performance
+- Cross-platform but without any need to install browser, use Electron, etc.
 - Visualisation via Nannou
-- Great way to learn about low-level audio sample/buffer control, multi-threading (because Nannou always uses separate "realtime" thread for audio)
+- Great way to learn about low-level audio sample/buffer control, multi-threading in Rust (Nannou always uses separate "realtime" thread for audio)
 
 TODO:
 - [ ] Demonstrate running on Raspberry Pi
 - [ ] Apply "loop" as well as trigger/hit/once-off functions
+- [ ] Allow clips to be stopped/removed while playing (without stopping whole stream)
 - [ ] Apply fade in/out volume controls
 - [ ] Make use of tempo, quantisation for timing
 - [ ] Optionally connect to [Ableton link](https://docs.rs/ableton-link/latest/ableton_link/)
