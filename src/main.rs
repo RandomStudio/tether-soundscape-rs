@@ -1,17 +1,16 @@
 use nannou::prelude::*;
 use nannou_audio as audio;
 use nannou_audio::Buffer;
-
-use std::sync::mpsc::{self, Receiver, Sender};
+use rtrb::{Consumer, Producer, RingBuffer};
 
 struct Model {
-    receiver: Receiver<AudioClipInfo>,
+    consumer: Consumer<AudioClipInfo>,
     stream: audio::Stream<Audio>,
     clips: Vec<AudioClipInfo>,
 }
 
 #[derive(Debug, PartialEq)]
-enum AudioState {
+enum ClipState {
     Ready(),
     Playing(f32),
     Complete(),
@@ -19,19 +18,15 @@ enum AudioState {
 
 struct AudioClip {
     id: usize,
-    state: AudioState,
     reader: audrey::read::BufFileReader,
 }
 
-#[derive(Debug)]
-struct AudioClipInfo {
-    id: usize,
-    state: AudioState,
-}
+/// ID of the clip, followed by "state"
+type AudioClipInfo = (usize, ClipState);
 
 struct Audio {
     sounds: Vec<AudioClip>,
-    sender: Sender<AudioClipInfo>,
+    producer: Producer<AudioClipInfo>,
 }
 
 fn main() {
@@ -49,10 +44,10 @@ fn model(app: &App) -> Model {
     // Initialise the audio host so we can spawn an audio stream.
     let audio_host = audio::Host::new();
 
-    let (tx, rx) = mpsc::channel::<AudioClipInfo>();
+    let (producer, consumer) = RingBuffer::new(2);
     let audio_model = Audio {
         sounds: Vec::new(),
-        sender: tx,
+        producer,
     };
     // Initialise the state that we want to live on the audio thread.
     let stream = audio_host
@@ -67,7 +62,7 @@ fn model(app: &App) -> Model {
     Model {
         stream,
         clips: Vec::new(),
-        receiver: rx,
+        consumer,
     }
 }
 
@@ -88,15 +83,8 @@ fn audio(audio: &mut Audio, buffer: &mut Buffer) {
 
         // If the sound yielded less samples than are in the buffer, it must have ended.
         if frame_count < len_frames {
-            println!("Clip {} ended", sound.id);
-            have_ended.push((
-                i,
-                AudioClipInfo {
-                    id: sound.id,
-                    state: AudioState::Complete(),
-                },
-            ));
-            sound.state = AudioState::Complete();
+            have_ended.push(i);
+            audio.producer.push((sound.id, ClipState::Complete()));
         } else {
             // TODO: calculate progress
             // You may need to calculate total frames/samples (once) at load, save this,
@@ -104,26 +92,9 @@ fn audio(audio: &mut Audio, buffer: &mut Buffer) {
         }
     }
 
-    if !have_ended.is_empty() {
-        // Remove all sounds that have ended.
-        for (i, clip_info) in have_ended.into_iter().rev() {
-            println!(
-                "Removing and notifying for completed clip #{}",
-                clip_info.id
-            );
-            audio.sounds.remove(i);
-            audio.sender.send(clip_info).unwrap();
-        }
-    } else {
-        for sound in &audio.sounds {
-            if let AudioState::Playing(progress) = sound.state {
-                let clip_info = AudioClipInfo {
-                    id: sound.id,
-                    state: AudioState::Playing(progress),
-                };
-                audio.sender.send(clip_info).unwrap();
-            }
-        }
+    // Remove all sounds that have ended.
+    for i in have_ended.into_iter().rev() {
+        audio.sounds.remove(i);
     }
 }
 
@@ -132,15 +103,9 @@ fn key_pressed(app: &App, model: &mut Model, key: Key) {
         let assets = app.assets_path().expect("could not find assets directory");
         let path = assets.join("sounds").join("frog.wav");
         if let Ok(reader) = audrey::open(path) {
-            let new_clip = AudioClip {
-                id: model.clips.len(),
-                state: AudioState::Ready(),
-                reader,
-            };
-            model.clips.push(AudioClipInfo {
-                id: model.clips.len(),
-                state: AudioState::Ready(),
-            });
+            let id = model.clips.len();
+            let new_clip = AudioClip { id, reader };
+            model.clips.push((id, ClipState::Ready()));
             model
                 .stream
                 .send(move |audio| {
@@ -154,29 +119,51 @@ fn key_pressed(app: &App, model: &mut Model, key: Key) {
 }
 
 fn update(_app: &App, model: &mut Model, _update: Update) {
-    if let Ok(received) = &model.receiver.try_recv() {
-        println!("Received state {:?} from #{}", received.state, received.id);
-
-        match received.state {
-            AudioState::Complete() => {
+    if let Ok(receive) = model.consumer.pop() {
+        let (id, state) = receive;
+        match state {
+            ClipState::Complete() => {
                 if let Some(to_remove) = model
                     .clips
                     .iter()
                     .enumerate()
-                    .find(|(_i, clip)| clip.id == received.id)
+                    .find(|(_i, clip_info)| clip_info.0 == id)
                 {
                     let (i, _info) = to_remove;
                     model.clips.remove(i);
                 } else {
-                    panic!("No match for clip id {}", received.id);
+                    panic!("No match for clip id {}", id);
                 }
             }
-            AudioState::Playing(progress) => {
+            ClipState::Playing(progress) => {
                 // println!("Clip #{} progress {}", received.id, progress);
             }
-            AudioState::Ready() => {}
+            ClipState::Ready() => {}
         }
     }
+    // if let Ok(received) = &model.consumer.try_recv() {
+    //     println!("Received state {:?} from #{}", received.state, received.id);
+
+    //     match received.state {
+    //         ClipState::Complete() => {
+    //             if let Some(to_remove) = model
+    //                 .clips
+    //                 .iter()
+    //                 .enumerate()
+    //                 .find(|(_i, clip)| clip.id == received.id)
+    //             {
+    //                 let (i, _info) = to_remove;
+    //                 model.clips.remove(i);
+    //             } else {
+    //                 panic!("No match for clip id {}", received.id);
+    //             }
+    //         }
+    //         ClipState::Playing(progress) => {
+    //             // println!("Clip #{} progress {}", received.id, progress);
+    //         }
+    //         ClipState::Ready() => {}
+    //     }
+    // }
 }
 
 fn view(app: &App, model: &Model, frame: Frame) {
