@@ -92,14 +92,13 @@ fn audio(audio: &mut Audio, buffer: &mut Buffer) {
 
         // If the sound yielded less samples than are in the buffer, it must have ended.
         if frame_count < len_frames {
-            while audio.producer.is_full() {
-                std::thread::sleep(Duration::from_millis(1));
+            if !audio.producer.is_full() {
+                have_ended.push(i);
+                audio
+                    .producer
+                    .push((sound.id, PlaybackState::Complete()))
+                    .unwrap();
             }
-            have_ended.push(i);
-            audio
-                .producer
-                .push((sound.id, PlaybackState::Complete()))
-                .unwrap();
         } else {
             sound.frames_played += frame_count;
             if audio.producer.is_full() {
@@ -198,7 +197,7 @@ fn view(app: &App, model: &Model, frame: Frame) {
     draw.background().color(DARKSLATEGREY);
     draw.text(&format!("playing {} sounds", model.clips.len()));
 
-    let start_y = -15.;
+    let start_y = -45.;
     for (i, c) in model.clips.iter().enumerate() {
         if let PlaybackState::Playing(progress) = c.state {
             draw.text(&format!("clip ID#{} : {} / {}", c.id, progress, c.length))
