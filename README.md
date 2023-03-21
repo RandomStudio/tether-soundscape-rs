@@ -2,3 +2,17 @@
 
 A multi-layered audio player, remote-controllable from Tether, to create soundscapes.
 
+Using Rust because:
+- Minimal memory/CPU footprint
+- Visualisation via Nannou
+- Great way to learn about low-level audio sample/buffer control, multi-threading (because Nannou always uses seperate "realtime" thread for audio)
+
+TODO:
+- [ ] Demonstrate running on Raspberry Pi
+- [ ] Apply "loop" as well as trigger/hit/once-off functions
+- [ ] Apply fade in/out volume controls
+- [ ] Make use of tempo, quantisation for timing
+- [ ] Optionally connect to [Ableton link](https://docs.rs/ableton-link/latest/ableton_link/)
+- [ ] On-screen UI (Egui), CLI params, etc.
+- [ ] Low/no graphics mode
+- [ ] Add Tether remote control commands, as per API in [original](https://github.com/RandomStudio/tether-soundscape)
