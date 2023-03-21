@@ -5,7 +5,7 @@ A multi-layered audio player, remote-controllable from Tether, to create soundsc
 Using Rust because:
 - Minimal memory/CPU footprint
 - Visualisation via Nannou
-- Great way to learn about low-level audio sample/buffer control, multi-threading (because Nannou always uses seperate "realtime" thread for audio)
+- Great way to learn about low-level audio sample/buffer control, multi-threading (because Nannou always uses separate "realtime" thread for audio)
 
 TODO:
 - [ ] Demonstrate running on Raspberry Pi
