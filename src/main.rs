@@ -101,6 +101,9 @@ fn audio(audio: &mut Audio, buffer: &mut Buffer) {
             }
         } else {
             sound.frames_played += frame_count;
+
+            // TODO: it's not necessary to send the update on every frame!
+
             if audio.producer.is_full() {
                 // Ignore
             } else {
