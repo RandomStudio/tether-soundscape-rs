@@ -1,5 +1,5 @@
 [package]
-name = "circadian-synth"
+name = "tether-soundscape-rs"
 version = "0.1.0"
 edition = "2021"
 

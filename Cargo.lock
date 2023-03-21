@@ -274,18 +274,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fd16c4719339c4530435d38e511904438d07cce7950afa3718a84ac36c10e89e"
 
 [[package]]
-name = "circadian-synth"
-version = "0.1.0"
-dependencies = [
- "audrey",
- "nannou",
- "nannou_audio",
- "rtrb",
- "serde",
- "serde_json",
-]
-
-[[package]]
 name = "clang-sys"
 version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2415,6 +2403,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "be55cf8942feac5c765c2c993422806843c9a9a45d4d5c407ad6dd2ea95eb9b6"
 dependencies = [
  "winapi-util",
+]
+
+[[package]]
+name = "tether-soundscape-rs"
+version = "0.1.0"
+dependencies = [
+ "audrey",
+ "nannou",
+ "nannou_audio",
+ "rtrb",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
