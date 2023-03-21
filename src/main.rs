@@ -127,6 +127,16 @@ fn audio(audio: &mut Audio, buffer: &mut Buffer) {
     }
 }
 
+fn get_highest_id(clips: &[AudioClipMetadata]) -> usize {
+    let mut highest_so_far = 0;
+    for el in clips {
+        if el.id >= highest_so_far {
+            highest_so_far = el.id + 1;
+        }
+    }
+    highest_so_far
+}
+
 fn trigger_clip(app: &App, model: &mut Model, name: &str) {
     if let Some(clip_matched) = model
         .clips_available
@@ -135,7 +145,13 @@ fn trigger_clip(app: &App, model: &mut Model, name: &str) {
     {
         let path_str = get_sound_asset_path(app, clip_matched.path());
         if let Ok(reader) = audrey::open(Path::new(&path_str)) {
-            let id = model.clips_playing.len();
+            let id = get_highest_id(&model.clips_playing);
+
+            println!(
+                "Start playback for clip name {}, given playing ID #{}",
+                clip_matched.name(),
+                id
+            );
             let new_clip = BufferedClip {
                 id,
                 reader,
@@ -171,6 +187,7 @@ fn key_pressed(app: &App, model: &mut Model, key: Key) {
         }
         Key::Key1 => trigger_clip(app, model, "frog"),
         Key::Key2 => trigger_clip(app, model, "mice"),
+        Key::Key3 => trigger_clip(app, model, "squirrel"),
         _ => {}
     }
 }
@@ -189,8 +206,8 @@ fn update(_app: &App, model: &mut Model, _update: Update) {
                 {
                     let (index, info) = to_update;
                     println!(
-                        "Complete state matches clip with playing index {} and ID {}",
-                        index, info.id
+                        "Complete state matches clip with playing index {} and ID {}, name {}",
+                        index, info.id, info.name
                     );
                     model.clips_playing[index].state = PlaybackState::Complete();
                     model.clips_playing.remove(index);
