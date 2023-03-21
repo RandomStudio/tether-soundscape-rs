@@ -1,0 +1,10 @@
+[
+  {
+    "name": "frog",
+    "path": "./assets/sounds/frog.wav"
+  },
+  {
+    "name": "squirrel",
+    "path": "./assets/sounds/squirrel.wav"
+  }
+]

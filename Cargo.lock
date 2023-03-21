@@ -281,6 +281,8 @@ dependencies = [
  "nannou",
  "nannou_audio",
  "rtrb",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

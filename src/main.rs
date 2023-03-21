@@ -1,9 +1,13 @@
+use std::path::Path;
 use std::time::Duration;
 
 use nannou::prelude::*;
 use nannou_audio as audio;
 use nannou_audio::Buffer;
 use rtrb::{Consumer, Producer, RingBuffer};
+use settings::load_sample_bank;
+
+mod settings;
 
 struct Model {
     consumer: Consumer<ClipUpdate>,
@@ -11,22 +15,22 @@ struct Model {
     clips: Vec<AudioClipMetadata>,
 }
 
-#[derive(Debug, PartialEq)]
 enum PlaybackState {
     Ready(),
     Playing(usize),
     Complete(),
 }
 
-struct AudioClip {
+struct BufferedClip {
     id: usize,
     reader: audrey::read::BufFileReader,
     frames_played: usize,
     last_update_sent: std::time::SystemTime,
 }
 
-struct AudioClipMetadata {
+pub struct AudioClipMetadata {
     id: usize,
+    name: String,
     length: usize,
     state: PlaybackState,
 }
@@ -35,7 +39,7 @@ struct AudioClipMetadata {
 type ClipUpdate = (usize, PlaybackState);
 
 struct Audio {
-    sounds: Vec<AudioClip>,
+    sounds: Vec<BufferedClip>,
     producer: Producer<ClipUpdate>,
 }
 
@@ -69,11 +73,9 @@ fn model(app: &App) -> Model {
         .build()
         .unwrap();
 
-    stream.play().unwrap();
-
     Model {
         stream,
-        clips: Vec::new(),
+        clips: load_sample_bank(Path::new("./test_bank.json")),
         consumer,
     }
 }
@@ -123,42 +125,36 @@ fn audio(audio: &mut Audio, buffer: &mut Buffer) {
     }
 }
 
-fn calculate_length(path: &std::path::Path) -> usize {
-    let mut reader = audrey::open(path).unwrap();
-    let mut count = 0;
-    reader.frames::<[f32; 2]>().for_each(|_f| count += 1);
-    count
-}
-
 fn key_pressed(app: &App, model: &mut Model, key: Key) {
-    if key == Key::Space {
-        let assets = app.assets_path().expect("could not find assets directory");
-        let path = assets.join("sounds").join("frog.wav");
-        if let Ok(reader) = audrey::open(&path) {
-            println!("Opened sound file OK: {:?}", reader.description());
-            let length = calculate_length(&path);
-            println!("Got length {}", length);
-            let id = model.clips.len();
-            let new_clip = AudioClip {
-                id,
-                reader,
-                frames_played: 0,
-                last_update_sent: std::time::SystemTime::now(),
-            };
-            model.clips.push(AudioClipMetadata {
-                id,
-                length,
-                state: PlaybackState::Ready(),
-            });
-            model
-                .stream
-                .send(move |audio| {
-                    audio.sounds.push(new_clip);
-                })
-                .ok();
-        } else {
-            panic!("Failed to load sound");
+    match key {
+        Key::Space => {
+            if model.stream.is_paused() {
+                model.stream.play().expect("failed to start stream");
+            } else {
+                model.stream.pause().expect("failed to pause stream");
+            }
         }
+        Key::Key1 => {
+            let assets = app.assets_path().expect("could not find assets directory");
+            let path = assets.join("sounds").join("frog.wav");
+            if let Ok(reader) = audrey::open(path) {
+                if let Some(clip_matched) = model.clips.iter().find(|c| c.id == 0) {
+                    let new_clip = BufferedClip {
+                        id: clip_matched.id,
+                        reader,
+                        frames_played: 0,
+                        last_update_sent: std::time::SystemTime::now(),
+                    };
+                    model
+                        .stream
+                        .send(move |audio| {
+                            audio.sounds.push(new_clip);
+                        })
+                        .ok();
+                }
+            }
+        }
+        _ => {}
     }
 }
 
@@ -167,15 +163,14 @@ fn update(_app: &App, model: &mut Model, _update: Update) {
         let (id, state) = receive;
         match state {
             PlaybackState::Complete() => {
-                if let Some(to_remove) = model
+                if let Some(to_update) = model
                     .clips
                     .iter()
                     .enumerate()
                     .find(|(_i, clip_meta)| clip_meta.id == id)
                 {
-                    let (i, _info) = to_remove;
-                    // println!("Removing clip at index {}", i);
-                    model.clips.remove(i);
+                    let (index, _info) = to_update;
+                    model.clips[index].state = PlaybackState::Complete();
                 } else {
                     panic!("No match for clip id {}", id);
                 }
@@ -203,13 +198,26 @@ fn view(app: &App, model: &Model, frame: Frame) {
     draw.background().color(DARKSLATEGREY);
     draw.text(&format!("playing {} sounds", model.clips.len()));
 
+    let stream_state = if model.stream.is_playing() {
+        "playing "
+    } else {
+        "paused"
+    };
+    draw.text(stream_state).y(45.);
+
     let start_y = -45.;
     for (i, c) in model.clips.iter().enumerate() {
-        if let PlaybackState::Playing(progress) = c.state {
-            draw.text(&format!("clip ID#{} : {} / {}", c.id, progress, c.length))
-                .left_justify()
-                .y(start_y - (i * 15).to_f32().unwrap());
-        }
+        let state_text = match c.state {
+            PlaybackState::Playing(frames_played) => {
+                let progress = frames_played.to_f32().unwrap() / c.length.to_f32().unwrap();
+                format!("{}%", (progress * 100.).trunc())
+            }
+            PlaybackState::Complete() => String::from("DONE"),
+            PlaybackState::Ready() => String::from("READY"),
+        };
+        draw.text(&format!("#{}({}): ({})", c.id, &c.name, state_text))
+            .left_justify()
+            .y(start_y - (i * 15).to_f32().unwrap());
     }
 
     draw.to_frame(app, &frame).unwrap();
