@@ -22,6 +22,7 @@ struct AudioClip {
     id: usize,
     reader: audrey::read::BufFileReader,
     frames_played: usize,
+    last_update_sent: std::time::SystemTime,
 }
 
 struct AudioClipMetadata {
@@ -37,6 +38,8 @@ struct Audio {
     sounds: Vec<AudioClip>,
     producer: Producer<ClipUpdate>,
 }
+
+const UPDATE_INTERVAL: Duration = Duration::from_millis(8);
 
 fn main() {
     nannou::app(model).update(update).run();
@@ -102,11 +105,10 @@ fn audio(audio: &mut Audio, buffer: &mut Buffer) {
         } else {
             sound.frames_played += frame_count;
 
-            // TODO: it's not necessary to send the update on every frame!
-
-            if audio.producer.is_full() {
-                // Ignore
-            } else {
+            if sound.last_update_sent.elapsed().unwrap() > UPDATE_INTERVAL
+                && !audio.producer.is_full()
+            {
+                sound.last_update_sent = std::time::SystemTime::now();
                 audio
                     .producer
                     .push((sound.id, PlaybackState::Playing(sound.frames_played)))
@@ -141,6 +143,7 @@ fn key_pressed(app: &App, model: &mut Model, key: Key) {
                 id,
                 reader,
                 frames_played: 0,
+                last_update_sent: std::time::SystemTime::now(),
             };
             model.clips.push(AudioClipMetadata {
                 id,
@@ -171,14 +174,14 @@ fn update(_app: &App, model: &mut Model, _update: Update) {
                     .find(|(_i, clip_meta)| clip_meta.id == id)
                 {
                     let (i, _info) = to_remove;
-                    println!("Removing clip at index {}", i);
+                    // println!("Removing clip at index {}", i);
                     model.clips.remove(i);
                 } else {
                     panic!("No match for clip id {}", id);
                 }
             }
             PlaybackState::Playing(frames_played) => {
-                println!("Got Playing state: {}", frames_played);
+                // println!("Got Playing state: {}", frames_played);
                 if let Some(to_update) = model
                     .clips
                     .iter()
