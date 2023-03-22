@@ -44,6 +44,17 @@ impl Audio {
     pub fn add_sound(&mut self, new_clip: BufferedClip) {
         self.sounds.push(new_clip);
     }
+    pub fn remove_sound(&mut self, id: usize) {
+        if let Some(to_remove) = self
+            .sounds
+            .iter()
+            .enumerate()
+            .find(|(_index, s)| s.id == id)
+        {
+            let (index, _s) = to_remove;
+            self.sounds.remove(index);
+        }
+    }
 }
 
 /// ID of the clip, followed by "state"

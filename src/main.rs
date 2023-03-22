@@ -10,13 +10,23 @@ use settings::{get_sound_asset_path, load_sample_bank, AudioClipOnDisk};
 mod playback;
 mod settings;
 
+enum QueueItem {
+    /// name, should_loop
+    Play(String, bool),
+    /// name
+    Stop(String),
+    /// index in currentl_playing Vec, id for audio model
+    Remove(usize, usize),
+}
+
 struct Model {
     consumer: Consumer<ClipUpdate>,
     stream: audio::Stream<Audio>,
     clips_available: Vec<AudioClipOnDisk>,
     clips_playing: Vec<CurrentlyPlayingClip>,
-    shift_key_down: bool,
-    play_queue: Vec<(String, bool)>,
+    left_shift_key_down: bool,
+    right_shift_key_down: bool,
+    action_queue: Vec<QueueItem>,
 }
 
 pub struct CurrentlyPlayingClip {
@@ -58,8 +68,9 @@ fn model(app: &App) -> Model {
         clips_available: load_sample_bank(app, Path::new("./test_bank.json")),
         clips_playing: Vec::new(),
         consumer,
-        shift_key_down: false,
-        play_queue: Vec::new(),
+        left_shift_key_down: false,
+        right_shift_key_down: false,
+        action_queue: Vec::new(),
     }
 }
 
@@ -73,19 +84,15 @@ fn get_highest_id(clips: &[CurrentlyPlayingClip]) -> usize {
     highest_so_far
 }
 
-fn trigger_clip(
-    app: &App,
-    clips_available: &[AudioClipOnDisk],
-    clips_playing: &mut Vec<CurrentlyPlayingClip>,
-    name: &str,
-    should_loop: bool,
-) -> Result<BufferedClip, ()> {
-    if let Some(clip_matched) = clips_available
+fn trigger_clip(app: &App, model: &mut Model, name: &str, should_loop: bool) -> Result<(), ()> {
+    if let Some(clip_matched) = model
+        .clips_available
         .iter()
         .find(|c| c.name().eq_ignore_ascii_case(name))
     {
         let path_str = get_sound_asset_path(app, clip_matched.path());
         if let Ok(reader) = audrey::open(Path::new(&path_str)) {
+            let clips_playing = &mut model.clips_playing;
             let id = get_highest_id(clips_playing);
 
             println!(
@@ -101,7 +108,13 @@ fn trigger_clip(
                 state: PlaybackState::Ready(),
                 should_loop,
             });
-            Ok(new_clip)
+            model
+                .stream
+                .send(move |audio| {
+                    audio.add_sound(new_clip);
+                })
+                .ok();
+            Ok(())
         } else {
             println!("No clip found with name {}", name);
             Err(())
@@ -109,15 +122,6 @@ fn trigger_clip(
     } else {
         Err(())
     }
-}
-
-fn start_playback(model: &mut Model, new_clip: BufferedClip) {
-    model
-        .stream
-        .send(move |audio| {
-            audio.add_sound(new_clip);
-        })
-        .ok();
 }
 
 fn key_pressed(_app: &App, model: &mut Model, key: Key) {
@@ -130,23 +134,47 @@ fn key_pressed(_app: &App, model: &mut Model, key: Key) {
             }
         }
         Key::Key1 => {
-            model
-                .play_queue
-                .push((String::from("frog"), model.shift_key_down));
+            if model.right_shift_key_down {
+                model
+                    .action_queue
+                    .push(QueueItem::Stop(String::from("frog")));
+            } else {
+                model.action_queue.push(QueueItem::Play(
+                    String::from("frog"),
+                    model.left_shift_key_down,
+                ));
+            }
         }
         Key::Key2 => {
-            model
-                .play_queue
-                .push((String::from("mice"), model.shift_key_down));
+            if model.right_shift_key_down {
+                model
+                    .action_queue
+                    .push(QueueItem::Stop(String::from("mice")));
+            } else {
+                model.action_queue.push(QueueItem::Play(
+                    String::from("mice"),
+                    model.left_shift_key_down,
+                ));
+            }
         }
         Key::Key3 => {
-            model
-                .play_queue
-                .push((String::from("squirrel"), model.shift_key_down));
+            if model.right_shift_key_down {
+                model
+                    .action_queue
+                    .push(QueueItem::Stop(String::from("squirrel")));
+            } else {
+                model.action_queue.push(QueueItem::Play(
+                    String::from("squirrel"),
+                    model.left_shift_key_down,
+                ));
+            }
         }
 
         Key::LShift => {
-            model.shift_key_down = true;
+            model.left_shift_key_down = true;
+        }
+        Key::RShift => {
+            model.right_shift_key_down = true;
         }
         _ => {}
     }
@@ -154,8 +182,33 @@ fn key_pressed(_app: &App, model: &mut Model, key: Key) {
 
 fn key_released(_app: &App, model: &mut Model, key: Key) {
     if key == Key::LShift {
-        model.shift_key_down = false;
+        model.left_shift_key_down = false;
     }
+    if key == Key::RShift {
+        model.right_shift_key_down = false;
+    }
+}
+
+fn get_clip_index_with_name<'a>(
+    clips: &'a [CurrentlyPlayingClip],
+    name: &str,
+) -> Option<(usize, &'a CurrentlyPlayingClip)> {
+    clips
+        .iter()
+        .enumerate()
+        .find(|(_index, c)| c.name == name)
+        .map(|(index, c)| (index, c))
+}
+
+fn get_clip_index_with_id(
+    clips: &[CurrentlyPlayingClip],
+    id: usize,
+) -> Option<(usize, &CurrentlyPlayingClip)> {
+    clips
+        .iter()
+        .enumerate()
+        .find(|(_index, c)| c.id == id)
+        .map(|(index, c)| (index, c))
 }
 
 fn update(app: &App, model: &mut Model, _update: Update) {
@@ -164,21 +217,12 @@ fn update(app: &App, model: &mut Model, _update: Update) {
         match state {
             PlaybackState::Complete() => {
                 println!("Complete state received for clip ID {}", id);
-                if let Some(to_update) = model
-                    .clips_playing
-                    .iter()
-                    .enumerate()
-                    .find(|(_i, clip_meta)| clip_meta.id == id)
-                {
-                    let (index, info) = to_update;
-                    println!(
-                        "Complete state matches clip with playing index {} and ID {}, name {}",
-                        index, info.id, info.name
-                    );
-
-                    if info.should_loop {
-                        println!("Should loop! Repeat clip with name {}", &info.name);
-                        model.play_queue.push((String::from(&info.name), true));
+                if let Some((index, clip)) = get_clip_index_with_id(&model.clips_playing, id) {
+                    if clip.should_loop {
+                        println!("Should loop! Repeat clip with name {}", clip.name);
+                        model
+                            .action_queue
+                            .push(QueueItem::Play(String::from(&clip.name), true));
                     }
                     model.clips_playing[index].state = PlaybackState::Complete();
                     model.clips_playing.remove(index);
@@ -188,12 +232,7 @@ fn update(app: &App, model: &mut Model, _update: Update) {
             }
             PlaybackState::Playing(frames_played) => {
                 // println!("Got Playing state: {}", frames_played);
-                if let Some(to_update) = model
-                    .clips_playing
-                    .iter()
-                    .enumerate()
-                    .find(|(_i, clip_meta)| clip_meta.id == id)
-                {
+                if let Some(to_update) = get_clip_index_with_id(&model.clips_playing, id) {
                     let (index, _c) = to_update;
                     model.clips_playing[index].state = PlaybackState::Playing(frames_played);
                 }
@@ -202,15 +241,25 @@ fn update(app: &App, model: &mut Model, _update: Update) {
         }
     }
 
-    while let Some((name, should_loop)) = model.play_queue.pop() {
-        if let Ok(new_clip) = trigger_clip(
-            app,
-            &model.clips_available,
-            &mut model.clips_playing,
-            &name,
-            should_loop,
-        ) {
-            start_playback(model, new_clip);
+    while let Some(queue_item) = model.action_queue.pop() {
+        match queue_item {
+            QueueItem::Play(name, should_loop) => {
+                trigger_clip(app, model, &name, should_loop).unwrap();
+            }
+            QueueItem::Stop(name) => {
+                if let Some((index, clip)) = get_clip_index_with_name(&model.clips_playing, &name) {
+                    model.action_queue.push(QueueItem::Remove(index, clip.id));
+                }
+            }
+            QueueItem::Remove(index, id) => {
+                model
+                    .stream
+                    .send(move |audio| {
+                        audio.remove_sound(id);
+                    })
+                    .unwrap();
+                model.clips_playing.remove(index);
+            }
         }
     }
 }
@@ -218,7 +267,7 @@ fn update(app: &App, model: &mut Model, _update: Update) {
 fn view(app: &App, model: &Model, frame: Frame) {
     let draw = app.draw();
 
-    draw.background().color(if model.shift_key_down {
+    draw.background().color(if model.left_shift_key_down {
         SLATEGREY
     } else {
         DARKSLATEGREY
