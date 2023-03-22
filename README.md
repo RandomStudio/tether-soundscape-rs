@@ -10,8 +10,8 @@ Using 🦀 Rust because:
 
 TODO:
 - [ ] Demonstrate running on Raspberry Pi
-- [ ] Apply "loop" as well as trigger/hit/once-off functions
-- [ ] Allow clips to be stopped/removed while playing (without stopping whole stream)
+- [x] Apply "loop" as well as trigger/hit/once-off functions
+- [x] Allow clips to be stopped/removed while playing (without stopping whole stream)
 - [ ] Apply fade in/out volume controls
 - [ ] Make use of tempo, quantisation for timing
 - [ ] Optionally connect to [Ableton link](https://docs.rs/ableton-link/latest/ableton_link/)
