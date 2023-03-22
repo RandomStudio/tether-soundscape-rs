@@ -3,13 +3,23 @@ use std::path::Path;
 use nannou::prelude::*;
 use nannou_audio as audio;
 
-use playback::{render_audio, Audio, BufferedClip, ClipUpdate, PlaybackState};
+use playback::{render_audio, Audio, BufferedClip, CompleteUpdate, PlaybackState, ProgressUpdate};
 use rtrb::{Consumer, RingBuffer};
 use settings::{get_sound_asset_path, load_sample_bank, AudioClipOnDisk};
 
 mod playback;
 mod settings;
 
+struct Model {
+    rx_progress: Consumer<ProgressUpdate>,
+    rx_complete: Consumer<CompleteUpdate>,
+    stream: audio::Stream<Audio>,
+    clips_available: Vec<AudioClipOnDisk>,
+    clips_playing: Vec<CurrentlyPlayingClip>,
+    left_shift_key_down: bool,
+    right_shift_key_down: bool,
+    action_queue: Vec<QueueItem>,
+}
 enum QueueItem {
     /// name, should_loop
     Play(String, bool),
@@ -17,16 +27,6 @@ enum QueueItem {
     Stop(usize),
     /// index in currentl_playing Vec, id for audio model
     Remove(usize, usize),
-}
-
-struct Model {
-    consumer: Consumer<ClipUpdate>,
-    stream: audio::Stream<Audio>,
-    clips_available: Vec<AudioClipOnDisk>,
-    clips_playing: Vec<CurrentlyPlayingClip>,
-    left_shift_key_down: bool,
-    right_shift_key_down: bool,
-    action_queue: Vec<QueueItem>,
 }
 
 pub struct CurrentlyPlayingClip {
@@ -53,8 +53,9 @@ fn model(app: &App) -> Model {
     // Initialise the audio host so we can spawn an audio stream.
     let audio_host = audio::Host::new();
 
-    let (producer, consumer) = RingBuffer::new(2);
-    let audio_model = Audio::new(producer);
+    let (tx_progress, rx_progress) = RingBuffer::new(2);
+    let (tx_complete, rx_complete) = RingBuffer::new(32);
+    let audio_model = Audio::new(tx_progress, tx_complete);
     // Initialise the state that we want to live on the audio thread.
     let stream = audio_host
         .new_output_stream(audio_model)
@@ -67,7 +68,8 @@ fn model(app: &App) -> Model {
         stream,
         clips_available: load_sample_bank(app, Path::new("./test_bank.json")),
         clips_playing: Vec::new(),
-        consumer,
+        rx_progress,
+        rx_complete,
         left_shift_key_down: false,
         right_shift_key_down: false,
         action_queue: Vec::new(),
@@ -216,32 +218,28 @@ fn get_clip_index_with_id(
 }
 
 fn update(app: &App, model: &mut Model, _update: Update) {
-    if let Ok(receive) = model.consumer.pop() {
-        let (id, state) = receive;
-        match state {
-            PlaybackState::Complete() => {
-                println!("Complete state received for clip ID {}", id);
-                if let Some((index, clip)) = get_clip_index_with_id(&model.clips_playing, id) {
-                    if clip.should_loop {
-                        println!("Should loop! Repeat clip with name {}", clip.name);
-                        model
-                            .action_queue
-                            .push(QueueItem::Play(String::from(&clip.name), true));
-                    }
-                    model.clips_playing[index].state = PlaybackState::Complete();
-                    model.clips_playing.remove(index);
-                } else {
-                    panic!("No match for clip id {}", id);
-                }
+    if let Ok(receive) = model.rx_progress.pop() {
+        let (id, frames_played) = receive;
+        // println!("Got Playing state: {}", frames_played);
+        if let Some(to_update) = get_clip_index_with_id(&model.clips_playing, id) {
+            let (index, _c) = to_update;
+            model.clips_playing[index].state = PlaybackState::Playing(frames_played);
+        }
+    }
+
+    if let Ok(id) = model.rx_complete.pop() {
+        println!("Complete state received for clip ID {}", id);
+        if let Some((index, clip)) = get_clip_index_with_id(&model.clips_playing, id) {
+            if clip.should_loop {
+                println!("Should loop! Repeat clip with name {}", clip.name);
+                model
+                    .action_queue
+                    .push(QueueItem::Play(String::from(&clip.name), true));
             }
-            PlaybackState::Playing(frames_played) => {
-                // println!("Got Playing state: {}", frames_played);
-                if let Some(to_update) = get_clip_index_with_id(&model.clips_playing, id) {
-                    let (index, _c) = to_update;
-                    model.clips_playing[index].state = PlaybackState::Playing(frames_played);
-                }
-            }
-            PlaybackState::Ready() => {}
+            model.clips_playing[index].state = PlaybackState::Complete();
+            model.clips_playing.remove(index);
+        } else {
+            panic!("No match for clip id {}", id);
         }
     }
 

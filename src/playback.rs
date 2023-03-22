@@ -23,6 +23,12 @@ impl BufferedClip {
     }
 }
 
+/// ID of the clip, followed by frames played (count)
+pub type ProgressUpdate = (usize, usize);
+
+/// ID of the clip
+pub type CompleteUpdate = usize;
+
 pub enum PlaybackState {
     Ready(),
     Playing(usize),
@@ -31,14 +37,19 @@ pub enum PlaybackState {
 
 pub struct Audio {
     sounds: Vec<BufferedClip>,
-    producer: Producer<ClipUpdate>,
+    tx_progress: Producer<ProgressUpdate>,
+    tx_complete: Producer<CompleteUpdate>,
 }
 
 impl Audio {
-    pub fn new(producer: Producer<ClipUpdate>) -> Self {
+    pub fn new(
+        tx_progress: Producer<ProgressUpdate>,
+        tx_complete: Producer<CompleteUpdate>,
+    ) -> Self {
         Audio {
             sounds: Vec::new(),
-            producer,
+            tx_progress,
+            tx_complete,
         }
     }
     pub fn add_sound(&mut self, new_clip: BufferedClip) {
@@ -57,9 +68,6 @@ impl Audio {
     }
 }
 
-/// ID of the clip, followed by "state"
-pub type ClipUpdate = (usize, PlaybackState);
-
 pub fn render_audio(audio: &mut Audio, buffer: &mut Buffer) {
     let mut have_ended = vec![];
     let len_frames = buffer.len_frames();
@@ -77,23 +85,20 @@ pub fn render_audio(audio: &mut Audio, buffer: &mut Buffer) {
 
         // If the sound yielded less samples than are in the buffer, it must have ended.
         if frame_count < len_frames {
-            if !audio.producer.is_full() {
+            if !audio.tx_complete.is_full() {
                 have_ended.push(i);
-                audio
-                    .producer
-                    .push((sound.id, PlaybackState::Complete()))
-                    .unwrap();
+                audio.tx_complete.push(sound.id).unwrap();
             }
         } else {
             sound.frames_played += frame_count;
 
             if sound.last_update_sent.elapsed().unwrap() > UPDATE_INTERVAL
-                && !audio.producer.is_full()
+                && !audio.tx_progress.is_full()
             {
                 sound.last_update_sent = std::time::SystemTime::now();
                 audio
-                    .producer
-                    .push((sound.id, PlaybackState::Playing(sound.frames_played)))
+                    .tx_progress
+                    .push((sound.id, sound.frames_played))
                     .unwrap();
             }
         }
