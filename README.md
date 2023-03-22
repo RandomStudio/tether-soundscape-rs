@@ -12,6 +12,7 @@ TODO:
 - [ ] Demonstrate running on Raspberry Pi
 - [x] Apply "loop" as well as trigger/hit/once-off functions
 - [x] Allow clips to be stopped/removed while playing (without stopping whole stream)
+- [ ] Allow starting/fixed "maximum" volume per clip to be applied
 - [ ] Apply fade in/out volume controls
 - [ ] Make use of tempo, quantisation for timing
 - [ ] Optionally connect to [Ableton link](https://docs.rs/ableton-link/latest/ableton_link/)
