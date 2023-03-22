@@ -13,8 +13,8 @@ mod settings;
 enum QueueItem {
     /// name, should_loop
     Play(String, bool),
-    /// name
-    Stop(String),
+    /// id in currently_playing Vec
+    Stop(usize),
     /// index in currentl_playing Vec, id for audio model
     Remove(usize, usize),
 }
@@ -135,9 +135,10 @@ fn key_pressed(_app: &App, model: &mut Model, key: Key) {
         }
         Key::Key1 => {
             if model.right_shift_key_down {
-                model
-                    .action_queue
-                    .push(QueueItem::Stop(String::from("frog")));
+                if let Some((_index, info)) = get_clip_index_with_name(&model.clips_playing, "frog")
+                {
+                    model.action_queue.push(QueueItem::Stop(info.id));
+                }
             } else {
                 model.action_queue.push(QueueItem::Play(
                     String::from("frog"),
@@ -147,9 +148,10 @@ fn key_pressed(_app: &App, model: &mut Model, key: Key) {
         }
         Key::Key2 => {
             if model.right_shift_key_down {
-                model
-                    .action_queue
-                    .push(QueueItem::Stop(String::from("mice")));
+                if let Some((_index, info)) = get_clip_index_with_name(&model.clips_playing, "mice")
+                {
+                    model.action_queue.push(QueueItem::Stop(info.id));
+                }
             } else {
                 model.action_queue.push(QueueItem::Play(
                     String::from("mice"),
@@ -159,9 +161,11 @@ fn key_pressed(_app: &App, model: &mut Model, key: Key) {
         }
         Key::Key3 => {
             if model.right_shift_key_down {
-                model
-                    .action_queue
-                    .push(QueueItem::Stop(String::from("squirrel")));
+                if let Some((_index, info)) =
+                    get_clip_index_with_name(&model.clips_playing, "squirrel")
+                {
+                    model.action_queue.push(QueueItem::Stop(info.id));
+                }
             } else {
                 model.action_queue.push(QueueItem::Play(
                     String::from("squirrel"),
@@ -246,8 +250,8 @@ fn update(app: &App, model: &mut Model, _update: Update) {
             QueueItem::Play(name, should_loop) => {
                 trigger_clip(app, model, &name, should_loop).unwrap();
             }
-            QueueItem::Stop(name) => {
-                if let Some((index, clip)) = get_clip_index_with_name(&model.clips_playing, &name) {
+            QueueItem::Stop(id) => {
+                if let Some((index, clip)) = get_clip_index_with_id(&model.clips_playing, id) {
                     model.action_queue.push(QueueItem::Remove(index, clip.id));
                 }
             }
@@ -289,7 +293,7 @@ fn view(app: &App, model: &Model, frame: Frame) {
             Some(frames) => format!("{} fr", frames),
             None => String::from("unknown"),
         };
-        draw.text(&format!("{} : {}", c.name(), &length))
+        draw.text(&format!("KEY #{} ({}) : {}", (i + 1), c.name(), &length))
             .left_justify()
             .x(available_x)
             .y(start_y - (i * 15).to_f32().unwrap());
