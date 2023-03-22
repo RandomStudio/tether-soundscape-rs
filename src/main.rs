@@ -15,6 +15,7 @@ struct Model {
     clips_available: Vec<AudioClipOnDisk>,
     clips_playing: Vec<CurrentlyPlayingClip>,
     shift_key_down: bool,
+    play_queue: Vec<(String, bool)>,
 }
 
 enum PlaybackState {
@@ -83,6 +84,7 @@ fn model(app: &App) -> Model {
         clips_playing: Vec::new(),
         consumer,
         shift_key_down: false,
+        play_queue: Vec::new(),
     }
 }
 
@@ -184,9 +186,14 @@ fn trigger_clip(
     }
 }
 
-// fn play(stream: Stream<Audio>, new_clip: BufferedClip) {
-
-// }
+fn start_playback(model: &mut Model, new_clip: BufferedClip) {
+    model
+        .stream
+        .send(move |audio| {
+            audio.sounds.push(new_clip);
+        })
+        .ok();
+}
 
 fn key_pressed(app: &App, model: &mut Model, key: Key) {
     match key {
@@ -198,37 +205,21 @@ fn key_pressed(app: &App, model: &mut Model, key: Key) {
             }
         }
         Key::Key1 => {
-            if let Ok(new_clip) = trigger_clip(
-                app,
-                &model.clips_available,
-                &mut model.clips_playing,
-                "frog",
-                model.shift_key_down,
-            ) {
-                model
-                    .stream
-                    .send(move |audio| {
-                        audio.sounds.push(new_clip);
-                    })
-                    .ok();
-            }
+            model
+                .play_queue
+                .push((String::from("frog"), model.shift_key_down));
         }
-        // Key::Key2 => trigger_clip(
-        //     app,
-        //     &model.clips_available,
-        //     &mut model.clips_playing,
-        //     model.stream,
-        //     "mice",
-        //     model.shift_key_down,
-        // ),
-        // Key::Key2 => trigger_clip(
-        //     app,
-        //     &model.clips_available,
-        //     &mut model.clips_playing,
-        //     model.stream,
-        //     "squirrel",
-        //     model.shift_key_down,
-        // ),
+        Key::Key2 => {
+            model
+                .play_queue
+                .push((String::from("mice"), model.shift_key_down));
+        }
+        Key::Key3 => {
+            model
+                .play_queue
+                .push((String::from("squirrel"), model.shift_key_down));
+        }
+
         Key::LShift => {
             model.shift_key_down = true;
         }
@@ -259,12 +250,13 @@ fn update(app: &App, model: &mut Model, _update: Update) {
                         "Complete state matches clip with playing index {} and ID {}, name {}",
                         index, info.id, info.name
                     );
+
+                    if info.should_loop {
+                        println!("Should loop! Repeat clip with name {}", &info.name);
+                        model.play_queue.push((String::from(&info.name), true));
+                    }
                     model.clips_playing[index].state = PlaybackState::Complete();
                     model.clips_playing.remove(index);
-
-                    // if (info.should_loop) {
-                    //     trigger_clip(app, model, &info.name, true);
-                    // }
                 } else {
                     panic!("No match for clip id {}", id);
                 }
@@ -282,6 +274,18 @@ fn update(app: &App, model: &mut Model, _update: Update) {
                 }
             }
             PlaybackState::Ready() => {}
+        }
+    }
+
+    while let Some((name, should_loop)) = model.play_queue.pop() {
+        if let Ok(new_clip) = trigger_clip(
+            app,
+            &model.clips_available,
+            &mut model.clips_playing,
+            &name,
+            should_loop,
+        ) {
+            start_playback(model, new_clip);
         }
     }
 }
@@ -327,10 +331,14 @@ fn view(app: &App, model: &Model, frame: Frame) {
             PlaybackState::Complete() => String::from("DONE"),
             PlaybackState::Ready() => String::from("READY"),
         };
-        draw.text(&format!("#{}({}): ({})", c.id, &c.name, state_text))
-            .left_justify()
-            .x(playing_x)
-            .y(start_y - (i * 15).to_f32().unwrap());
+        let loop_text = if c.should_loop { "LOOP" } else { "ONCE" };
+        draw.text(&format!(
+            "#{} ({}): ({}) - {}",
+            c.id, &c.name, state_text, loop_text
+        ))
+        .left_justify()
+        .x(playing_x)
+        .y(start_y - (i * 15).to_f32().unwrap());
     }
 
     draw.to_frame(app, &frame).unwrap();
