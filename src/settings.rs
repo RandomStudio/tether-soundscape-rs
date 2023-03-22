@@ -1,7 +1,9 @@
-use std::path::Path;
+use std::{path::Path, time::Duration};
 
 use nannou::App;
 use serde::{Deserialize, Serialize};
+
+pub const UPDATE_INTERVAL: Duration = Duration::from_millis(8);
 
 #[derive(Serialize, Deserialize)]
 pub struct AudioClipOnDisk {

@@ -1,12 +1,13 @@
 use std::path::Path;
-use std::time::Duration;
 
-use nannou::{event, prelude::*};
+use nannou::prelude::*;
 use nannou_audio as audio;
-use nannou_audio::Buffer;
-use rtrb::{Consumer, Producer, RingBuffer};
+
+use playback::{render_audio, Audio, BufferedClip, ClipUpdate, PlaybackState};
+use rtrb::{Consumer, RingBuffer};
 use settings::{get_sound_asset_path, load_sample_bank, AudioClipOnDisk};
 
+mod playback;
 mod settings;
 
 struct Model {
@@ -18,19 +19,6 @@ struct Model {
     play_queue: Vec<(String, bool)>,
 }
 
-enum PlaybackState {
-    Ready(),
-    Playing(usize),
-    Complete(),
-}
-
-struct BufferedClip {
-    id: usize,
-    reader: audrey::read::BufFileReader,
-    frames_played: usize,
-    last_update_sent: std::time::SystemTime,
-}
-
 pub struct CurrentlyPlayingClip {
     id: usize,
     name: String,
@@ -38,16 +26,6 @@ pub struct CurrentlyPlayingClip {
     state: PlaybackState,
     should_loop: bool,
 }
-
-/// ID of the clip, followed by "state"
-type ClipUpdate = (usize, PlaybackState);
-
-struct Audio {
-    sounds: Vec<BufferedClip>,
-    producer: Producer<ClipUpdate>,
-}
-
-const UPDATE_INTERVAL: Duration = Duration::from_millis(8);
 
 fn main() {
     nannou::app(model).update(update).run();
@@ -66,14 +44,11 @@ fn model(app: &App) -> Model {
     let audio_host = audio::Host::new();
 
     let (producer, consumer) = RingBuffer::new(2);
-    let audio_model = Audio {
-        sounds: Vec::new(),
-        producer,
-    };
+    let audio_model = Audio::new(producer);
     // Initialise the state that we want to live on the audio thread.
     let stream = audio_host
         .new_output_stream(audio_model)
-        .render(audio)
+        .render(render_audio)
         .sample_rate(96000)
         .build()
         .unwrap();
@@ -85,51 +60,6 @@ fn model(app: &App) -> Model {
         consumer,
         shift_key_down: false,
         play_queue: Vec::new(),
-    }
-}
-
-fn audio(audio: &mut Audio, buffer: &mut Buffer) {
-    let mut have_ended = vec![];
-    let len_frames = buffer.len_frames();
-
-    // Sum all of the sounds onto the buffer.
-    for (i, sound) in audio.sounds.iter_mut().enumerate() {
-        let mut frame_count = 0;
-        let file_frames = sound.reader.frames::<[f32; 2]>().filter_map(Result::ok);
-        for (frame, file_frame) in buffer.frames_mut().zip(file_frames) {
-            for (sample, file_sample) in frame.iter_mut().zip(&file_frame) {
-                *sample += *file_sample;
-            }
-            frame_count += 1;
-        }
-
-        // If the sound yielded less samples than are in the buffer, it must have ended.
-        if frame_count < len_frames {
-            if !audio.producer.is_full() {
-                have_ended.push(i);
-                audio
-                    .producer
-                    .push((sound.id, PlaybackState::Complete()))
-                    .unwrap();
-            }
-        } else {
-            sound.frames_played += frame_count;
-
-            if sound.last_update_sent.elapsed().unwrap() > UPDATE_INTERVAL
-                && !audio.producer.is_full()
-            {
-                sound.last_update_sent = std::time::SystemTime::now();
-                audio
-                    .producer
-                    .push((sound.id, PlaybackState::Playing(sound.frames_played)))
-                    .unwrap();
-            }
-        }
-    }
-
-    // Remove all sounds that have ended.
-    for i in have_ended.into_iter().rev() {
-        audio.sounds.remove(i);
     }
 }
 
@@ -145,7 +75,7 @@ fn get_highest_id(clips: &[CurrentlyPlayingClip]) -> usize {
 
 fn trigger_clip(
     app: &App,
-    clips_available: &Vec<AudioClipOnDisk>,
+    clips_available: &[AudioClipOnDisk],
     clips_playing: &mut Vec<CurrentlyPlayingClip>,
     name: &str,
     should_loop: bool,
@@ -156,19 +86,14 @@ fn trigger_clip(
     {
         let path_str = get_sound_asset_path(app, clip_matched.path());
         if let Ok(reader) = audrey::open(Path::new(&path_str)) {
-            let id = get_highest_id(&clips_playing);
+            let id = get_highest_id(clips_playing);
 
             println!(
                 "Start playback for clip name {}, given playing ID #{}",
                 clip_matched.name(),
                 id
             );
-            let new_clip = BufferedClip {
-                id,
-                reader,
-                frames_played: 0,
-                last_update_sent: std::time::SystemTime::now(),
-            };
+            let new_clip = BufferedClip::new(id, reader);
             clips_playing.push(CurrentlyPlayingClip {
                 id,
                 name: String::from(clip_matched.name()),
@@ -190,12 +115,12 @@ fn start_playback(model: &mut Model, new_clip: BufferedClip) {
     model
         .stream
         .send(move |audio| {
-            audio.sounds.push(new_clip);
+            audio.add_sound(new_clip);
         })
         .ok();
 }
 
-fn key_pressed(app: &App, model: &mut Model, key: Key) {
+fn key_pressed(_app: &App, model: &mut Model, key: Key) {
     match key {
         Key::Space => {
             if model.stream.is_paused() {
