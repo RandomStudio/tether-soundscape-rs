@@ -4,7 +4,8 @@ use nannou::App;
 use serde::{Deserialize, Serialize};
 
 pub const UPDATE_INTERVAL: Duration = Duration::from_millis(8);
-
+pub const CLIP_HEIGHT: f32 = 15.;
+pub const CLIP_WIDTH: f32 = 200.;
 #[derive(Serialize, Deserialize)]
 pub struct AudioClipOnDisk {
     name: String,

@@ -5,7 +5,7 @@ use nannou_audio as audio;
 
 use playback::{render_audio, Audio, BufferedClip, CompleteUpdate, PlaybackState, ProgressUpdate};
 use rtrb::{Consumer, RingBuffer};
-use settings::{get_sound_asset_path, load_sample_bank, AudioClipOnDisk};
+use settings::{get_sound_asset_path, load_sample_bank, AudioClipOnDisk, CLIP_HEIGHT, CLIP_WIDTH};
 
 mod playback;
 mod settings;
@@ -274,18 +274,17 @@ fn view(app: &App, model: &Model, frame: Frame) {
     } else {
         DARKSLATEGREY
     });
-    draw.text(&format!("playing {} sounds", model.clips_playing.len()));
 
     let stream_state = if model.stream.is_playing() {
-        "playing "
+        format!("playing {} sounds", model.clips_playing.len())
     } else {
-        "paused"
+        String::from("paused")
     };
-    draw.text(stream_state).y(45.);
+    draw.text(&stream_state).y(45.);
 
-    let start_y = -45.;
+    let start_y = 0.;
 
-    let available_x = -100.;
+    let available_x = -200.;
     for (i, c) in model.clips_available.iter().enumerate() {
         let length = match c.length() {
             Some(frames) => format!("{} fr", frames),
@@ -294,11 +293,31 @@ fn view(app: &App, model: &Model, frame: Frame) {
         draw.text(&format!("KEY #{} ({}) : {}", (i + 1), c.name(), &length))
             .left_justify()
             .x(available_x)
-            .y(start_y - (i * 15).to_f32().unwrap());
+            .y(start_y - (i).to_f32().unwrap() * CLIP_HEIGHT);
     }
 
-    let playing_x = 100.;
     for (i, c) in model.clips_playing.iter().enumerate() {
+        let x = 0.;
+        let y = start_y - (i).to_f32().unwrap() * CLIP_HEIGHT;
+
+        // Empty box
+        draw.rect()
+            .no_fill()
+            .stroke(BLUE)
+            .stroke_weight(1.0)
+            .w_h(CLIP_WIDTH, CLIP_HEIGHT)
+            .x_y(x, y);
+
+        if let PlaybackState::Playing(frames_played) = c.state {
+            // Filling box
+            let progress = frames_played.to_f32().unwrap() / c.length.to_f32().unwrap();
+            let width = map_range(progress, 0., 1., 0., CLIP_WIDTH);
+            draw.rect()
+                .color(DARKBLUE)
+                .x_y(x + width / 2. - CLIP_WIDTH / 2., y)
+                .w_h(width, CLIP_HEIGHT);
+        }
+
         let state_text = match c.state {
             PlaybackState::Playing(frames_played) => {
                 let progress = frames_played.to_f32().unwrap() / c.length.to_f32().unwrap();
@@ -313,8 +332,8 @@ fn view(app: &App, model: &Model, frame: Frame) {
             c.id, &c.name, state_text, loop_text
         ))
         .left_justify()
-        .x(playing_x)
-        .y(start_y - (i * 15).to_f32().unwrap());
+        .x(x)
+        .y(y);
     }
 
     draw.to_frame(app, &frame).unwrap();
