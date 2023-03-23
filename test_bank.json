@@ -5,7 +5,8 @@
   },
   {
     "name": "mice",
-    "path": "mice.wav"
+    "path": "mice.wav",
+    "volume": 0.5
   },
   {
     "name": "squirrel",

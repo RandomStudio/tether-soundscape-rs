@@ -7,17 +7,19 @@ use rtrb::Producer;
 use crate::settings::UPDATE_INTERVAL;
 pub struct BufferedClip {
     id: usize,
+    max_volume: Option<f32>,
     reader: audrey::read::BufFileReader,
     frames_played: usize,
     last_update_sent: std::time::SystemTime,
 }
 
 impl BufferedClip {
-    pub fn new(id: usize, reader: Reader<BufReader<File>>) -> Self {
+    pub fn new(id: usize, max_volume: Option<f32>, reader: Reader<BufReader<File>>) -> Self {
         BufferedClip {
             id,
             reader,
             frames_played: 0,
+            max_volume,
             last_update_sent: std::time::SystemTime::now(),
         }
     }

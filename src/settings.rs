@@ -11,6 +11,7 @@ pub struct AudioClipOnDisk {
     name: String,
     path: String,
     length: Option<usize>,
+    volume: Option<f32>,
 }
 
 impl AudioClipOnDisk {
@@ -48,10 +49,12 @@ pub fn load_sample_bank(app: &App, json_path: &Path) -> Vec<AudioClipOnDisk> {
                     let path_str = get_sound_asset_path(app, sample.path());
                     let path = Path::new(&path_str);
                     let length = calculate_length(path);
+                    let volume = sample.volume;
                     AudioClipOnDisk {
                         name: String::from(&sample.name),
                         path: String::from(path.to_str().unwrap()),
                         length: Some(length),
+                        volume,
                     }
                 })
                 .collect(),
