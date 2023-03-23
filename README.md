@@ -19,3 +19,9 @@ TODO:
 - [ ] On-screen UI (Egui), CLI params, etc.
 - [ ] Low/no graphics mode
 - [ ] Add Tether remote control commands, as per API in [original](https://github.com/RandomStudio/tether-soundscape)
+
+## Compiling for Raspberry Pi
+The only(?) part of the application which has a system dependency is ALSA.
+`sudo apt install libasound2-dev`
+
+This does mean that cross-compiling from MacOS is currently stuck at building the [alsa-sys](https://crates.io/crates/alsa-sys) crate. This might be solvable, e.g. with https://github.com/cross-rs/cross
