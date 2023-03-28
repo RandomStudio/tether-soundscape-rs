@@ -336,5 +336,5 @@ fn view(app: &App, model: &Model, frame: Frame) {
         .y(y);
     }
 
-    draw.to_frame(app, &frame).unwrap();
+    // draw.to_frame(app, &frame).unwrap();
 }
