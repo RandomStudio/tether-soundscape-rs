@@ -43,12 +43,10 @@ fn main() {
 
 fn model(app: &App) -> Model {
     // Create a window to receive key pressed events.
-    app.new_window()
-        .key_pressed(key_pressed)
-        .key_released(key_released)
-        .view(view)
-        .build()
-        .unwrap();
+    app.new_window().build().unwrap();
+    //     .key_pressed(key_pressed)
+    //     .key_released(key_released)
+    //     .view(view)
 
     // Initialise the audio host so we can spawn an audio stream.
     let audio_host = audio::Host::new();
@@ -267,74 +265,74 @@ fn update(app: &App, model: &mut Model, _update: Update) {
 }
 
 fn view(app: &App, model: &Model, frame: Frame) {
-    let draw = app.draw();
+    // let draw = app.draw();
 
-    draw.background().color(if model.left_shift_key_down {
-        SLATEGREY
-    } else {
-        DARKSLATEGREY
-    });
+    // draw.background().color(if model.left_shift_key_down {
+    //     SLATEGREY
+    // } else {
+    //     DARKSLATEGREY
+    // });
 
-    let stream_state = if model.stream.is_playing() {
-        format!("playing {} sounds", model.clips_playing.len())
-    } else {
-        String::from("paused")
-    };
-    draw.text(&stream_state).y(45.);
+    // let stream_state = if model.stream.is_playing() {
+    //     format!("playing {} sounds", model.clips_playing.len())
+    // } else {
+    //     String::from("paused")
+    // };
+    // draw.text(&stream_state).y(45.);
 
-    let start_y = 0.;
+    // let start_y = 0.;
 
-    let available_x = -200.;
-    for (i, c) in model.clips_available.iter().enumerate() {
-        let length = match c.length() {
-            Some(frames) => format!("{} fr", frames),
-            None => String::from("unknown"),
-        };
-        draw.text(&format!("KEY #{} ({}) : {}", (i + 1), c.name(), &length))
-            .left_justify()
-            .x(available_x)
-            .y(start_y - (i).to_f32().unwrap() * CLIP_HEIGHT);
-    }
+    // let available_x = -200.;
+    // for (i, c) in model.clips_available.iter().enumerate() {
+    //     let length = match c.length() {
+    //         Some(frames) => format!("{} fr", frames),
+    //         None => String::from("unknown"),
+    //     };
+    //     draw.text(&format!("KEY #{} ({}) : {}", (i + 1), c.name(), &length))
+    //         .left_justify()
+    //         .x(available_x)
+    //         .y(start_y - (i).to_f32().unwrap() * CLIP_HEIGHT);
+    // }
 
-    for (i, c) in model.clips_playing.iter().enumerate() {
-        let x = 0.;
-        let y = start_y - (i).to_f32().unwrap() * CLIP_HEIGHT;
+    // for (i, c) in model.clips_playing.iter().enumerate() {
+    //     let x = 0.;
+    //     let y = start_y - (i).to_f32().unwrap() * CLIP_HEIGHT;
 
-        // Empty box
-        draw.rect()
-            .no_fill()
-            .stroke(BLUE)
-            .stroke_weight(1.0)
-            .w_h(CLIP_WIDTH, CLIP_HEIGHT)
-            .x_y(x, y);
+    //     // Empty box
+    //     draw.rect()
+    //         .no_fill()
+    //         .stroke(BLUE)
+    //         .stroke_weight(1.0)
+    //         .w_h(CLIP_WIDTH, CLIP_HEIGHT)
+    //         .x_y(x, y);
 
-        if let PlaybackState::Playing(frames_played) = c.state {
-            // Filling box
-            let progress = frames_played.to_f32().unwrap() / c.length.to_f32().unwrap();
-            let width = map_range(progress, 0., 1., 0., CLIP_WIDTH);
-            draw.rect()
-                .color(DARKBLUE)
-                .x_y(x + width / 2. - CLIP_WIDTH / 2., y)
-                .w_h(width, CLIP_HEIGHT);
-        }
+    //     if let PlaybackState::Playing(frames_played) = c.state {
+    //         // Filling box
+    //         let progress = frames_played.to_f32().unwrap() / c.length.to_f32().unwrap();
+    //         let width = map_range(progress, 0., 1., 0., CLIP_WIDTH);
+    //         draw.rect()
+    //             .color(DARKBLUE)
+    //             .x_y(x + width / 2. - CLIP_WIDTH / 2., y)
+    //             .w_h(width, CLIP_HEIGHT);
+    //     }
 
-        let state_text = match c.state {
-            PlaybackState::Playing(frames_played) => {
-                let progress = frames_played.to_f32().unwrap() / c.length.to_f32().unwrap();
-                format!("{}%", (progress * 100.).trunc())
-            }
-            PlaybackState::Complete() => String::from("DONE"),
-            PlaybackState::Ready() => String::from("READY"),
-        };
-        let loop_text = if c.should_loop { "LOOP" } else { "ONCE" };
-        draw.text(&format!(
-            "#{} ({}): ({}) - {}",
-            c.id, &c.name, state_text, loop_text
-        ))
-        .left_justify()
-        .x(x)
-        .y(y);
-    }
+    //     let state_text = match c.state {
+    //         PlaybackState::Playing(frames_played) => {
+    //             let progress = frames_played.to_f32().unwrap() / c.length.to_f32().unwrap();
+    //             format!("{}%", (progress * 100.).trunc())
+    //         }
+    //         PlaybackState::Complete() => String::from("DONE"),
+    //         PlaybackState::Ready() => String::from("READY"),
+    //     };
+    //     let loop_text = if c.should_loop { "LOOP" } else { "ONCE" };
+    //     draw.text(&format!(
+    //         "#{} ({}): ({}) - {}",
+    //         c.id, &c.name, state_text, loop_text
+    //     ))
+    //     .left_justify()
+    //     .x(x)
+    //     .y(y);
+    // }
 
     // draw.to_frame(app, &frame).unwrap();
 }
