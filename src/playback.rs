@@ -3,21 +3,53 @@ use std::{fs::File, io::BufReader};
 use audrey::Reader;
 use nannou_audio::Buffer;
 use rtrb::{Consumer, Producer};
+use tween::{Linear, Tween, Tweener};
+
+/// Volume value, duration IN FRAMES
+type StoredTweener = Tweener<f32, usize, Box<dyn Tween<f32> + Send + Sync>>;
 
 pub struct BufferedClip {
     id: usize,
-    max_volume: Option<f32>,
+    current_volume: f32,
     reader: audrey::read::BufFileReader,
     frames_played: usize,
+    phase: PlaybackPhase,
+}
+
+/// Start volume, End volume, Duration in milliseconds
+pub type Fade = (f32, f32, usize);
+pub enum PlaybackPhase {
+    Attack(StoredTweener),
+    Sustain(),
+    Release(StoredTweener),
 }
 
 impl BufferedClip {
-    pub fn new(id: usize, max_volume: Option<f32>, reader: Reader<BufReader<File>>) -> Self {
+    pub fn new(id: usize, fade_in: Option<Fade>, reader: Reader<BufReader<File>>) -> Self {
+        let start_volume = match fade_in {
+            Some(fade) => {
+                let (start, _end, _duration) = fade;
+                start
+            }
+            None => 0.,
+        };
         BufferedClip {
             id,
             reader,
             frames_played: 0,
-            max_volume,
+            current_volume: start_volume,
+            phase: match fade_in {
+                Some((start, end, duration)) => {
+                    let tween: Box<dyn Tween<f32> + Send + Sync> = Box::new(Linear);
+                    let stored_tweener = Tweener::new(start, end, duration, tween);
+                    PlaybackPhase::Attack(stored_tweener)
+                }
+                None => {
+                    let tween: Box<dyn Tween<f32> + Send + Sync> = Box::new(Linear);
+                    let stored_tweener = Tweener::new(0., 1.0, 1000, tween);
+                    PlaybackPhase::Attack(stored_tweener)
+                }
+            },
         }
     }
 }
@@ -83,7 +115,7 @@ pub fn render_audio(audio: &mut Audio, buffer: &mut Buffer) {
         let file_frames = sound.reader.frames::<[f32; 2]>().filter_map(Result::ok);
         for (frame, file_frame) in buffer.frames_mut().zip(file_frames) {
             for (sample, file_sample) in frame.iter_mut().zip(&file_frame) {
-                *sample += *file_sample * sound.max_volume.unwrap_or(1.0);
+                *sample += *file_sample * sound.current_volume;
             }
             frame_count += 1;
         }
@@ -96,14 +128,27 @@ pub fn render_audio(audio: &mut Audio, buffer: &mut Buffer) {
             }
         } else {
             sound.frames_played += frame_count;
-        }
 
-        if let Ok(receive_id) = audio.rx_request.pop() {
-            if sound.id == receive_id && !audio.tx_progress.is_full() {
-                audio
-                    .tx_progress
-                    .push((sound.id, sound.frames_played))
-                    .expect("failed to send progress");
+            sound.current_volume = match &mut sound.phase {
+                PlaybackPhase::Attack(tween) => tween.move_by(frame_count),
+                PlaybackPhase::Sustain() => sound.current_volume,
+                PlaybackPhase::Release(tween) => tween.move_by(frame_count),
+            };
+
+            if let PlaybackPhase::Attack(tween) = &mut sound.phase {
+                if tween.is_finished() {
+                    println!("sound attack => sustain");
+                    sound.phase = PlaybackPhase::Sustain();
+                }
+            }
+
+            if let Ok(receive_id) = audio.rx_request.pop() {
+                if sound.id == receive_id && !audio.tx_progress.is_full() {
+                    audio
+                        .tx_progress
+                        .push((sound.id, sound.frames_played))
+                        .expect("failed to send progress");
+                }
             }
         }
     }
