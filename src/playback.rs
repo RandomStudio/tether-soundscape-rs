@@ -80,7 +80,7 @@ pub fn render_audio(audio: &mut Audio, buffer: &mut Buffer) {
         let file_frames = sound.reader.frames::<[f32; 2]>().filter_map(Result::ok);
         for (frame, file_frame) in buffer.frames_mut().zip(file_frames) {
             for (sample, file_sample) in frame.iter_mut().zip(&file_frame) {
-                *sample += *file_sample;
+                *sample += *file_sample * sound.max_volume.unwrap_or(1.0);
             }
             frame_count += 1;
         }

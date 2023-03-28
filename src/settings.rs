@@ -24,6 +24,9 @@ impl AudioClipOnDisk {
     pub fn path(&self) -> &str {
         &self.path
     }
+    pub fn volume(&self) -> Option<f32> {
+        self.volume
+    }
 }
 
 pub fn get_sound_asset_path(app: &App, base_path: &str) -> String {

@@ -102,7 +102,7 @@ fn trigger_clip(app: &App, model: &mut Model, name: &str, should_loop: bool) -> 
                 clip_matched.name(),
                 id
             );
-            let new_clip = BufferedClip::new(id, reader);
+            let new_clip = BufferedClip::new(id, clip_matched.volume(), reader);
             clips_playing.push(CurrentlyPlayingClip {
                 id,
                 name: String::from(clip_matched.name()),
