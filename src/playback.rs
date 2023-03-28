@@ -1,9 +1,12 @@
 use std::{fs::File, io::BufReader};
 
 use audrey::Reader;
+use nannou::prelude::ToPrimitive;
 use nannou_audio::Buffer;
 use rtrb::{Consumer, Producer};
 use tween::{Linear, Tween, Tweener};
+
+use crate::settings::SAMPLE_RATE;
 
 /// Volume value, duration IN FRAMES
 type StoredTweener = Tweener<f32, usize, Box<dyn Tween<f32> + Send + Sync>>;
@@ -16,7 +19,7 @@ pub struct BufferedClip {
     phase: PlaybackPhase,
 }
 
-/// Start volume, End volume, Duration in milliseconds
+/// Start volume, End volume, Duration IN MILLISECONDS
 pub type Fade = (f32, f32, usize);
 pub enum PlaybackPhase {
     Attack(StoredTweener),
@@ -39,9 +42,19 @@ impl BufferedClip {
             frames_played: 0,
             current_volume: start_volume,
             phase: match fade_in {
-                Some((start, end, duration)) => {
+                Some((start, end, duration_ms)) => {
                     let tween: Box<dyn Tween<f32> + Send + Sync> = Box::new(Linear);
-                    let stored_tweener = Tweener::new(start, end, duration, tween);
+                    let duration_frames = (duration_ms.to_f32().unwrap() / 1000.
+                        * SAMPLE_RATE.to_f32().unwrap())
+                    .to_usize()
+                    .unwrap();
+                    println!(
+                        "{} ms to {} @ {}KHz",
+                        duration_ms,
+                        duration_frames,
+                        SAMPLE_RATE / 1000
+                    );
+                    let stored_tweener = Tweener::new(start, end, duration_frames, tween);
                     PlaybackPhase::Attack(stored_tweener)
                 }
                 None => {

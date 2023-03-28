@@ -2,20 +2,20 @@ use std::path::Path;
 
 use nannou::prelude::*;
 use nannou_audio as audio;
+use nannou_egui::Egui;
 
+use loader::{get_sound_asset_path, load_sample_bank, AudioClipOnDisk};
 use playback::{
     render_audio, Audio, BufferedClip, CompleteUpdate, PlaybackState, ProgressUpdate, RequestUpdate,
 };
 use rtrb::{Consumer, Producer, RingBuffer};
-use settings::{
-    get_sound_asset_path, load_sample_bank, AudioClipOnDisk, CLIP_HEIGHT, CLIP_WIDTH,
-    UPDATE_INTERVAL,
-};
+use settings::{build_ui, Settings, CLIP_HEIGHT, CLIP_WIDTH, SAMPLE_RATE, UPDATE_INTERVAL};
 
+mod loader;
 mod playback;
 mod settings;
 
-struct Model {
+pub struct Model {
     rx_progress: Consumer<ProgressUpdate>,
     rx_complete: Consumer<CompleteUpdate>,
     tx_request: Producer<RequestUpdate>,
@@ -25,6 +25,9 @@ struct Model {
     left_shift_key_down: bool,
     right_shift_key_down: bool,
     action_queue: Vec<QueueItem>,
+    window_id: WindowId,
+    egui: Egui,
+    settings: Settings,
 }
 enum QueueItem {
     /// name, should_loop
@@ -50,9 +53,11 @@ fn main() {
 
 fn model(app: &App) -> Model {
     // Create a window to receive key pressed events.
-    app.new_window()
+    let window_id = app
+        .new_window()
         .key_pressed(key_pressed)
         .key_released(key_released)
+        .raw_event(raw_window_event)
         .view(view)
         .build()
         .unwrap();
@@ -68,9 +73,12 @@ fn model(app: &App) -> Model {
     let stream = audio_host
         .new_output_stream(audio_model)
         .render(render_audio)
-        .sample_rate(96000)
+        .sample_rate(SAMPLE_RATE)
         .build()
         .unwrap();
+
+    let window = app.window(window_id).unwrap();
+    let egui = Egui::from_window(&window);
 
     Model {
         stream,
@@ -82,6 +90,11 @@ fn model(app: &App) -> Model {
         left_shift_key_down: false,
         right_shift_key_down: false,
         action_queue: Vec::new(),
+        window_id,
+        egui,
+        settings: Settings {
+            fadein_duration: 100000,
+        },
     }
 }
 
@@ -93,6 +106,11 @@ fn get_highest_id(clips: &[CurrentlyPlayingClip]) -> usize {
         }
     }
     highest_so_far
+}
+
+fn raw_window_event(_app: &App, model: &mut Model, event: &nannou::winit::event::WindowEvent) {
+    // Let egui handle things like keyboard and mouse input.
+    model.egui.handle_raw_event(event);
 }
 
 fn trigger_clip(app: &App, model: &mut Model, name: &str, should_loop: bool) -> Result<(), ()> {
@@ -111,7 +129,8 @@ fn trigger_clip(app: &App, model: &mut Model, name: &str, should_loop: bool) -> 
                 clip_matched.name(),
                 id
             );
-            let new_clip = BufferedClip::new(id, Some((0., 1.0, 500000)), reader);
+            let new_clip =
+                BufferedClip::new(id, Some((0., 1.0, model.settings.fadein_duration)), reader);
             clips_playing.push(CurrentlyPlayingClip {
                 id,
                 name: String::from(clip_matched.name()),
@@ -227,7 +246,11 @@ fn get_clip_index_with_id(
         .map(|(index, c)| (index, c))
 }
 
-fn update(app: &App, model: &mut Model, _update: Update) {
+fn update(app: &App, model: &mut Model, update: Update) {
+    let window = app.window(model.window_id).unwrap();
+
+    build_ui(model, update.since_start, window.rect());
+
     for mut sound in &mut model.clips_playing {
         if sound.last_update_sent.elapsed().unwrap() > UPDATE_INTERVAL {
             sound.last_update_sent = std::time::SystemTime::now();
@@ -361,4 +384,5 @@ fn view(app: &App, model: &Model, frame: Frame) {
     }
 
     draw.to_frame(app, &frame).unwrap();
+    model.egui.draw_to_frame(&frame).unwrap();
 }
