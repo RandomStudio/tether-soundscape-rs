@@ -3,9 +3,14 @@ use std::path::Path;
 use nannou::prelude::*;
 use nannou_audio as audio;
 
-use playback::{render_audio, Audio, BufferedClip, CompleteUpdate, PlaybackState, ProgressUpdate};
-use rtrb::{Consumer, RingBuffer};
-use settings::{get_sound_asset_path, load_sample_bank, AudioClipOnDisk, CLIP_HEIGHT, CLIP_WIDTH};
+use playback::{
+    render_audio, Audio, BufferedClip, CompleteUpdate, PlaybackState, ProgressUpdate, RequestUpdate,
+};
+use rtrb::{Consumer, Producer, RingBuffer};
+use settings::{
+    get_sound_asset_path, load_sample_bank, AudioClipOnDisk, CLIP_HEIGHT, CLIP_WIDTH,
+    UPDATE_INTERVAL,
+};
 
 mod playback;
 mod settings;
@@ -13,6 +18,7 @@ mod settings;
 struct Model {
     rx_progress: Consumer<ProgressUpdate>,
     rx_complete: Consumer<CompleteUpdate>,
+    tx_request: Producer<RequestUpdate>,
     stream: audio::Stream<Audio>,
     clips_available: Vec<AudioClipOnDisk>,
     clips_playing: Vec<CurrentlyPlayingClip>,
@@ -35,6 +41,7 @@ pub struct CurrentlyPlayingClip {
     length: usize,
     state: PlaybackState,
     should_loop: bool,
+    last_update_sent: std::time::SystemTime,
 }
 
 fn main() {
@@ -55,7 +62,8 @@ fn model(app: &App) -> Model {
 
     let (tx_progress, rx_progress) = RingBuffer::new(2);
     let (tx_complete, rx_complete) = RingBuffer::new(32);
-    let audio_model = Audio::new(tx_progress, tx_complete);
+    let (tx_request, rx_request) = RingBuffer::new(32);
+    let audio_model = Audio::new(tx_progress, tx_complete, rx_request);
     // Initialise the state that we want to live on the audio thread.
     let stream = audio_host
         .new_output_stream(audio_model)
@@ -70,6 +78,7 @@ fn model(app: &App) -> Model {
         clips_playing: Vec::new(),
         rx_progress,
         rx_complete,
+        tx_request,
         left_shift_key_down: false,
         right_shift_key_down: false,
         action_queue: Vec::new(),
@@ -109,6 +118,7 @@ fn trigger_clip(app: &App, model: &mut Model, name: &str, should_loop: bool) -> 
                 length: clip_matched.length().unwrap_or(0),
                 state: PlaybackState::Ready(),
                 should_loop,
+                last_update_sent: std::time::SystemTime::now(),
             });
             model
                 .stream
@@ -218,9 +228,23 @@ fn get_clip_index_with_id(
 }
 
 fn update(app: &App, model: &mut Model, _update: Update) {
+    for mut sound in &mut model.clips_playing {
+        if sound.last_update_sent.elapsed().unwrap() > UPDATE_INTERVAL {
+            sound.last_update_sent = std::time::SystemTime::now();
+            model
+                .tx_request
+                .push(sound.id)
+                .expect("failed to send request");
+            // audio
+            //     .tx_progress
+            //     .push((sound.id, sound.frames_played))
+            //     .unwrap();
+        }
+    }
+
     if let Ok(receive) = model.rx_progress.pop() {
         let (id, frames_played) = receive;
-        // println!("Got Playing state: {}", frames_played);
+        // println!("Got progress update: {}", frames_played);
         if let Some(to_update) = get_clip_index_with_id(&model.clips_playing, id) {
             let (index, _c) = to_update;
             model.clips_playing[index].state = PlaybackState::Playing(frames_played);

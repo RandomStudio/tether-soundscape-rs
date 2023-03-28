@@ -2,12 +2,12 @@
   {
     "name": "frog",
     "path": "frog.wav",
-    "volume": 0.2
+    "volume": 0.9
   },
   {
     "name": "mice",
     "path": "mice.wav",
-    "volume": 0.9
+    "volume": 0.2
   },
   {
     "name": "squirrel",

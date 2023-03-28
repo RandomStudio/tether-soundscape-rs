@@ -2,15 +2,13 @@ use std::{fs::File, io::BufReader};
 
 use audrey::Reader;
 use nannou_audio::Buffer;
-use rtrb::Producer;
+use rtrb::{Consumer, Producer};
 
-use crate::settings::UPDATE_INTERVAL;
 pub struct BufferedClip {
     id: usize,
     max_volume: Option<f32>,
     reader: audrey::read::BufFileReader,
     frames_played: usize,
-    last_update_sent: std::time::SystemTime,
 }
 
 impl BufferedClip {
@@ -20,16 +18,18 @@ impl BufferedClip {
             reader,
             frames_played: 0,
             max_volume,
-            last_update_sent: std::time::SystemTime::now(),
         }
     }
 }
 
-/// ID of the clip, followed by frames played (count)
+/// audio -> main: ID of the clip, followed by frames played (count)
 pub type ProgressUpdate = (usize, usize);
 
-/// ID of the clip
+/// audio -> main: ID of the clip
 pub type CompleteUpdate = usize;
+
+/// audio <- main: ID of the clip
+pub type RequestUpdate = usize;
 
 pub enum PlaybackState {
     Ready(),
@@ -41,17 +41,20 @@ pub struct Audio {
     sounds: Vec<BufferedClip>,
     tx_progress: Producer<ProgressUpdate>,
     tx_complete: Producer<CompleteUpdate>,
+    rx_request: Consumer<RequestUpdate>,
 }
 
 impl Audio {
     pub fn new(
         tx_progress: Producer<ProgressUpdate>,
         tx_complete: Producer<CompleteUpdate>,
+        rx_request: Consumer<RequestUpdate>,
     ) -> Self {
         Audio {
             sounds: Vec::new(),
             tx_progress,
             tx_complete,
+            rx_request,
         }
     }
     pub fn add_sound(&mut self, new_clip: BufferedClip) {
@@ -93,15 +96,14 @@ pub fn render_audio(audio: &mut Audio, buffer: &mut Buffer) {
             }
         } else {
             sound.frames_played += frame_count;
+        }
 
-            if sound.last_update_sent.elapsed().unwrap() > UPDATE_INTERVAL
-                && !audio.tx_progress.is_full()
-            {
-                sound.last_update_sent = std::time::SystemTime::now();
+        if let Ok(receive_id) = audio.rx_request.pop() {
+            if sound.id == receive_id && !audio.tx_progress.is_full() {
                 audio
                     .tx_progress
                     .push((sound.id, sound.frames_played))
-                    .unwrap();
+                    .expect("failed to send progress");
             }
         }
     }
