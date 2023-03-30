@@ -50,6 +50,7 @@ pub struct CurrentlyPlayingClip {
     frames_count: u32,
     sample_rate: u32,
     state: PlaybackState,
+    current_volume: f32,
     should_loop: bool,
     last_update_sent: std::time::SystemTime,
 }
@@ -183,6 +184,7 @@ fn trigger_clip(app: &App, model: &mut Model, name: &str, should_loop: bool) -> 
                 name: String::from(clip_matched.name()),
                 frames_count: clip_matched.frames_count(),
                 state: PlaybackState::Ready(),
+                current_volume: 0.,
                 sample_rate: clip_matched.sample_rate(),
                 should_loop,
                 last_update_sent: std::time::SystemTime::now(),
@@ -258,11 +260,12 @@ fn update(app: &App, model: &mut Model, update: Update) {
     // Note the while loop - we try to process ALL progress update messages
     // every frame
     while let Ok(receive) = model.rx_progress.pop() {
-        let (id, frames_played) = receive;
+        let (id, frames_played, current_volume) = receive;
         // println!("Got progress update: {}", frames_played);
         if let Some(to_update) = get_clip_index_with_id(&model.clips_playing, id) {
             let (index, _c) = to_update;
             model.clips_playing[index].state = PlaybackState::Playing(frames_played);
+            model.clips_playing[index].current_volume = current_volume;
         }
     }
 
@@ -340,12 +343,14 @@ fn view(app: &App, model: &Model, frame: Frame) {
 
     // let start_y = app.window(model.window_id).unwrap().rect().h() / 3.;
 
-    let max_radius = app.window(model.window_id).unwrap().rect().h() / 2. * 0.6;
+    let max_radius = app.window(model.window_id).unwrap().rect().h() / 2. * 0.9;
     for (_i, c) in model.clips_playing.iter().enumerate() {
         // let y = start_y - i.to_f32() * MAX_RADIUS;
         let x = 0.;
 
         if let PlaybackState::Playing(frames_played) = c.state {
+            let opacity = c.current_volume;
+
             let [min, max] = model.duration_range;
             let radius = map_range(
                 c.frames_count.to_f32(),
@@ -356,19 +361,25 @@ fn view(app: &App, model: &Model, frame: Frame) {
             );
             let progress = frames_played.to_f32() / c.frames_count.to_f32();
             let target_angle = PI * 2.0 * progress; // "percent" of full circle
+            let brightness = 0.5;
+
             draw.ellipse()
                 .radius(radius)
                 .x_y(x, 0.)
                 .no_fill()
-                .stroke(GRAY)
+                .stroke(rgba(brightness, brightness, brightness, opacity))
                 .stroke_weight(2.0);
 
             let num_dots: usize = 1000;
+            let brightness = 1.0;
             for dot in 0..num_dots {
                 let angle = -map_range(dot.to_f32(), 0., num_dots.to_f32(), 0., target_angle);
                 let x = radius * angle.cos();
                 let dot_y = radius * angle.sin();
-                draw.ellipse().x_y(x, dot_y).radius(1.0).color(WHITE);
+                draw.ellipse()
+                    .x_y(x, dot_y)
+                    .radius(1.0)
+                    .rgba(brightness, brightness, brightness, opacity);
             }
         }
 

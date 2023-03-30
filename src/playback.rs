@@ -73,8 +73,8 @@ impl BufferedClip {
     }
 }
 
-/// audio -> main: ID of the clip, followed by frames played (count)
-pub type ProgressUpdate = (usize, u32);
+/// audio -> main: ID of the clip, followed by frames played (count), followed by current volume
+pub type ProgressUpdate = (usize, u32, f32);
 
 /// audio -> main: ID of the clip
 pub type CompleteUpdate = usize;
@@ -184,7 +184,7 @@ pub fn render_audio(audio: &mut Audio, buffer: &mut Buffer) {
                 if sound.id == receive_id && !audio.tx_progress.is_full() {
                     audio
                         .tx_progress
-                        .push((sound.id, sound.frames_played))
+                        .push((sound.id, sound.frames_played, sound.current_volume))
                         .expect("failed to send progress");
                 }
             }
