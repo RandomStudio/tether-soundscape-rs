@@ -13,7 +13,8 @@ use settings::{
     build_ui, Settings, CLIP_HEIGHT, CLIP_WIDTH, DEFAULT_FADEIN, DEFAULT_FADEOUT, SAMPLE_RATE,
     UPDATE_INTERVAL,
 };
-use utils::frames_to_millis;
+
+use crate::utils::millis_to_frames;
 
 mod loader;
 mod playback;
@@ -271,7 +272,7 @@ fn update(app: &App, model: &mut Model, update: Update) {
                 if let Some((_index, clip)) =
                     get_clip_index_with_id_mut(&mut model.clips_playing, id)
                 {
-                    let fadeout_frames = frames_to_millis(fade_out.unwrap_or(0), clip.sample_rate);
+                    let fadeout_frames = millis_to_frames(fade_out.unwrap_or(0), clip.sample_rate);
                     println!(
                         "Stop clip ID#{}: {}, fade out {}fr",
                         id, &clip.name, fadeout_frames

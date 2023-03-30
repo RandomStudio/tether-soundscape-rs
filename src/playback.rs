@@ -4,12 +4,9 @@ use audrey::Reader;
 use nannou::prelude::ToPrimitive;
 use nannou_audio::Buffer;
 use rtrb::{Consumer, Producer};
-use tween::{Linear, Tween, Tweener};
+use tween::{Linear, QuadIn, SineInOut, Tween, Tweener};
 
-use crate::{
-    settings::SAMPLE_RATE,
-    utils::{frames_to_millis, millis_to_frames},
-};
+use crate::{settings::SAMPLE_RATE, utils::millis_to_frames};
 
 /// Volume value, duration IN FRAMES
 type StoredTweener = Tweener<f32, u32, Box<dyn Tween<f32> + Send + Sync>>;
@@ -48,7 +45,7 @@ impl BufferedClip {
             current_volume: start_volume,
             phase: match fade_in {
                 Some((start, end, duration_ms)) => {
-                    let tween: Box<dyn Tween<f32> + Send + Sync> = Box::new(Linear);
+                    let tween: Box<dyn Tween<f32> + Send + Sync> = Box::new(QuadIn);
 
                     let stored_tweener = Tweener::new(
                         start,
@@ -60,22 +57,17 @@ impl BufferedClip {
                 }
                 None => {
                     let tween: Box<dyn Tween<f32> + Send + Sync> = Box::new(Linear);
-                    let stored_tweener = Tweener::new(0., 1.0, 1000, tween);
+                    let stored_tweener = Tweener::new(0., 1.0, 1, tween);
                     PlaybackPhase::Attack(stored_tweener)
                 }
             },
         }
     }
 
-    pub fn fade_out(&mut self, duration_ms: u32) {
-        let tween: Box<dyn Tween<f32> + Send + Sync> = Box::new(Linear);
-        let stored_tweener = Tweener::new(
-            self.current_volume,
-            0.,
-            frames_to_millis(duration_ms, SAMPLE_RATE),
-            tween,
-        );
-        println!("sound sustain => release");
+    pub fn fade_out(&mut self, duration_frames: u32) {
+        let tween: Box<dyn Tween<f32> + Send + Sync> = Box::new(SineInOut);
+        let stored_tweener = Tweener::new(self.current_volume, 0., duration_frames, tween);
+        println!("sound sustain => release, fade over {}fr", duration_frames);
         self.phase = PlaybackPhase::Release(stored_tweener);
     }
 }

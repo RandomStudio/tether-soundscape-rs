@@ -61,6 +61,15 @@ pub fn build_ui(model: &mut Model, since_start: Duration, _window_rect: Rect) {
                         model.action_queue.push(QueueItem::Stop(info.id, None));
                     }
                 }
+                if ui.button("fade").clicked() {
+                    if let Some((_index, info)) =
+                        get_clip_index_with_name(&model.clips_playing, c.name())
+                    {
+                        model
+                            .action_queue
+                            .push(QueueItem::Stop(info.id, Some(*fadeout_duration)));
+                    }
+                }
             });
         }
     });
