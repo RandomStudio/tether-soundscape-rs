@@ -4,14 +4,14 @@ A multi-layered audio sequencer, remote-controllable via Tether, to create sound
 
 ![screenshot animation](./soundscape.gif)
 
-Using 🦀 Rust because:
+## Using 🦀 Rust because:
 - Minimal memory/CPU footprint for high performance
 - Cross-platform but without any need to install browser, use Electron, etc.
 - Visualisation via Nannou
 - Great way to learn about low-level audio sample/buffer control, multi-threading in Rust (Nannou always uses separate "realtime" thread for audio)
 
-TODO:
-- [ ] Demonstrate running on Raspberry Pi
+## TODO:
+- [ ] Demonstrate running (headless) on Raspberry Pi
 - [x] Apply "loop" as well as trigger/hit/once-off functions
 - [x] Allow clips to be stopped/removed while playing (without stopping whole stream)
 - [x] Allow starting/fixed "maximum" volume per clip to be applied
