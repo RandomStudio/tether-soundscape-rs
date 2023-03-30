@@ -14,7 +14,7 @@ TODO:
 - [x] Allow clips to be stopped/removed while playing (without stopping whole stream)
 - [x] Allow starting/fixed "maximum" volume per clip to be applied
 - [x] Apply fade in/out volume controls
-- [ ] Get sample rate from files/metadata
+- [ ] Separate CLIP and STREAM sample rates are currently a problem - might need a separate Reader (and thread!) for each clip if sample rates are allowed to differ
 - [ ] Allow "scenes" to be triggered (with transition)
 - [ ] Make use of tempo, quantisation for timing
 - [ ] Optionally connect to [Ableton link](https://docs.rs/ableton-link/latest/ableton_link/)

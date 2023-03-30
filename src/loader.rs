@@ -3,8 +3,6 @@ use std::path::Path;
 use nannou::App;
 use serde::{Deserialize, Serialize};
 
-use crate::settings::SAMPLE_RATE;
-
 #[derive(Serialize, Deserialize)]
 pub struct AudioClipOnDisk {
     name: String,
@@ -40,11 +38,13 @@ pub fn get_sound_asset_path(app: &App, base_path: &str) -> String {
     path.to_str().unwrap().into()
 }
 
-fn fetch_frames_count(path: &std::path::Path) -> u32 {
+fn read_length_and_rate(path: &std::path::Path) -> (u32, u32) {
     let mut reader = audrey::open(path).unwrap();
     let mut count = 0;
     reader.frames::<[f32; 2]>().for_each(|_f| count += 1);
-    count
+    let description = reader.description();
+    let sample_rate = description.sample_rate();
+    (count, sample_rate)
 }
 
 pub fn load_sample_bank(app: &App, json_path: &Path) -> Vec<AudioClipOnDisk> {
@@ -56,14 +56,13 @@ pub fn load_sample_bank(app: &App, json_path: &Path) -> Vec<AudioClipOnDisk> {
                 .map(|(_i, sample)| {
                     let path_str = get_sound_asset_path(app, sample.path());
                     let path = Path::new(&path_str);
-                    let frames_count = fetch_frames_count(path);
+                    let (frames_count, sample_rate) = read_length_and_rate(path);
                     let volume = sample.volume;
                     AudioClipOnDisk {
                         name: String::from(&sample.name),
                         path: String::from(path.to_str().unwrap()),
                         frames_count,
-                        // TODO: calculate rather than assume sample rate
-                        sample_rate: SAMPLE_RATE,
+                        sample_rate,
                         volume,
                     }
                 })

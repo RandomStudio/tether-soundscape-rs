@@ -6,7 +6,7 @@ use nannou_audio::Buffer;
 use rtrb::{Consumer, Producer};
 use tween::{Linear, QuadIn, SineInOut, Tween, Tweener};
 
-use crate::{settings::SAMPLE_RATE, utils::millis_to_frames};
+use crate::utils::millis_to_frames;
 
 /// Volume value, duration IN FRAMES
 type StoredTweener = Tweener<f32, u32, Box<dyn Tween<f32> + Send + Sync>>;
@@ -38,6 +38,7 @@ impl BufferedClip {
             }
             None => 0.,
         };
+        let sample_rate = reader.description().sample_rate();
         BufferedClip {
             id,
             reader,
@@ -50,7 +51,7 @@ impl BufferedClip {
                     let stored_tweener = Tweener::new(
                         start,
                         end,
-                        millis_to_frames(duration_ms, SAMPLE_RATE),
+                        millis_to_frames(duration_ms, sample_rate),
                         tween,
                     );
                     PlaybackPhase::Attack(stored_tweener)

@@ -7,7 +7,6 @@ use crate::{get_clip_index_with_name, utils::frames_to_seconds, Model, QueueItem
 pub const UPDATE_INTERVAL: Duration = Duration::from_millis(8);
 pub const CLIP_HEIGHT: f32 = 15.;
 pub const CLIP_WIDTH: f32 = 200.;
-pub const SAMPLE_RATE: u32 = 96000;
 pub const DEFAULT_FADEIN: u32 = 100;
 pub const DEFAULT_FADEOUT: u32 = 2000;
 

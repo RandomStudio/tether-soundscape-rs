@@ -10,8 +10,7 @@ use playback::{
 };
 use rtrb::{Consumer, Producer, RingBuffer};
 use settings::{
-    build_ui, Settings, CLIP_HEIGHT, CLIP_WIDTH, DEFAULT_FADEIN, DEFAULT_FADEOUT, SAMPLE_RATE,
-    UPDATE_INTERVAL,
+    build_ui, Settings, CLIP_HEIGHT, CLIP_WIDTH, DEFAULT_FADEIN, DEFAULT_FADEOUT, UPDATE_INTERVAL,
 };
 
 use crate::utils::millis_to_frames;
@@ -88,7 +87,7 @@ fn model(app: &App) -> Model {
     let stream = audio_host
         .new_output_stream(audio_model)
         .render(render_audio)
-        .sample_rate(SAMPLE_RATE)
+        .sample_rate(96000)
         .build()
         .unwrap();
 
