@@ -339,13 +339,12 @@ fn view(app: &App, model: &Model, frame: Frame) {
     } else {
         String::from("paused")
     };
-    draw.text(&stream_state);
+    draw.text(&stream_state).color(SLATEGREY);
 
     // let start_y = app.window(model.window_id).unwrap().rect().h() / 3.;
 
     let max_radius = app.window(model.window_id).unwrap().rect().h() / 2. * 0.9;
     for (_i, c) in model.clips_playing.iter().enumerate() {
-        // let y = start_y - i.to_f32() * MAX_RADIUS;
         let x = 0.;
 
         if let PlaybackState::Playing(frames_played) = c.state {
@@ -372,6 +371,7 @@ fn view(app: &App, model: &Model, frame: Frame) {
 
             let num_dots: usize = 1000;
             let brightness = 1.0;
+            let white = rgba(brightness, brightness, brightness, opacity);
             for dot in 0..num_dots {
                 let angle = -map_range(dot.to_f32(), 0., num_dots.to_f32(), 0., target_angle);
                 let x = radius * angle.cos();
@@ -379,8 +379,9 @@ fn view(app: &App, model: &Model, frame: Frame) {
                 draw.ellipse()
                     .x_y(x, dot_y)
                     .radius(LINE_THICKNESS)
-                    .rgba(brightness, brightness, brightness, opacity);
+                    .color(white);
             }
+            draw.text(&c.name).x_y(0., -radius - 15.).color(white);
         }
 
         // let state_text = match c.state {
