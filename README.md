@@ -2,6 +2,8 @@
 
 A multi-layered audio sequencer, remote-controllable via Tether, to create soundscapes.
 
+![screenshot animation](./soundscape.gif)
+
 Using 🦀 Rust because:
 - Minimal memory/CPU footprint for high performance
 - Cross-platform but without any need to install browser, use Electron, etc.
