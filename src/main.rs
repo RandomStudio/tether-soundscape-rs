@@ -214,7 +214,6 @@ fn key_pressed(_app: &App, model: &mut Model, key: Key) {
                 model.stream.pause().expect("failed to pause stream");
             }
         }
-
         _ => {}
     }
 }
@@ -383,22 +382,6 @@ fn view(app: &App, model: &Model, frame: Frame) {
             }
             draw.text(&c.name).x_y(0., -radius - 15.).color(white);
         }
-
-        // let state_text = match c.state {
-        //     PlaybackState::Playing(frames_played) => {
-        //         let progress = frames_played.to_f32() / c.frames_count.to_f32();
-        //         format!("{}%", (progress * 100.).trunc())
-        //     }
-        //     PlaybackState::Ready() => String::from("READY"),
-        // };
-        // let loop_text = if c.should_loop { "LOOP" } else { "ONCE" };
-        // draw.text(&format!(
-        //     "#{} ({}): ({}) - {}",
-        //     c.id, &c.name, state_text, loop_text
-        // ))
-        // .left_justify()
-        // .x(x)
-        // .y(y);
     }
 
     draw.to_frame(app, &frame).unwrap();
