@@ -13,6 +13,7 @@ use settings::{
     build_ui, Settings, CLIP_HEIGHT, CLIP_WIDTH, DEFAULT_FADEIN, DEFAULT_FADEOUT, SAMPLE_RATE,
     UPDATE_INTERVAL,
 };
+use utils::frames_to_millis;
 
 mod loader;
 mod playback;
@@ -26,19 +27,17 @@ pub struct Model {
     stream: audio::Stream<Audio>,
     clips_available: Vec<AudioClipOnDisk>,
     clips_playing: Vec<CurrentlyPlayingClip>,
-    left_shift_key_down: bool,
-    right_shift_key_down: bool,
     action_queue: Vec<QueueItem>,
     window_id: WindowId,
     egui: Egui,
     settings: Settings,
 }
 enum QueueItem {
-    /// name, should_loop
+    /// Start playback: name, should_loop
     Play(String, bool),
-    /// id in currently_playing Vec
-    Stop(usize),
-    /// index in currentl_playing Vec, id for audio model
+    /// Stop/fade out: id in currently_playing Vec, optional fade duration in ms
+    Stop(usize, Option<u32>),
+    /// Remove clip: index in currentl_playing Vec, id for audio model
     Remove(usize, usize),
 }
 
@@ -72,7 +71,6 @@ fn model(app: &App) -> Model {
     let window_id = app
         .new_window()
         .key_pressed(key_pressed)
-        .key_released(key_released)
         .raw_event(raw_window_event)
         .view(view)
         .build()
@@ -103,8 +101,6 @@ fn model(app: &App) -> Model {
         rx_progress,
         rx_complete,
         tx_request,
-        left_shift_key_down: false,
-        right_shift_key_down: false,
         action_queue: Vec::new(),
         window_id,
         egui,
@@ -189,63 +185,8 @@ fn key_pressed(_app: &App, model: &mut Model, key: Key) {
                 model.stream.pause().expect("failed to pause stream");
             }
         }
-        Key::Key1 => {
-            if model.right_shift_key_down {
-                if let Some((_index, info)) = get_clip_index_with_name(&model.clips_playing, "frog")
-                {
-                    model.action_queue.push(QueueItem::Stop(info.id));
-                }
-            } else {
-                model.action_queue.push(QueueItem::Play(
-                    String::from("frog"),
-                    model.left_shift_key_down,
-                ));
-            }
-        }
-        Key::Key2 => {
-            if model.right_shift_key_down {
-                if let Some((_index, info)) = get_clip_index_with_name(&model.clips_playing, "mice")
-                {
-                    model.action_queue.push(QueueItem::Stop(info.id));
-                }
-            } else {
-                model.action_queue.push(QueueItem::Play(
-                    String::from("mice"),
-                    model.left_shift_key_down,
-                ));
-            }
-        }
-        Key::Key3 => {
-            if model.right_shift_key_down {
-                if let Some((_index, info)) =
-                    get_clip_index_with_name(&model.clips_playing, "squirrel")
-                {
-                    model.action_queue.push(QueueItem::Stop(info.id));
-                }
-            } else {
-                model.action_queue.push(QueueItem::Play(
-                    String::from("squirrel"),
-                    model.left_shift_key_down,
-                ));
-            }
-        }
 
-        Key::LShift => {
-            model.left_shift_key_down = true;
-        }
-        Key::RShift => {
-            model.right_shift_key_down = true;
-        }
         _ => {}
-    }
-}
-
-fn key_released(_app: &App, model: &mut Model, key: Key) {
-    if key == Key::LShift {
-        model.left_shift_key_down = false;
-    }
-    if key == Key::RShift {
-        model.right_shift_key_down = false;
     }
 }
 
@@ -315,12 +256,18 @@ fn update(app: &App, model: &mut Model, update: Update) {
             QueueItem::Play(name, should_loop) => {
                 trigger_clip(app, model, &name, should_loop).unwrap();
             }
-            QueueItem::Stop(id) => {
-                let fadeout_duration = model.settings.fadeout_duration;
-                model
-                    .stream
-                    .send(move |audio| audio.fadeout_sound(id, fadeout_duration))
-                    .unwrap();
+            QueueItem::Stop(id, fade_out) => {
+                if let Some((_index, clip)) = get_clip_index_with_id(&model.clips_playing, id) {
+                    let fadeout_frames = frames_to_millis(fade_out.unwrap_or(0), clip.sample_rate);
+                    println!(
+                        "Stop clip ID#{}: {}, fade out {}fr",
+                        id, &clip.name, fadeout_frames
+                    );
+                    model
+                        .stream
+                        .send(move |audio| audio.fadeout_sound(id, fadeout_frames))
+                        .unwrap();
+                }
             }
             QueueItem::Remove(index, id) => {
                 model
@@ -338,11 +285,7 @@ fn update(app: &App, model: &mut Model, update: Update) {
 fn view(app: &App, model: &Model, frame: Frame) {
     let draw = app.draw();
 
-    draw.background().color(if model.left_shift_key_down {
-        SLATEGREY
-    } else {
-        DARKSLATEGREY
-    });
+    draw.background().color(DARKSLATEGREY);
 
     let stream_state = if model.stream.is_playing() {
         format!("playing {} sounds", model.clips_playing.len())
@@ -352,18 +295,6 @@ fn view(app: &App, model: &Model, frame: Frame) {
     draw.text(&stream_state).y(45.);
 
     let start_y = 0.;
-
-    // let available_x = -200.;
-    // for (i, c) in model.clips_available.iter().enumerate() {
-    //     let length = match c.length() {
-    //         Some(frames) => format!("{} fr", frames),
-    //         None => String::from("unknown"),
-    //     };
-    //     draw.text(&format!("KEY #{} ({}) : {}", (i + 1), c.name(), &length))
-    //         .left_justify()
-    //         .x(available_x)
-    //         .y(start_y - (i).to_f32().unwrap() * CLIP_HEIGHT);
-    // }
 
     for (i, c) in model.clips_playing.iter().enumerate() {
         let x = 0.;

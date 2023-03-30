@@ -24,10 +24,12 @@ pub struct BufferedClip {
 
 /// Start volume, End volume, Duration IN MILLISECONDS
 pub type Fade = (f32, f32, u32);
+
 pub enum PlaybackPhase {
     Attack(StoredTweener),
     Sustain(),
     Release(StoredTweener),
+    Complete(),
 }
 
 impl BufferedClip {
@@ -73,6 +75,7 @@ impl BufferedClip {
             frames_to_millis(duration_ms, SAMPLE_RATE),
             tween,
         );
+        println!("sound sustain => release");
         self.phase = PlaybackPhase::Release(stored_tweener);
     }
 }
@@ -155,7 +158,7 @@ pub fn render_audio(audio: &mut Audio, buffer: &mut Buffer) {
         }
 
         // If the sound yielded less samples than are in the buffer, it must have ended.
-        if frame_count < len_frames {
+        if frame_count < len_frames || matches!(&sound.phase, PlaybackPhase::Complete()) {
             if !audio.tx_complete.is_full() {
                 have_ended.push(i);
                 audio.tx_complete.push(sound.id).unwrap();
@@ -167,12 +170,20 @@ pub fn render_audio(audio: &mut Audio, buffer: &mut Buffer) {
                 PlaybackPhase::Attack(tween) => tween.move_by(frame_count),
                 PlaybackPhase::Sustain() => sound.current_volume,
                 PlaybackPhase::Release(tween) => tween.move_by(frame_count),
+                PlaybackPhase::Complete() => 0.,
             };
 
             if let PlaybackPhase::Attack(tween) = &mut sound.phase {
                 if tween.is_finished() {
                     println!("sound attack => sustain");
                     sound.phase = PlaybackPhase::Sustain();
+                }
+            }
+
+            if let PlaybackPhase::Release(tween) = &sound.phase {
+                if tween.is_finished() {
+                    println!("sound release => complete");
+                    sound.phase = PlaybackPhase::Complete();
                 }
             }
 
