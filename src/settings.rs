@@ -4,11 +4,11 @@ use std::time::Duration;
 
 use crate::{get_clip_index_with_name, utils::frames_to_seconds, Model, QueueItem};
 
-pub const UPDATE_INTERVAL: Duration = Duration::from_millis(8);
-pub const CLIP_HEIGHT: f32 = 15.;
-pub const CLIP_WIDTH: f32 = 200.;
+pub const UPDATE_INTERVAL: Duration = Duration::from_millis(16);
+pub const CLIP_HEIGHT: f32 = 50.;
 pub const DEFAULT_FADEIN: u32 = 100;
 pub const DEFAULT_FADEOUT: u32 = 2000;
+pub const RING_BUFFER_SIZE: usize = 32;
 
 pub struct Settings {
     pub fadein_duration: u32,

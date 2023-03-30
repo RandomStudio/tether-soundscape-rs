@@ -10,8 +10,10 @@ use playback::{
 };
 use rtrb::{Consumer, Producer, RingBuffer};
 use settings::{
-    build_ui, Settings, CLIP_HEIGHT, CLIP_WIDTH, DEFAULT_FADEIN, DEFAULT_FADEOUT, UPDATE_INTERVAL,
+    build_ui, Settings, CLIP_HEIGHT, DEFAULT_FADEIN, DEFAULT_FADEOUT, RING_BUFFER_SIZE,
+    UPDATE_INTERVAL,
 };
+use tween::TweenTime;
 
 use crate::utils::millis_to_frames;
 
@@ -56,7 +58,7 @@ impl CurrentlyPlayingClip {
         self.frames_count
     }
     pub fn length_in_millis(&self) -> u32 {
-        (self.frames_count.to_f32().unwrap() / self.sample_rate.to_f32().unwrap() / 1000.)
+        (self.frames_count.to_f32() / self.sample_rate.to_f32() / 1000.)
             .to_u32()
             .unwrap()
     }
@@ -79,9 +81,9 @@ fn model(app: &App) -> Model {
     // Initialise the audio host so we can spawn an audio stream.
     let audio_host = audio::Host::new();
 
-    let (tx_progress, rx_progress) = RingBuffer::new(2);
-    let (tx_complete, rx_complete) = RingBuffer::new(32);
-    let (tx_request, rx_request) = RingBuffer::new(32);
+    let (tx_progress, rx_progress) = RingBuffer::new(RING_BUFFER_SIZE * 16);
+    let (tx_complete, rx_complete) = RingBuffer::new(RING_BUFFER_SIZE);
+    let (tx_request, rx_request) = RingBuffer::new(RING_BUFFER_SIZE);
     let audio_model = Audio::new(tx_progress, tx_complete, rx_request);
     // Initialise the state that we want to live on the audio thread.
     let stream = audio_host
@@ -228,17 +230,9 @@ fn update(app: &App, model: &mut Model, update: Update) {
 
     build_ui(model, update.since_start, window.rect());
 
-    for mut sound in &mut model.clips_playing {
-        if sound.last_update_sent.elapsed().unwrap() > UPDATE_INTERVAL {
-            sound.last_update_sent = std::time::SystemTime::now();
-            model
-                .tx_request
-                .push(sound.id)
-                .expect("failed to send request");
-        }
-    }
-
-    if let Ok(receive) = model.rx_progress.pop() {
+    // Note the while loop - we try to process ALL progress update messages
+    // every frame
+    while let Ok(receive) = model.rx_progress.pop() {
         let (id, frames_played) = receive;
         // println!("Got progress update: {}", frames_played);
         if let Some(to_update) = get_clip_index_with_id(&model.clips_playing, id) {
@@ -247,7 +241,18 @@ fn update(app: &App, model: &mut Model, update: Update) {
         }
     }
 
-    if let Ok(id) = model.rx_complete.pop() {
+    for mut sound in &mut model.clips_playing {
+        if sound.last_update_sent.elapsed().unwrap() > UPDATE_INTERVAL {
+            sound.last_update_sent = std::time::SystemTime::now();
+            // println!("Request for clip ID#{}", sound.id);
+            model
+                .tx_request
+                .push(sound.id)
+                .expect("failed to send request");
+        }
+    }
+
+    while let Ok(id) = model.rx_complete.pop() {
         println!("Complete state received for clip ID {}", id);
         if let Some((index, clip)) = get_clip_index_with_id(&model.clips_playing, id) {
             if clip.should_loop {
@@ -308,45 +313,47 @@ fn view(app: &App, model: &Model, frame: Frame) {
     };
     draw.text(&stream_state).y(45.);
 
-    let start_y = 0.;
+    let start_y = app.window(model.window_id).unwrap().rect().h() / 3.;
 
     for (i, c) in model.clips_playing.iter().enumerate() {
+        let y = start_y - i.to_f32() * CLIP_HEIGHT;
         let x = 0.;
-        let y = start_y - (i).to_f32().unwrap() * CLIP_HEIGHT;
-
-        // Empty box
-        draw.rect()
-            .no_fill()
-            .stroke(BLUE)
-            .stroke_weight(1.0)
-            .w_h(CLIP_WIDTH, CLIP_HEIGHT)
-            .x_y(x, y);
 
         if let PlaybackState::Playing(frames_played) = c.state {
-            // Filling box
-            let progress = frames_played.to_f32().unwrap() / c.frames_count.to_f32().unwrap();
-            let width = map_range(progress, 0., 1., 0., CLIP_WIDTH);
-            draw.rect()
-                .color(DARKBLUE)
-                .x_y(x + width / 2. - CLIP_WIDTH / 2., y)
-                .w_h(width, CLIP_HEIGHT);
+            let radius = c.frames_count.to_f32() / 10000.;
+            // let radius: f32 = CLIP_HEIGHT / 2. * 0.75;
+            let progress = frames_played.to_f32() / c.frames_count.to_f32();
+            let target_angle = PI * 2.0 * progress; // "percent" of full circle
+            draw.ellipse()
+                .radius(radius)
+                .x_y(x, 0.)
+                .no_fill()
+                .stroke(GRAY)
+                .stroke_weight(2.0);
+
+            for dot in 0..100 {
+                let angle = -map_range(dot.to_f32(), 0., 100., 0., target_angle);
+                let x = radius * angle.cos();
+                let dot_y = radius * angle.sin();
+                draw.ellipse().x_y(x, dot_y).radius(1.0).color(WHITE);
+            }
         }
 
-        let state_text = match c.state {
-            PlaybackState::Playing(frames_played) => {
-                let progress = frames_played.to_f32().unwrap() / c.frames_count.to_f32().unwrap();
-                format!("{}%", (progress * 100.).trunc())
-            }
-            PlaybackState::Ready() => String::from("READY"),
-        };
-        let loop_text = if c.should_loop { "LOOP" } else { "ONCE" };
-        draw.text(&format!(
-            "#{} ({}): ({}) - {}",
-            c.id, &c.name, state_text, loop_text
-        ))
-        .left_justify()
-        .x(x)
-        .y(y);
+        // let state_text = match c.state {
+        //     PlaybackState::Playing(frames_played) => {
+        //         let progress = frames_played.to_f32() / c.frames_count.to_f32();
+        //         format!("{}%", (progress * 100.).trunc())
+        //     }
+        //     PlaybackState::Ready() => String::from("READY"),
+        // };
+        // let loop_text = if c.should_loop { "LOOP" } else { "ONCE" };
+        // draw.text(&format!(
+        //     "#{} ({}): ({}) - {}",
+        //     c.id, &c.name, state_text, loop_text
+        // ))
+        // .left_justify()
+        // .x(x)
+        // .y(y);
     }
 
     draw.to_frame(app, &frame).unwrap();
