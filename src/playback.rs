@@ -6,21 +6,24 @@ use nannou_audio::Buffer;
 use rtrb::{Consumer, Producer};
 use tween::{Linear, Tween, Tweener};
 
-use crate::settings::SAMPLE_RATE;
+use crate::{
+    settings::SAMPLE_RATE,
+    utils::{frames_to_millis, millis_to_frames},
+};
 
 /// Volume value, duration IN FRAMES
-type StoredTweener = Tweener<f32, usize, Box<dyn Tween<f32> + Send + Sync>>;
+type StoredTweener = Tweener<f32, u32, Box<dyn Tween<f32> + Send + Sync>>;
 
 pub struct BufferedClip {
     id: usize,
     current_volume: f32,
     reader: audrey::read::BufFileReader,
-    frames_played: usize,
+    frames_played: u32,
     phase: PlaybackPhase,
 }
 
 /// Start volume, End volume, Duration IN MILLISECONDS
-pub type Fade = (f32, f32, usize);
+pub type Fade = (f32, f32, u32);
 pub enum PlaybackPhase {
     Attack(StoredTweener),
     Sustain(),
@@ -44,17 +47,13 @@ impl BufferedClip {
             phase: match fade_in {
                 Some((start, end, duration_ms)) => {
                     let tween: Box<dyn Tween<f32> + Send + Sync> = Box::new(Linear);
-                    let duration_frames = (duration_ms.to_f32().unwrap() / 1000.
-                        * SAMPLE_RATE.to_f32().unwrap())
-                    .to_usize()
-                    .unwrap();
-                    println!(
-                        "{} ms to {} @ {}KHz",
-                        duration_ms,
-                        duration_frames,
-                        SAMPLE_RATE / 1000
+
+                    let stored_tweener = Tweener::new(
+                        start,
+                        end,
+                        millis_to_frames(duration_ms, SAMPLE_RATE),
+                        tween,
                     );
-                    let stored_tweener = Tweener::new(start, end, duration_frames, tween);
                     PlaybackPhase::Attack(stored_tweener)
                 }
                 None => {
@@ -65,10 +64,21 @@ impl BufferedClip {
             },
         }
     }
+
+    pub fn fade_out(&mut self, duration_ms: u32) {
+        let tween: Box<dyn Tween<f32> + Send + Sync> = Box::new(Linear);
+        let stored_tweener = Tweener::new(
+            self.current_volume,
+            0.,
+            frames_to_millis(duration_ms, SAMPLE_RATE),
+            tween,
+        );
+        self.phase = PlaybackPhase::Release(stored_tweener);
+    }
 }
 
 /// audio -> main: ID of the clip, followed by frames played (count)
-pub type ProgressUpdate = (usize, usize);
+pub type ProgressUpdate = (usize, u32);
 
 /// audio -> main: ID of the clip
 pub type CompleteUpdate = usize;
@@ -78,8 +88,7 @@ pub type RequestUpdate = usize;
 
 pub enum PlaybackState {
     Ready(),
-    Playing(usize),
-    Complete(),
+    Playing(u32),
 }
 
 pub struct Audio {
@@ -116,15 +125,27 @@ impl Audio {
             self.sounds.remove(index);
         }
     }
+
+    pub fn fadeout_sound(&mut self, id: usize, duration_frames: u32) {
+        if let Some(to_fadeout) = self
+            .sounds
+            .iter_mut()
+            .enumerate()
+            .find(|(_index, s)| s.id == id)
+        {
+            let (_index, s) = to_fadeout;
+            s.fade_out(duration_frames);
+        }
+    }
 }
 
 pub fn render_audio(audio: &mut Audio, buffer: &mut Buffer) {
     let mut have_ended = vec![];
-    let len_frames = buffer.len_frames();
+    let len_frames = buffer.len_frames().to_u32().unwrap();
 
     // Sum all of the sounds onto the buffer.
     for (i, sound) in audio.sounds.iter_mut().enumerate() {
-        let mut frame_count = 0;
+        let mut frame_count: u32 = 0;
         let file_frames = sound.reader.frames::<[f32; 2]>().filter_map(Result::ok);
         for (frame, file_frame) in buffer.frames_mut().zip(file_frames) {
             for (sample, file_sample) in frame.iter_mut().zip(&file_frame) {

@@ -9,11 +9,15 @@ use playback::{
     render_audio, Audio, BufferedClip, CompleteUpdate, PlaybackState, ProgressUpdate, RequestUpdate,
 };
 use rtrb::{Consumer, Producer, RingBuffer};
-use settings::{build_ui, Settings, CLIP_HEIGHT, CLIP_WIDTH, SAMPLE_RATE, UPDATE_INTERVAL};
+use settings::{
+    build_ui, Settings, CLIP_HEIGHT, CLIP_WIDTH, DEFAULT_FADEIN, DEFAULT_FADEOUT, SAMPLE_RATE,
+    UPDATE_INTERVAL,
+};
 
 mod loader;
 mod playback;
 mod settings;
+mod utils;
 
 pub struct Model {
     rx_progress: Consumer<ProgressUpdate>,
@@ -41,10 +45,22 @@ enum QueueItem {
 pub struct CurrentlyPlayingClip {
     id: usize,
     name: String,
-    length: usize,
+    frames_count: u32,
+    sample_rate: u32,
     state: PlaybackState,
     should_loop: bool,
     last_update_sent: std::time::SystemTime,
+}
+
+impl CurrentlyPlayingClip {
+    pub fn length_in_frames(&self) -> u32 {
+        self.frames_count
+    }
+    pub fn length_in_millis(&self) -> u32 {
+        (self.frames_count.to_f32().unwrap() / self.sample_rate.to_f32().unwrap() / 1000.)
+            .to_u32()
+            .unwrap()
+    }
 }
 
 fn main() {
@@ -93,7 +109,8 @@ fn model(app: &App) -> Model {
         window_id,
         egui,
         settings: Settings {
-            fadein_duration: 100000,
+            fadein_duration: DEFAULT_FADEIN,
+            fadeout_duration: DEFAULT_FADEOUT,
         },
     }
 }
@@ -141,8 +158,9 @@ fn trigger_clip(app: &App, model: &mut Model, name: &str, should_loop: bool) -> 
             clips_playing.push(CurrentlyPlayingClip {
                 id,
                 name: String::from(clip_matched.name()),
-                length: clip_matched.length().unwrap_or(0),
+                frames_count: clip_matched.frames_count(),
                 state: PlaybackState::Ready(),
+                sample_rate: clip_matched.sample_rate(),
                 should_loop,
                 last_update_sent: std::time::SystemTime::now(),
             });
@@ -265,10 +283,6 @@ fn update(app: &App, model: &mut Model, update: Update) {
                 .tx_request
                 .push(sound.id)
                 .expect("failed to send request");
-            // audio
-            //     .tx_progress
-            //     .push((sound.id, sound.frames_played))
-            //     .unwrap();
         }
     }
 
@@ -290,8 +304,7 @@ fn update(app: &App, model: &mut Model, update: Update) {
                     .action_queue
                     .push(QueueItem::Play(String::from(&clip.name), true));
             }
-            model.clips_playing[index].state = PlaybackState::Complete();
-            model.clips_playing.remove(index);
+            model.action_queue.push(QueueItem::Remove(index, id));
         } else {
             panic!("No match for clip id {}", id);
         }
@@ -303,9 +316,11 @@ fn update(app: &App, model: &mut Model, update: Update) {
                 trigger_clip(app, model, &name, should_loop).unwrap();
             }
             QueueItem::Stop(id) => {
-                if let Some((index, clip)) = get_clip_index_with_id(&model.clips_playing, id) {
-                    model.action_queue.push(QueueItem::Remove(index, clip.id));
-                }
+                let fadeout_duration = model.settings.fadeout_duration;
+                model
+                    .stream
+                    .send(move |audio| audio.fadeout_sound(id, fadeout_duration))
+                    .unwrap();
             }
             QueueItem::Remove(index, id) => {
                 model
@@ -338,17 +353,17 @@ fn view(app: &App, model: &Model, frame: Frame) {
 
     let start_y = 0.;
 
-    let available_x = -200.;
-    for (i, c) in model.clips_available.iter().enumerate() {
-        let length = match c.length() {
-            Some(frames) => format!("{} fr", frames),
-            None => String::from("unknown"),
-        };
-        draw.text(&format!("KEY #{} ({}) : {}", (i + 1), c.name(), &length))
-            .left_justify()
-            .x(available_x)
-            .y(start_y - (i).to_f32().unwrap() * CLIP_HEIGHT);
-    }
+    // let available_x = -200.;
+    // for (i, c) in model.clips_available.iter().enumerate() {
+    //     let length = match c.length() {
+    //         Some(frames) => format!("{} fr", frames),
+    //         None => String::from("unknown"),
+    //     };
+    //     draw.text(&format!("KEY #{} ({}) : {}", (i + 1), c.name(), &length))
+    //         .left_justify()
+    //         .x(available_x)
+    //         .y(start_y - (i).to_f32().unwrap() * CLIP_HEIGHT);
+    // }
 
     for (i, c) in model.clips_playing.iter().enumerate() {
         let x = 0.;
@@ -364,7 +379,7 @@ fn view(app: &App, model: &Model, frame: Frame) {
 
         if let PlaybackState::Playing(frames_played) = c.state {
             // Filling box
-            let progress = frames_played.to_f32().unwrap() / c.length.to_f32().unwrap();
+            let progress = frames_played.to_f32().unwrap() / c.frames_count.to_f32().unwrap();
             let width = map_range(progress, 0., 1., 0., CLIP_WIDTH);
             draw.rect()
                 .color(DARKBLUE)
@@ -374,10 +389,9 @@ fn view(app: &App, model: &Model, frame: Frame) {
 
         let state_text = match c.state {
             PlaybackState::Playing(frames_played) => {
-                let progress = frames_played.to_f32().unwrap() / c.length.to_f32().unwrap();
+                let progress = frames_played.to_f32().unwrap() / c.frames_count.to_f32().unwrap();
                 format!("{}%", (progress * 100.).trunc())
             }
-            PlaybackState::Complete() => String::from("DONE"),
             PlaybackState::Ready() => String::from("READY"),
         };
         let loop_text = if c.should_loop { "LOOP" } else { "ONCE" };
