@@ -13,7 +13,7 @@ TODO:
 - [x] Apply "loop" as well as trigger/hit/once-off functions
 - [x] Allow clips to be stopped/removed while playing (without stopping whole stream)
 - [x] Allow starting/fixed "maximum" volume per clip to be applied
-- [ ] Apply fade in/out volume controls
+- [x] Apply fade in/out volume controls
 - [ ] Get sample rate from files/metadata
 - [ ] Allow "scenes" to be triggered (with transition)
 - [ ] Make use of tempo, quantisation for timing
