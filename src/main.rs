@@ -10,7 +10,7 @@ use playback::{
 };
 use rtrb::{Consumer, Producer, RingBuffer};
 use settings::{
-    build_ui, Settings, CLIP_HEIGHT, DEFAULT_FADEIN, DEFAULT_FADEOUT, RING_BUFFER_SIZE,
+    build_ui, Settings, DEFAULT_FADEIN, DEFAULT_FADEOUT, MIN_RADIUS, RING_BUFFER_SIZE,
     UPDATE_INTERVAL,
 };
 use tween::TweenTime;
@@ -29,6 +29,7 @@ pub struct Model {
     stream: audio::Stream<Audio>,
     clips_available: Vec<AudioClipOnDisk>,
     clips_playing: Vec<CurrentlyPlayingClip>,
+    duration_range: [u32; 2],
     action_queue: Vec<QueueItem>,
     window_id: WindowId,
     egui: Egui,
@@ -68,6 +69,26 @@ fn main() {
     nannou::app(model).update(update).run();
 }
 
+fn get_duration_range(clips: &[AudioClipOnDisk]) -> [u32; 2] {
+    let mut longest: u32 = 0;
+    let mut shortest: Option<u32> = None;
+
+    for c in clips {
+        if c.frames_count() > longest {
+            longest = c.frames_count()
+        }
+        match shortest {
+            Some(shortest_sofar) => {
+                if c.frames_count() < shortest_sofar {
+                    shortest = Some(c.frames_count())
+                }
+            }
+            None => shortest = Some(c.frames_count()),
+        }
+    }
+    [shortest.unwrap_or(0), longest]
+}
+
 fn model(app: &App) -> Model {
     // Create a window to receive key pressed events.
     let window_id = app
@@ -96,10 +117,14 @@ fn model(app: &App) -> Model {
     let window = app.window(window_id).unwrap();
     let egui = Egui::from_window(&window);
 
+    let clips_available = load_sample_bank(app, Path::new("./test_bank.json"));
+    let duration_range = get_duration_range(&clips_available);
+
     Model {
         stream,
-        clips_available: load_sample_bank(app, Path::new("./test_bank.json")),
+        clips_available,
         clips_playing: Vec::new(),
+        duration_range,
         rx_progress,
         rx_complete,
         tx_request,
@@ -311,17 +336,24 @@ fn view(app: &App, model: &Model, frame: Frame) {
     } else {
         String::from("paused")
     };
-    draw.text(&stream_state).y(45.);
+    draw.text(&stream_state);
 
-    let start_y = app.window(model.window_id).unwrap().rect().h() / 3.;
+    // let start_y = app.window(model.window_id).unwrap().rect().h() / 3.;
 
-    for (i, c) in model.clips_playing.iter().enumerate() {
-        let y = start_y - i.to_f32() * CLIP_HEIGHT;
+    let max_radius = app.window(model.window_id).unwrap().rect().h() / 2. * 0.6;
+    for (_i, c) in model.clips_playing.iter().enumerate() {
+        // let y = start_y - i.to_f32() * MAX_RADIUS;
         let x = 0.;
 
         if let PlaybackState::Playing(frames_played) = c.state {
-            let radius = c.frames_count.to_f32() / 10000.;
-            // let radius: f32 = CLIP_HEIGHT / 2. * 0.75;
+            let [min, max] = model.duration_range;
+            let radius = map_range(
+                c.frames_count.to_f32(),
+                min.to_f32(),
+                max.to_f32(),
+                MIN_RADIUS,
+                max_radius,
+            );
             let progress = frames_played.to_f32() / c.frames_count.to_f32();
             let target_angle = PI * 2.0 * progress; // "percent" of full circle
             draw.ellipse()
@@ -331,8 +363,9 @@ fn view(app: &App, model: &Model, frame: Frame) {
                 .stroke(GRAY)
                 .stroke_weight(2.0);
 
-            for dot in 0..100 {
-                let angle = -map_range(dot.to_f32(), 0., 100., 0., target_angle);
+            let num_dots: usize = 1000;
+            for dot in 0..num_dots {
+                let angle = -map_range(dot.to_f32(), 0., num_dots.to_f32(), 0., target_angle);
                 let x = radius * angle.cos();
                 let dot_y = radius * angle.sin();
                 draw.ellipse().x_y(x, dot_y).radius(1.0).color(WHITE);

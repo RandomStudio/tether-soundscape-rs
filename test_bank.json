@@ -12,5 +12,9 @@
   {
     "name": "squirrel",
     "path": "squirrel.wav"
+  },
+  {
+    "name": "squirrel2",
+    "path": "squirrel2.wav"
   }
 ]
