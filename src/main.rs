@@ -212,6 +212,17 @@ fn get_clip_index_with_id(
         .map(|(index, c)| (index, c))
 }
 
+fn get_clip_index_with_id_mut(
+    clips: &mut [CurrentlyPlayingClip],
+    id: usize,
+) -> Option<(usize, &mut CurrentlyPlayingClip)> {
+    clips
+        .iter_mut()
+        .enumerate()
+        .find(|(_index, c)| c.id == id)
+        .map(|(index, c)| (index, c))
+}
+
 fn update(app: &App, model: &mut Model, update: Update) {
     let window = app.window(model.window_id).unwrap();
 
@@ -257,12 +268,15 @@ fn update(app: &App, model: &mut Model, update: Update) {
                 trigger_clip(app, model, &name, should_loop).unwrap();
             }
             QueueItem::Stop(id, fade_out) => {
-                if let Some((_index, clip)) = get_clip_index_with_id(&model.clips_playing, id) {
+                if let Some((_index, clip)) =
+                    get_clip_index_with_id_mut(&mut model.clips_playing, id)
+                {
                     let fadeout_frames = frames_to_millis(fade_out.unwrap_or(0), clip.sample_rate);
                     println!(
                         "Stop clip ID#{}: {}, fade out {}fr",
                         id, &clip.name, fadeout_frames
                     );
+                    clip.should_loop = false;
                     model
                         .stream
                         .send(move |audio| audio.fadeout_sound(id, fadeout_frames))
