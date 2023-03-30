@@ -10,8 +10,8 @@ use playback::{
 };
 use rtrb::{Consumer, Producer, RingBuffer};
 use settings::{
-    build_ui, Settings, DEFAULT_FADEIN, DEFAULT_FADEOUT, MIN_RADIUS, RING_BUFFER_SIZE,
-    UPDATE_INTERVAL,
+    build_ui, Settings, DEFAULT_FADEIN, DEFAULT_FADEOUT, LINE_THICKNESS, MIN_RADIUS,
+    RING_BUFFER_SIZE, UPDATE_INTERVAL,
 };
 use tween::TweenTime;
 
@@ -368,7 +368,7 @@ fn view(app: &App, model: &Model, frame: Frame) {
                 .x_y(x, 0.)
                 .no_fill()
                 .stroke(rgba(brightness, brightness, brightness, opacity))
-                .stroke_weight(2.0);
+                .stroke_weight(LINE_THICKNESS * 2.);
 
             let num_dots: usize = 1000;
             let brightness = 1.0;
@@ -378,7 +378,7 @@ fn view(app: &App, model: &Model, frame: Frame) {
                 let dot_y = radius * angle.sin();
                 draw.ellipse()
                     .x_y(x, dot_y)
-                    .radius(1.0)
+                    .radius(LINE_THICKNESS)
                     .rgba(brightness, brightness, brightness, opacity);
             }
         }

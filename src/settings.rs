@@ -6,6 +6,7 @@ use crate::{get_clip_index_with_name, utils::frames_to_seconds, Model, QueueItem
 
 pub const UPDATE_INTERVAL: Duration = Duration::from_millis(16);
 pub const MIN_RADIUS: f32 = 100.;
+pub const LINE_THICKNESS: f32 = 2.;
 pub const DEFAULT_FADEIN: u32 = 100;
 pub const DEFAULT_FADEOUT: u32 = 2000;
 pub const RING_BUFFER_SIZE: usize = 32;
