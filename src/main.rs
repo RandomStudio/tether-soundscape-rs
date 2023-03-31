@@ -35,7 +35,7 @@ pub struct Model {
     egui: Egui,
     settings: Settings,
 }
-enum QueueItem {
+pub enum QueueItem {
     /// Start playback: name, optional fade duration in ms, should_loop
     Play(String, Option<u32>, bool),
     /// Stop/fade out: id in currently_playing Vec, optional fade duration in ms
@@ -154,9 +154,15 @@ fn raw_window_event(_app: &App, model: &mut Model, event: &nannou::winit::event:
     model.egui.handle_raw_event(event);
 }
 
-// fn stop_all(clips_playing: &mut Vec<CurrentlyPlayingClip>, action_queue: &mut Vec<QueueItem>, fade: Option<u32>) {
-
-// }
+pub fn stop_all(
+    clips_playing: &mut Vec<CurrentlyPlayingClip>,
+    action_queue: &mut Vec<QueueItem>,
+    fade: Option<u32>,
+) {
+    for (index, _clip) in clips_playing.iter().enumerate() {
+        action_queue.push(QueueItem::Stop(index, fade));
+    }
+}
 
 fn trigger_clip(
     app: &App,
