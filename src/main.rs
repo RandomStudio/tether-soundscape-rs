@@ -4,7 +4,7 @@ use nannou::prelude::*;
 use nannou_audio as audio;
 use nannou_egui::Egui;
 
-use loader::{get_sound_asset_path, AudioClipOnDisk, SoundBank};
+use loader::{get_sound_asset_path, SoundBank};
 use playback::{
     render_audio, Audio, BufferedClip, CompleteUpdate, PlaybackState, ProgressUpdate, RequestUpdate,
 };
@@ -14,8 +14,9 @@ use settings::{
     RING_BUFFER_SIZE, UPDATE_INTERVAL,
 };
 use tween::TweenTime;
+use utils::{get_clip_index_with_id, get_clip_index_with_id_mut, get_duration_range};
 
-use crate::utils::millis_to_frames;
+use crate::utils::{get_highest_id, millis_to_frames};
 
 mod loader;
 mod playback;
@@ -70,26 +71,6 @@ fn main() {
     nannou::app(model).update(update).run();
 }
 
-fn get_duration_range(clips: &[AudioClipOnDisk]) -> [u32; 2] {
-    let mut longest: u32 = 0;
-    let mut shortest: Option<u32> = None;
-
-    for c in clips {
-        if c.frames_count() > longest {
-            longest = c.frames_count()
-        }
-        match shortest {
-            Some(shortest_sofar) => {
-                if c.frames_count() < shortest_sofar {
-                    shortest = Some(c.frames_count())
-                }
-            }
-            None => shortest = Some(c.frames_count()),
-        }
-    }
-    [shortest.unwrap_or(0), longest]
-}
-
 fn model(app: &App) -> Model {
     // Create a window to receive key pressed events.
     let window_id = app
@@ -137,16 +118,6 @@ fn model(app: &App) -> Model {
             fadeout_duration: DEFAULT_FADEOUT,
         },
     }
-}
-
-fn get_highest_id(clips: &[CurrentlyPlayingClip]) -> usize {
-    let mut highest_so_far = 0;
-    for el in clips {
-        if el.id >= highest_so_far {
-            highest_so_far = el.id + 1;
-        }
-    }
-    highest_so_far
 }
 
 fn raw_window_event(_app: &App, model: &mut Model, event: &nannou::winit::event::WindowEvent) {
@@ -228,39 +199,6 @@ fn key_pressed(_app: &App, model: &mut Model, key: Key) {
         }
         _ => {}
     }
-}
-
-fn get_clip_index_with_name<'a>(
-    clips: &'a [CurrentlyPlayingClip],
-    name: &str,
-) -> Option<(usize, &'a CurrentlyPlayingClip)> {
-    clips
-        .iter()
-        .enumerate()
-        .find(|(_index, c)| c.name == name)
-        .map(|(index, c)| (index, c))
-}
-
-fn get_clip_index_with_id(
-    clips: &[CurrentlyPlayingClip],
-    id: usize,
-) -> Option<(usize, &CurrentlyPlayingClip)> {
-    clips
-        .iter()
-        .enumerate()
-        .find(|(_index, c)| c.id == id)
-        .map(|(index, c)| (index, c))
-}
-
-fn get_clip_index_with_id_mut(
-    clips: &mut [CurrentlyPlayingClip],
-    id: usize,
-) -> Option<(usize, &mut CurrentlyPlayingClip)> {
-    clips
-        .iter_mut()
-        .enumerate()
-        .find(|(_index, c)| c.id == id)
-        .map(|(index, c)| (index, c))
 }
 
 fn update(app: &App, model: &mut Model, update: Update) {
