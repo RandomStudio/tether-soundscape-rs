@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use nannou::prelude::*;
 use nannou_audio as audio;
@@ -154,7 +154,7 @@ fn raw_window_event(_app: &App, model: &mut Model, event: &nannou::winit::event:
     model.egui.handle_raw_event(event);
 }
 
-pub fn stop_all(
+pub fn queue_stop_all(
     clips_playing: &mut Vec<CurrentlyPlayingClip>,
     action_queue: &mut Vec<QueueItem>,
     fade: Option<u32>,
@@ -164,22 +164,22 @@ pub fn stop_all(
     }
 }
 
-fn trigger_clip(
-    app: &App,
-    model: &mut Model,
+fn start_one(
     name: &str,
+    sound_bank: &SoundBank,
+    assets_path: PathBuf,
+    clips_playing: &mut Vec<CurrentlyPlayingClip>,
     fade: Option<u32>,
     should_loop: bool,
+    stream: &audio::Stream<Audio>,
 ) -> Result<(), ()> {
-    if let Some(clip_matched) = model
-        .sound_bank
+    if let Some(clip_matched) = sound_bank
         .clips()
         .iter()
         .find(|c| c.name().eq_ignore_ascii_case(name))
     {
-        let path_str = get_sound_asset_path(app, clip_matched.path());
-        if let Ok(reader) = audrey::open(Path::new(&path_str)) {
-            let clips_playing = &mut model.clips_playing;
+        let path = get_sound_asset_path(assets_path, clip_matched.path());
+        if let Ok(reader) = audrey::open(Path::new(&path)) {
             let id = get_highest_id(clips_playing);
 
             println!(
@@ -202,8 +202,7 @@ fn trigger_clip(
                 should_loop,
                 last_update_sent: std::time::SystemTime::now(),
             });
-            model
-                .stream
+            stream
                 .send(move |audio| {
                     audio.add_sound(new_clip);
                 })
@@ -310,7 +309,16 @@ fn update(app: &App, model: &mut Model, update: Update) {
     while let Some(queue_item) = model.action_queue.pop() {
         match queue_item {
             QueueItem::Play(name, fade, should_loop) => {
-                trigger_clip(app, model, &name, fade, should_loop).unwrap();
+                start_one(
+                    &name,
+                    &model.sound_bank,
+                    app.assets_path().expect("failed to fetch assets path"),
+                    &mut model.clips_playing,
+                    fade,
+                    should_loop,
+                    &model.stream,
+                )
+                .expect("failed to start clip");
             }
             QueueItem::Stop(id, fade_out) => {
                 if let Some((_index, clip)) =

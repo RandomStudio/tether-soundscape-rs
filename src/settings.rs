@@ -2,7 +2,7 @@ use nannou::prelude::*;
 use nannou_egui::egui::{self, Slider};
 use std::time::Duration;
 
-use crate::{get_clip_index_with_name, stop_all, utils::frames_to_seconds, Model, QueueItem};
+use crate::{get_clip_index_with_name, queue_stop_all, utils::frames_to_seconds, Model, QueueItem};
 
 pub const UPDATE_INTERVAL: Duration = Duration::from_millis(16);
 pub const MIN_RADIUS: f32 = 100.;
@@ -114,10 +114,10 @@ pub fn build_ui(model: &mut Model, since_start: Duration, _window_rect: Rect) {
             ui.horizontal(|ui| {
                 ui.label("(None)");
                 if ui.button("Stop all").clicked() {
-                    stop_all(&mut model.clips_playing, &mut model.action_queue, None);
+                    queue_stop_all(&mut model.clips_playing, &mut model.action_queue, None);
                 }
                 if ui.button("Stop all (fade out)").clicked() {
-                    stop_all(
+                    queue_stop_all(
                         &mut model.clips_playing,
                         &mut model.action_queue,
                         Some(*fadeout_duration),

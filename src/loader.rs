@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use nannou::App;
 use serde::{Deserialize, Serialize};
@@ -46,9 +46,8 @@ impl AudioClipOnDisk {
     }
 }
 
-pub fn get_sound_asset_path(app: &App, base_path: &str) -> String {
-    let assets = app.assets_path().expect("could not find assets directory");
-    let path = assets.join("sounds").join(base_path);
+pub fn get_sound_asset_path(assets_path: PathBuf, base_path: &str) -> String {
+    let path = assets_path.join("sounds").join(base_path);
     path.to_str().unwrap().into()
 }
 
@@ -71,7 +70,10 @@ impl SoundBank {
                         .iter()
                         .enumerate()
                         .map(|(_i, sample)| {
-                            let path_str = get_sound_asset_path(app, sample.path());
+                            let path_str = get_sound_asset_path(
+                                app.assets_path().expect("failed to fetch asset path"),
+                                sample.path(),
+                            );
                             let path = Path::new(&path_str);
                             let (frames_count, sample_rate) = read_length_and_rate(path);
                             let volume = sample.volume;
