@@ -41,8 +41,8 @@ pub enum QueueItem {
     Play(String, Option<u32>, bool),
     /// Stop/fade out: id in currently_playing Vec, optional fade duration in ms
     Stop(usize, Option<u32>),
-    /// Remove clip: index in currentl_playing Vec, id for audio model
-    Remove(usize, usize),
+    /// Remove clip: id in currently_playing Vec
+    Remove(usize),
 }
 
 pub struct CurrentlyPlayingClip {
@@ -100,7 +100,7 @@ fn model(app: &App) -> Model {
     let egui = Egui::from_window(&window);
 
     let sound_bank = SoundBank::new(app, Path::new("./test_bank.json"));
-    let duration_range = get_duration_range(&sound_bank.clips());
+    let duration_range = get_duration_range(sound_bank.clips());
 
     Model {
         stream,
@@ -126,12 +126,12 @@ fn raw_window_event(_app: &App, model: &mut Model, event: &nannou::winit::event:
 }
 
 pub fn queue_stop_all(
-    clips_playing: &mut Vec<CurrentlyPlayingClip>,
+    clips_playing: &mut [CurrentlyPlayingClip],
     action_queue: &mut Vec<QueueItem>,
     fade: Option<u32>,
 ) {
-    for (index, _clip) in clips_playing.iter().enumerate() {
-        action_queue.push(QueueItem::Stop(index, fade));
+    for (_index, clip) in clips_playing.iter().enumerate() {
+        action_queue.push(QueueItem::Stop(clip.id, fade));
     }
 }
 
@@ -231,14 +231,14 @@ fn update(app: &App, model: &mut Model, update: Update) {
 
     while let Ok(id) = model.rx_complete.pop() {
         println!("Complete state received for clip ID {}", id);
-        if let Some((index, clip)) = get_clip_index_with_id(&model.clips_playing, id) {
+        if let Some((_index, clip)) = get_clip_index_with_id(&model.clips_playing, id) {
             if clip.should_loop {
                 println!("Should loop! Repeat clip with name {}", clip.name);
                 model
                     .action_queue
                     .push(QueueItem::Play(String::from(&clip.name), None, true));
             }
-            model.action_queue.push(QueueItem::Remove(index, id));
+            model.action_queue.push(QueueItem::Remove(id));
         } else {
             panic!("No match for clip id {}", id);
         }
@@ -274,14 +274,23 @@ fn update(app: &App, model: &mut Model, update: Update) {
                         .unwrap();
                 }
             }
-            QueueItem::Remove(index, id) => {
+            QueueItem::Remove(id) => {
                 model
                     .stream
                     .send(move |audio| {
                         audio.remove_sound(id);
                     })
                     .unwrap();
-                model.clips_playing.remove(index);
+                if let Some((index, _c)) = model
+                    .clips_playing
+                    .iter()
+                    .enumerate()
+                    .find(|(_i, c)| c.id == id)
+                {
+                    model.clips_playing.remove(index);
+                } else {
+                    panic!("Failed to find clip with ID {}", id);
+                }
             }
         }
     }

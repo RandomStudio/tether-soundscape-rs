@@ -90,3 +90,39 @@ pub fn get_duration_range(clips: &[AudioClipOnDisk]) -> [u32; 2] {
     }
     [shortest.unwrap_or(0), longest]
 }
+
+/// Given a list of currently playing clips and a list of clips we *want* to play,
+/// filter the list to return only the names which need to be *added* (i.e. are
+/// in the latter list, but not the former)
+pub fn clips_to_add(currently_playing: &[CurrentlyPlayingClip], to_play: &[String]) -> Vec<String> {
+    let mut names: Vec<String> = Vec::new();
+    for name in to_play {
+        if let None = currently_playing
+            .iter()
+            .find(|c| c.name.eq_ignore_ascii_case(&name))
+        {
+            names.push(String::from(name));
+        }
+    }
+
+    names
+}
+
+/// Given a list of currently playing clips and a list of clips we *want* to play/continue,
+/// filter the list to return only the IDs for the clips which need to be *removed*
+/// (i.e. are in the former list, but not the latter)
+pub fn clips_to_remove(
+    currently_playing: &[CurrentlyPlayingClip],
+    should_be_playing: &[String],
+) -> Vec<usize> {
+    let mut ids: Vec<usize> = Vec::new();
+    for c in currently_playing {
+        if let None = should_be_playing
+            .iter()
+            .find(|name| name.eq_ignore_ascii_case(&c.name))
+        {
+            ids.push(c.id);
+        }
+    }
+    ids
+}

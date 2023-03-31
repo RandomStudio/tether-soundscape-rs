@@ -2,7 +2,11 @@ use nannou::prelude::*;
 use nannou_egui::egui::{self, Slider};
 use std::time::Duration;
 
-use crate::{get_clip_index_with_name, queue_stop_all, utils::frames_to_seconds, Model, QueueItem};
+use crate::{
+    queue_stop_all,
+    utils::{clips_to_add, clips_to_remove, frames_to_seconds, get_clip_index_with_name},
+    Model, QueueItem,
+};
 
 pub const UPDATE_INTERVAL: Duration = Duration::from_millis(16);
 pub const MIN_RADIUS: f32 = 100.;
@@ -93,20 +97,29 @@ pub fn build_ui(model: &mut Model, since_start: Duration, _window_rect: Rect) {
                         let mut result = String::from("");
                         for (i, name) in s.clips.iter().enumerate() {
                             if i > 0 {
-                                result.push_str(",");
+                                result.push_str(", ");
                             }
-                            result.push_str(&name);
+                            result.push_str(name);
                         }
                         result
                     };
                     ui.label(names);
                     if ui.button("load").clicked() {
-                        for name in &s.clips {
+                        let to_add = clips_to_add(&model.clips_playing, &s.clips);
+                        println!("Scene transition: x{} clips to add", to_add.len());
+                        for name in to_add {
                             model.action_queue.push(QueueItem::Play(
                                 String::from(name),
                                 Some(*fadein_duration),
                                 true,
                             ));
+                        }
+                        let to_remove = clips_to_remove(&model.clips_playing, &s.clips);
+                        println!("Scene transition: x{} clips to remove", to_remove.len());
+                        for id in to_remove {
+                            model
+                                .action_queue
+                                .push(QueueItem::Stop(id, Some(*fadeout_duration)));
                         }
                     }
                 });

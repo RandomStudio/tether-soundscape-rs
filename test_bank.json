@@ -24,7 +24,10 @@
       "clips": ["frog", "mice"]
     },
     {
-      "clips": ["squirrel", "mice"]
+      "clips": ["squirrel", "squirrel2"]
+    },
+    {
+      "clips": ["squirrel", "mice", "frog"]
     }
   ]
 }
