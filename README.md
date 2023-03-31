@@ -17,7 +17,7 @@ A multi-layered audio sequencer, remote-controllable via Tether, to create sound
 - [x] Allow starting/fixed "maximum" volume per clip to be applied
 - [x] Apply fade in/out volume controls
 - [x] Draw clip progress and volume
-- [ ] Allow "scenes" to be triggered (with transition)
+- [x] Allow "scenes" to be triggered (with transition)
 - [ ] Make use of tempo, quantisation for timing
 - [ ] Env logging, CLI params, etc.
 - [ ] Low/no graphics mode
