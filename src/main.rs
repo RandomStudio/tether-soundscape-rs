@@ -4,7 +4,7 @@ use nannou::prelude::*;
 use nannou_audio as audio;
 use nannou_egui::Egui;
 
-use loader::{get_sound_asset_path, load_sample_bank, AudioClipOnDisk};
+use loader::{get_sound_asset_path, AudioClipOnDisk, SoundBank};
 use playback::{
     render_audio, Audio, BufferedClip, CompleteUpdate, PlaybackState, ProgressUpdate, RequestUpdate,
 };
@@ -27,7 +27,7 @@ pub struct Model {
     rx_complete: Consumer<CompleteUpdate>,
     tx_request: Producer<RequestUpdate>,
     stream: audio::Stream<Audio>,
-    clips_available: Vec<AudioClipOnDisk>,
+    sound_bank: SoundBank,
     clips_playing: Vec<CurrentlyPlayingClip>,
     duration_range: [u32; 2],
     action_queue: Vec<QueueItem>,
@@ -118,12 +118,12 @@ fn model(app: &App) -> Model {
     let window = app.window(window_id).unwrap();
     let egui = Egui::from_window(&window);
 
-    let clips_available = load_sample_bank(app, Path::new("./test_bank.json"));
-    let duration_range = get_duration_range(&clips_available);
+    let sound_bank = SoundBank::new(app, Path::new("./test_bank.json"));
+    let duration_range = get_duration_range(&sound_bank.clips());
 
     Model {
         stream,
-        clips_available,
+        sound_bank,
         clips_playing: Vec::new(),
         duration_range,
         rx_progress,
@@ -154,6 +154,10 @@ fn raw_window_event(_app: &App, model: &mut Model, event: &nannou::winit::event:
     model.egui.handle_raw_event(event);
 }
 
+// fn stop_all(clips_playing: &mut Vec<CurrentlyPlayingClip>, action_queue: &mut Vec<QueueItem>, fade: Option<u32>) {
+
+// }
+
 fn trigger_clip(
     app: &App,
     model: &mut Model,
@@ -162,7 +166,8 @@ fn trigger_clip(
     should_loop: bool,
 ) -> Result<(), ()> {
     if let Some(clip_matched) = model
-        .clips_available
+        .sound_bank
+        .clips()
         .iter()
         .find(|c| c.name().eq_ignore_ascii_case(name))
     {

@@ -39,45 +39,93 @@ pub fn build_ui(model: &mut Model, since_start: Duration, _window_rect: Rect) {
 
         ui.separator();
 
-        for (_index, c) in model.clips_available.iter().enumerate() {
-            let duration_s = frames_to_seconds(c.frames_count(), c.sample_rate(), None);
-            let sample_rate = &format!("{}KHz", c.sample_rate().to_f32().unwrap() / 1000.);
+        ui.collapsing("Clip triggers", |ui| {
+            for c in model.sound_bank.clips() {
+                let duration_s = frames_to_seconds(c.frames_count(), c.sample_rate(), None);
+                let sample_rate = &format!("{}KHz", c.sample_rate().to_f32().unwrap() / 1000.);
+                ui.horizontal(|ui| {
+                    ui.label(format!("{} ({}s @{})", c.name(), duration_s, sample_rate));
+                    if ui.button("hit").clicked() {
+                        model.action_queue.push(QueueItem::Play(
+                            String::from(c.name()),
+                            None,
+                            false,
+                        ));
+                    }
+                    if ui.button("hit (fade in)").clicked() {
+                        model.action_queue.push(QueueItem::Play(
+                            String::from(c.name()),
+                            Some(*fadein_duration),
+                            false,
+                        ));
+                    }
+                    if ui.button("loop").clicked() {
+                        model.action_queue.push(QueueItem::Play(
+                            String::from(c.name()),
+                            None,
+                            true,
+                        ));
+                    }
+                    if ui.button("stop").clicked() {
+                        if let Some((_index, info)) =
+                            get_clip_index_with_name(&model.clips_playing, c.name())
+                        {
+                            model.action_queue.push(QueueItem::Stop(info.id, None));
+                        }
+                    }
+                    if ui.button("stop (fade out)").clicked() {
+                        if let Some((_index, info)) =
+                            get_clip_index_with_name(&model.clips_playing, c.name())
+                        {
+                            model
+                                .action_queue
+                                .push(QueueItem::Stop(info.id, Some(*fadeout_duration)));
+                        }
+                    }
+                });
+            }
+        });
+
+        ui.collapsing("Scenes", |ui| {
+            for s in model.sound_bank.scenes() {
+                ui.horizontal(|ui| {
+                    let names = {
+                        let mut result = String::from("");
+                        for (i, name) in s.clips.iter().enumerate() {
+                            if i > 0 {
+                                result.push_str(",");
+                            }
+                            result.push_str(&name);
+                        }
+                        result
+                    };
+                    ui.label(names);
+                    if ui.button("load").clicked() {
+                        for name in &s.clips {
+                            model.action_queue.push(QueueItem::Play(
+                                String::from(name),
+                                Some(*fadein_duration),
+                                true,
+                            ));
+                        }
+                    }
+                });
+            }
             ui.horizontal(|ui| {
-                ui.label(format!("{} ({}s @{})", c.name(), duration_s, sample_rate));
-                if ui.button("hit").clicked() {
-                    model
-                        .action_queue
-                        .push(QueueItem::Play(String::from(c.name()), None, false));
-                }
-                if ui.button("hit (fade in)").clicked() {
-                    model.action_queue.push(QueueItem::Play(
-                        String::from(c.name()),
-                        Some(*fadein_duration),
-                        false,
-                    ));
-                }
-                if ui.button("loop").clicked() {
-                    model
-                        .action_queue
-                        .push(QueueItem::Play(String::from(c.name()), None, true));
-                }
-                if ui.button("stop").clicked() {
-                    if let Some((_index, info)) =
-                        get_clip_index_with_name(&model.clips_playing, c.name())
-                    {
-                        model.action_queue.push(QueueItem::Stop(info.id, None));
+                ui.label("(None)");
+                if ui.button("Stop all").clicked() {
+                    for (index, _clip) in model.clips_playing.iter().enumerate() {
+                        model.action_queue.push(QueueItem::Stop(index, None));
                     }
                 }
-                if ui.button("stop (fade out)").clicked() {
-                    if let Some((_index, info)) =
-                        get_clip_index_with_name(&model.clips_playing, c.name())
-                    {
+                if ui.button("Stop all (fade out)").clicked() {
+                    for (index, _clip) in model.clips_playing.iter().enumerate() {
                         model
                             .action_queue
-                            .push(QueueItem::Stop(info.id, Some(*fadeout_duration)));
+                            .push(QueueItem::Stop(index, Some(*fadeout_duration)));
                     }
                 }
-            });
-        }
+            })
+        });
     });
 }

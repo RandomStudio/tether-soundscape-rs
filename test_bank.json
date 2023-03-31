@@ -1,20 +1,30 @@
-[
-  {
-    "name": "frog",
-    "path": "frog.wav",
-    "volume": 0.9
-  },
-  {
-    "name": "mice",
-    "path": "mice.wav",
-    "volume": 0.2
-  },
-  {
-    "name": "squirrel",
-    "path": "squirrel.wav"
-  },
-  {
-    "name": "squirrel2",
-    "path": "squirrel2.wav"
-  }
-]
+{
+  "clips": [
+    {
+      "name": "frog",
+      "path": "frog.wav",
+      "volume": 0.9
+    },
+    {
+      "name": "mice",
+      "path": "mice.wav",
+      "volume": 0.2
+    },
+    {
+      "name": "squirrel",
+      "path": "squirrel.wav"
+    },
+    {
+      "name": "squirrel2",
+      "path": "squirrel2.wav"
+    }
+  ],
+  "scenes": [
+    {
+      "clips": ["frog", "mice"]
+    },
+    {
+      "clips": ["squirrel", "mice"]
+    }
+  ]
+}
