@@ -7,7 +7,7 @@ use crate::{get_clip_index_with_name, utils::frames_to_seconds, Model, QueueItem
 pub const UPDATE_INTERVAL: Duration = Duration::from_millis(16);
 pub const MIN_RADIUS: f32 = 100.;
 pub const LINE_THICKNESS: f32 = 2.;
-pub const DEFAULT_FADEIN: u32 = 100;
+pub const DEFAULT_FADEIN: u32 = 2000;
 pub const DEFAULT_FADEOUT: u32 = 2000;
 pub const RING_BUFFER_SIZE: usize = 32;
 
@@ -47,12 +47,19 @@ pub fn build_ui(model: &mut Model, since_start: Duration, _window_rect: Rect) {
                 if ui.button("hit").clicked() {
                     model
                         .action_queue
-                        .push(QueueItem::Play(String::from(c.name()), false));
+                        .push(QueueItem::Play(String::from(c.name()), None, false));
+                }
+                if ui.button("hit (fade in)").clicked() {
+                    model.action_queue.push(QueueItem::Play(
+                        String::from(c.name()),
+                        Some(*fadein_duration),
+                        false,
+                    ));
                 }
                 if ui.button("loop").clicked() {
                     model
                         .action_queue
-                        .push(QueueItem::Play(String::from(c.name()), true));
+                        .push(QueueItem::Play(String::from(c.name()), None, true));
                 }
                 if ui.button("stop").clicked() {
                     if let Some((_index, info)) =
@@ -61,7 +68,7 @@ pub fn build_ui(model: &mut Model, since_start: Duration, _window_rect: Rect) {
                         model.action_queue.push(QueueItem::Stop(info.id, None));
                     }
                 }
-                if ui.button("fade").clicked() {
+                if ui.button("stop (fade out)").clicked() {
                     if let Some((_index, info)) =
                         get_clip_index_with_name(&model.clips_playing, c.name())
                     {

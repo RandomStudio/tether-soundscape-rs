@@ -19,9 +19,10 @@ A multi-layered audio sequencer, remote-controllable via Tether, to create sound
 - [x] Draw clip progress and volume
 - [ ] Allow "scenes" to be triggered (with transition)
 - [ ] Make use of tempo, quantisation for timing
-- [ ] Optionally connect to [Ableton link](https://docs.rs/ableton-link/latest/ableton_link/)
-- [ ] On-screen UI (Egui), CLI params, etc.
+- [ ] Env logging, CLI params, etc.
 - [ ] Low/no graphics mode
 - [ ] Add Tether remote control commands, as per API in [original](https://github.com/RandomStudio/tether-soundscape)
 - [ ] Separate CLIP and STREAM sample rates are currently a problem - might need a separate Reader (and thread!) for each clip if sample rates are allowed to differ
+- [ ] Optionally connect to [Ableton link](https://docs.rs/ableton-link/latest/ableton_link/)
+- [ ] Possibly distribute radius by "index" not duration
 

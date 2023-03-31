@@ -36,8 +36,8 @@ pub struct Model {
     settings: Settings,
 }
 enum QueueItem {
-    /// Start playback: name, should_loop
-    Play(String, bool),
+    /// Start playback: name, optional fade duration in ms, should_loop
+    Play(String, Option<u32>, bool),
     /// Stop/fade out: id in currently_playing Vec, optional fade duration in ms
     Stop(usize, Option<u32>),
     /// Remove clip: index in currentl_playing Vec, id for audio model
@@ -154,7 +154,13 @@ fn raw_window_event(_app: &App, model: &mut Model, event: &nannou::winit::event:
     model.egui.handle_raw_event(event);
 }
 
-fn trigger_clip(app: &App, model: &mut Model, name: &str, should_loop: bool) -> Result<(), ()> {
+fn trigger_clip(
+    app: &App,
+    model: &mut Model,
+    name: &str,
+    fade: Option<u32>,
+    should_loop: bool,
+) -> Result<(), ()> {
     if let Some(clip_matched) = model
         .clips_available
         .iter()
@@ -172,11 +178,7 @@ fn trigger_clip(app: &App, model: &mut Model, name: &str, should_loop: bool) -> 
             );
             let new_clip = BufferedClip::new(
                 id,
-                Some((
-                    0.,
-                    clip_matched.volume().unwrap_or(1.0),
-                    model.settings.fadein_duration,
-                )),
+                Some((0., clip_matched.volume().unwrap_or(1.0), fade.unwrap_or(0))),
                 reader,
             );
             clips_playing.push(CurrentlyPlayingClip {
@@ -286,7 +288,7 @@ fn update(app: &App, model: &mut Model, update: Update) {
                 println!("Should loop! Repeat clip with name {}", clip.name);
                 model
                     .action_queue
-                    .push(QueueItem::Play(String::from(&clip.name), true));
+                    .push(QueueItem::Play(String::from(&clip.name), None, true));
             }
             model.action_queue.push(QueueItem::Remove(index, id));
         } else {
@@ -296,8 +298,8 @@ fn update(app: &App, model: &mut Model, update: Update) {
 
     while let Some(queue_item) = model.action_queue.pop() {
         match queue_item {
-            QueueItem::Play(name, should_loop) => {
-                trigger_clip(app, model, &name, should_loop).unwrap();
+            QueueItem::Play(name, fade, should_loop) => {
+                trigger_clip(app, model, &name, fade, should_loop).unwrap();
             }
             QueueItem::Stop(id, fade_out) => {
                 if let Some((_index, clip)) =
