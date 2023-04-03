@@ -11,7 +11,7 @@ use playback::{
 use rtrb::{Consumer, Producer, RingBuffer};
 use settings::{
     build_ui, Settings, DEFAULT_FADEIN, DEFAULT_FADEOUT, LINE_THICKNESS, MIN_RADIUS,
-    RING_BUFFER_SIZE, UPDATE_INTERVAL,
+    RING_BUFFER_SIZE, SAMPLE_RATE, UPDATE_INTERVAL,
 };
 use tween::TweenTime;
 use utils::{get_clip_index_with_id, get_clip_index_with_id_mut, get_duration_range};
@@ -92,7 +92,7 @@ fn model(app: &App) -> Model {
     let stream = audio_host
         .new_output_stream(audio_model)
         .render(render_audio)
-        .sample_rate(96000)
+        .sample_rate(SAMPLE_RATE)
         .build()
         .unwrap();
 

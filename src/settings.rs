@@ -15,6 +15,8 @@ pub const DEFAULT_FADEIN: u32 = 2000;
 pub const DEFAULT_FADEOUT: u32 = 2000;
 pub const RING_BUFFER_SIZE: usize = 32;
 
+pub const SAMPLE_RATE: u32 = 96000;
+
 pub struct Settings {
     pub fadein_duration: u32,
     pub fadeout_duration: u32,
