@@ -12,14 +12,14 @@ A multi-layered audio sequencer, remote-controllable via Tether, to create sound
 
 ## Remote control
 
-All Instructions Message are expected to be received on the topic +/+/instructions
+All Instructions Message are expected to be received on the topic `+/+/instructions`
 
 An Instruction Message has the following fields:
 - `instructionType` (required): one of the following strings: "hit", "add", "remove", "scene"
 - `clipNames` (required): an array of one or more string names for the clips
 - `fadeDuration` (optional): an integer value for milliseconds to fade in or out (context-dependent)
 
-Unlike with the [original](https://github.com/RandomStudio/tether-soundscape) we do not include a "silenceAll" instruction type. An empty scene `clipNames: []` is equivalent for now.
+Unlike with the [original](https://github.com/RandomStudio/tether-soundscape) we do not include a "silenceAll" instruction type because this requires making `clipNames` optional when this is only applicable to a single case. An empty scene `clipNames: []` is equivalent for now.
 
 ### Examples
 
