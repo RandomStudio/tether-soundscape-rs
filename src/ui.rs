@@ -100,7 +100,7 @@ pub fn build_ui(model: &mut Model, since_start: Duration, _window_rect: Rect) {
                         info!("Scene transition: x{} clips to add", to_add.len());
                         for name in to_add {
                             model.action_queue.push(QueueItem::Play(
-                                String::from(name),
+                                name,
                                 Some(*fadein_duration),
                                 true,
                             ));

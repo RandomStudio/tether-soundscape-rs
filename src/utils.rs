@@ -2,14 +2,14 @@ use nannou::prelude::ToPrimitive;
 
 use crate::{loader::AudioClipOnDisk, CurrentlyPlayingClip};
 
-pub fn frames_to_millis(frames_count: u32, sample_rate: u32) -> u32 {
-    if sample_rate == 0 {
-        panic!("Sample rate should be non-zero");
-    }
-    (frames_count.to_f32().unwrap() / sample_rate.to_f32().unwrap() * 1000.)
-        .to_u32()
-        .unwrap()
-}
+// pub fn frames_to_millis(frames_count: u32, sample_rate: u32) -> u32 {
+//     if sample_rate == 0 {
+//         panic!("Sample rate should be non-zero");
+//     }
+//     (frames_count.to_f32().unwrap() / sample_rate.to_f32().unwrap() * 1000.)
+//         .to_u32()
+//         .unwrap()
+// }
 
 pub fn frames_to_seconds(frames_count: u32, sample_rate: u32, precision: Option<u32>) -> f32 {
     if sample_rate == 0 {
@@ -97,9 +97,9 @@ pub fn get_duration_range(clips: &[AudioClipOnDisk]) -> [u32; 2] {
 pub fn clips_to_add(currently_playing: &[CurrentlyPlayingClip], to_play: &[String]) -> Vec<String> {
     let mut names: Vec<String> = Vec::new();
     for name in to_play {
-        if let None = currently_playing
+        if !currently_playing
             .iter()
-            .find(|c| c.name.eq_ignore_ascii_case(&name))
+            .any(|c| c.name.eq_ignore_ascii_case(name))
         {
             names.push(String::from(name));
         }
@@ -117,9 +117,9 @@ pub fn clips_to_remove(
 ) -> Vec<usize> {
     let mut ids: Vec<usize> = Vec::new();
     for c in currently_playing {
-        if let None = should_be_playing
+        if !should_be_playing
             .iter()
-            .find(|name| name.eq_ignore_ascii_case(&c.name))
+            .any(|name| name.eq_ignore_ascii_case(&c.name))
         {
             ids.push(c.id);
         }

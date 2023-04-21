@@ -1,5 +1,8 @@
 use clap::Parser;
-use std::time::Duration;
+use std::{
+    net::{IpAddr, Ipv4Addr},
+    time::Duration,
+};
 
 pub const UPDATE_INTERVAL: Duration = Duration::from_millis(16);
 pub const MIN_RADIUS: f32 = 100.;
@@ -7,7 +10,7 @@ pub const LINE_THICKNESS: f32 = 2.;
 pub const DEFAULT_FADEIN: u32 = 2000;
 pub const DEFAULT_FADEOUT: u32 = 2000;
 pub const RING_BUFFER_SIZE: usize = 32;
-
+const TETHER_HOST: std::net::IpAddr = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
 pub const SAMPLE_RATE: u32 = 48000;
 
 #[derive(Parser, Debug)]
@@ -18,6 +21,14 @@ pub struct Cli {
 
     #[arg(long = "sampleRate",default_value_t=SAMPLE_RATE)]
     pub sample_rate: u32,
+
+    /// Flag to disable Tether connection
+    #[arg(long = "tether.disable")]
+    pub tether_disable: bool,
+
+    /// The IP address of the Tether MQTT broker (server)
+    #[arg(long = "tether.host", default_value_t=TETHER_HOST)]
+    pub tether_host: std::net::IpAddr,
 }
 pub struct Settings {
     pub fadein_duration: u32,

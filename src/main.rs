@@ -5,8 +5,9 @@ use nannou_egui::Egui;
 use clap::Parser;
 
 use env_logger::{Builder, Env};
-use log::{debug, error, info, trace};
+use log::{debug, error, info, trace, warn};
 use std::path::{Path, PathBuf};
+use tether::Instruction;
 
 use loader::{get_sound_asset_path, SoundBank};
 use playback::{
@@ -16,15 +17,24 @@ use rtrb::{Consumer, Producer, RingBuffer};
 use settings::{Cli, Settings, LINE_THICKNESS, MIN_RADIUS, RING_BUFFER_SIZE, UPDATE_INTERVAL};
 use tween::TweenTime;
 use ui::build_ui;
-use utils::{get_clip_index_with_id, get_clip_index_with_id_mut, get_duration_range};
+use utils::{
+    get_clip_index_with_id, get_clip_index_with_id_mut, get_clip_index_with_name,
+    get_duration_range,
+};
 
-use crate::utils::{get_highest_id, millis_to_frames};
+use crate::{
+    tether::TetherAgent,
+    utils::{clips_to_remove, get_highest_id, millis_to_frames},
+};
 
 mod loader;
 mod playback;
 mod settings;
+mod tether;
 mod ui;
 mod utils;
+
+pub type FadeDuration = u32;
 
 pub struct Model {
     rx_progress: Consumer<ProgressUpdate>,
@@ -33,17 +43,18 @@ pub struct Model {
     stream: audio::Stream<Audio>,
     sound_bank: SoundBank,
     clips_playing: Vec<CurrentlyPlayingClip>,
-    duration_range: [u32; 2],
+    duration_range: [FadeDuration; 2],
     action_queue: Vec<QueueItem>,
     window_id: WindowId,
     egui: Egui,
     settings: Settings,
+    tether: TetherAgent,
 }
 pub enum QueueItem {
     /// Start playback: name, optional fade duration in ms, should_loop
-    Play(String, Option<u32>, bool),
+    Play(String, Option<FadeDuration>, bool),
     /// Stop/fade out: id in currently_playing Vec, optional fade duration in ms
-    Stop(usize, Option<u32>),
+    Stop(usize, Option<FadeDuration>),
     /// Remove clip: id in currently_playing Vec
     Remove(usize),
 }
@@ -118,6 +129,13 @@ fn model(app: &App) -> Model {
     let sound_bank = SoundBank::new(app, Path::new("./test_bank.json"));
     let duration_range = get_duration_range(sound_bank.clips());
 
+    let mut tether = TetherAgent::new(cli.tether_host);
+    if !cli.tether_disable {
+        tether.connect();
+    } else {
+        warn!("Tether connection disabled")
+    }
+
     Model {
         stream,
         sound_bank,
@@ -130,6 +148,7 @@ fn model(app: &App) -> Model {
         window_id,
         egui,
         settings,
+        tether,
     }
 }
 
@@ -302,6 +321,57 @@ fn update(app: &App, model: &mut Model, update: Update) {
                     model.clips_playing.remove(index);
                 } else {
                     panic!("Failed to find clip with ID {}", id);
+                }
+            }
+        }
+    }
+
+    if model.tether.is_connected() {
+        if let Some(instruction) = model.tether.check_messages() {
+            match instruction {
+                Instruction::Hit(clip_names) => {
+                    for c in clip_names {
+                        model.action_queue.push(QueueItem::Play(c, None, false));
+                    }
+                }
+                Instruction::Add(clip_names, fade_duration) => {
+                    for c in clip_names {
+                        info!("Remote request to play clip named {}", &c);
+                        model
+                            .action_queue
+                            .push(QueueItem::Play(c, fade_duration, false));
+                    }
+                }
+                Instruction::Remove(clip_names, fade_duration) => {
+                    for c in clip_names {
+                        if let Some((_index, info)) =
+                            get_clip_index_with_name(&model.clips_playing, &c)
+                        {
+                            info!("Remote request to remove (stop) clip named {}", &c);
+                            model
+                                .action_queue
+                                .push(QueueItem::Stop(info.id, fade_duration));
+                        } else {
+                            error!("Could not find clip named {} to stop", c);
+                        }
+                    }
+                }
+                Instruction::Scene(clip_names, fade_duration) => {
+                    let to_add = &clip_names;
+                    info!("Scene transition: x{} clips to add", to_add.len());
+                    for name in to_add {
+                        // TODO: check at this point whether the clips exist (available)?
+                        model.action_queue.push(QueueItem::Play(
+                            String::from(name),
+                            fade_duration,
+                            true,
+                        ));
+                    }
+                    let to_remove = clips_to_remove(&model.clips_playing, &clip_names);
+                    info!("Scene transition: x{} clips to remove", to_remove.len());
+                    for id in to_remove {
+                        model.action_queue.push(QueueItem::Stop(id, fade_duration));
+                    }
                 }
             }
         }
