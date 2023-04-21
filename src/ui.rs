@@ -1,3 +1,4 @@
+use log::info;
 use nannou::prelude::*;
 use nannou_egui::egui::{self, Slider};
 use std::time::Duration;
@@ -96,7 +97,7 @@ pub fn build_ui(model: &mut Model, since_start: Duration, _window_rect: Rect) {
                     ui.label(names);
                     if ui.button("load").clicked() {
                         let to_add = clips_to_add(&model.clips_playing, &s.clips);
-                        println!("Scene transition: x{} clips to add", to_add.len());
+                        info!("Scene transition: x{} clips to add", to_add.len());
                         for name in to_add {
                             model.action_queue.push(QueueItem::Play(
                                 String::from(name),
@@ -105,7 +106,7 @@ pub fn build_ui(model: &mut Model, since_start: Duration, _window_rect: Rect) {
                             ));
                         }
                         let to_remove = clips_to_remove(&model.clips_playing, &s.clips);
-                        println!("Scene transition: x{} clips to remove", to_remove.len());
+                        info!("Scene transition: x{} clips to remove", to_remove.len());
                         for id in to_remove {
                             model
                                 .action_queue

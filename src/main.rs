@@ -1,7 +1,11 @@
-use clap::Parser;
 use nannou::prelude::*;
 use nannou_audio as audio;
 use nannou_egui::Egui;
+
+use clap::Parser;
+
+use env_logger::{Builder, Env};
+use log::{debug, error, info, trace};
 use std::path::{Path, PathBuf};
 
 use loader::{get_sound_asset_path, SoundBank};
@@ -72,6 +76,14 @@ fn main() {
 
 fn model(app: &App) -> Model {
     let cli = Cli::parse();
+
+    let mut builder = Builder::from_env(Env::default().default_filter_or(&cli.log_level));
+    builder.filter_module("wgpu_core", log::LevelFilter::Error);
+    builder.filter_module("wgpu_hal", log::LevelFilter::Warn);
+    builder.filter_module("naga", log::LevelFilter::Warn);
+    builder.init();
+    info!("Started; args: {:?}", cli);
+    debug!("Debugging is enabled; could be verbose");
 
     let settings = Settings::defaults();
 
@@ -154,7 +166,7 @@ fn start_one(
         if let Ok(reader) = audrey::open(Path::new(&path)) {
             let id = get_highest_id(clips_playing);
 
-            println!(
+            info!(
                 "Start playback for clip name {}, given playing ID #{}",
                 clip_matched.name(),
                 id
@@ -181,7 +193,7 @@ fn start_one(
                 .ok();
             Ok(())
         } else {
-            println!("No clip found with name {}", name);
+            error!("No clip found with name {}", name);
             Err(())
         }
     } else {
@@ -211,7 +223,6 @@ fn update(app: &App, model: &mut Model, update: Update) {
     // every frame
     while let Ok(receive) = model.rx_progress.pop() {
         let (id, frames_played, current_volume) = receive;
-        // println!("Got progress update: {}", frames_played);
         if let Some(to_update) = get_clip_index_with_id(&model.clips_playing, id) {
             let (index, _c) = to_update;
             model.clips_playing[index].state = PlaybackState::Playing(frames_played);
@@ -222,7 +233,7 @@ fn update(app: &App, model: &mut Model, update: Update) {
     for mut sound in &mut model.clips_playing {
         if sound.last_update_sent.elapsed().unwrap() > UPDATE_INTERVAL {
             sound.last_update_sent = std::time::SystemTime::now();
-            // println!("Request for clip ID#{}", sound.id);
+            trace!("Request for clip ID#{}", sound.id);
             model
                 .tx_request
                 .push(sound.id)
@@ -231,10 +242,10 @@ fn update(app: &App, model: &mut Model, update: Update) {
     }
 
     while let Ok(id) = model.rx_complete.pop() {
-        println!("Complete state received for clip ID {}", id);
+        debug!("Complete state received for clip ID {}", id);
         if let Some((_index, clip)) = get_clip_index_with_id(&model.clips_playing, id) {
             if clip.should_loop {
-                println!("Should loop! Repeat clip with name {}", clip.name);
+                debug!("Should loop! Repeat clip with name {}", clip.name);
                 model
                     .action_queue
                     .push(QueueItem::Play(String::from(&clip.name), None, true));
@@ -264,7 +275,7 @@ fn update(app: &App, model: &mut Model, update: Update) {
                     get_clip_index_with_id_mut(&mut model.clips_playing, id)
                 {
                     let fadeout_frames = millis_to_frames(fade_out.unwrap_or(0), clip.sample_rate);
-                    println!(
+                    info!(
                         "Stop clip ID#{}: {}, fade out {}fr",
                         id, &clip.name, fadeout_frames
                     );

@@ -1,6 +1,7 @@
 use std::{fs::File, io::BufReader};
 
 use audrey::Reader;
+use log::debug;
 use nannou::prelude::ToPrimitive;
 use nannou_audio::Buffer;
 use rtrb::{Consumer, Producer};
@@ -68,7 +69,7 @@ impl BufferedClip {
     pub fn fade_out(&mut self, duration_frames: u32) {
         let tween: Box<dyn Tween<f32> + Send + Sync> = Box::new(SineInOut);
         let stored_tweener = Tweener::new(self.current_volume, 0., duration_frames, tween);
-        println!("sound sustain => release, fade over {}fr", duration_frames);
+        debug!("sound sustain => release, fade over {}fr", duration_frames);
         self.phase = PlaybackPhase::Release(stored_tweener);
     }
 }
@@ -168,14 +169,14 @@ pub fn render_audio(audio: &mut Audio, buffer: &mut Buffer) {
 
             if let PlaybackPhase::Attack(tween) = &mut sound.phase {
                 if tween.is_finished() {
-                    println!("sound attack => sustain");
+                    debug!("sound attack => sustain");
                     sound.phase = PlaybackPhase::Sustain();
                 }
             }
 
             if let PlaybackPhase::Release(tween) = &sound.phase {
                 if tween.is_finished() {
-                    println!("sound release => complete");
+                    debug!("sound release => complete");
                     sound.phase = PlaybackPhase::Complete();
                 }
             }
