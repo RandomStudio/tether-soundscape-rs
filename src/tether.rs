@@ -6,7 +6,7 @@ use std::{net::IpAddr, process, time::Duration};
 
 use crate::FadeDuration;
 
-const INPUT_TOPICS: &[&str] = &["soundScape/+/instructions"];
+const INPUT_TOPICS: &[&str] = &["+/+/instructions"];
 const INPUT_QOS: &[i32; INPUT_TOPICS.len()] = &[2];
 
 pub struct TetherAgent {

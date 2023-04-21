@@ -10,6 +10,20 @@ A multi-layered audio sequencer, remote-controllable via Tether, to create sound
 - Visualisation via Nannou
 - Great way to learn about low-level audio sample/buffer control, multi-threading in Rust (Nannou always uses separate "realtime" thread for audio)
 
+## Remote control
+### Examples
+
+Single clip hit:
+```
+tether-send --host 127.0.0.1 --topic dummy/dummy/instructions --message \{\"instructionType\":\"hit\"\,\"clipNames\":\[\"frog\"\]\}
+```
+
+Multiple clip hits:
+```
+tether-send --host 127.0.0.1 --topic dummy/dummy/instructions --message \{\"instructionType\":\"hit\"\,\"clipNames\":\[\"frog\"\,\"squirrel\"]\}
+```
+
+
 ## TODO:
 - [ ] Demonstrate running (headless) on Raspberry Pi
 - [x] Apply "loop" as well as trigger/hit/once-off functions
