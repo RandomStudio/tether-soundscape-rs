@@ -19,6 +19,8 @@ An Instruction Message has the following fields:
 - `clipNames` (required): an array of one or more string names for the clips
 - `fadeDuration` (optional): an integer value for milliseconds to fade in or out (context-dependent)
 
+Unlike with the [original](https://github.com/RandomStudio/tether-soundscape) we do not include a "silenceAll" instruction type. An empty scene `clipNames: []` is equivalent for now.
+
 ### Examples
 
 Single clip hit:
