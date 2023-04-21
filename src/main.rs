@@ -1,19 +1,17 @@
-use std::path::{Path, PathBuf};
-
+use clap::Parser;
 use nannou::prelude::*;
 use nannou_audio as audio;
 use nannou_egui::Egui;
+use std::path::{Path, PathBuf};
 
 use loader::{get_sound_asset_path, SoundBank};
 use playback::{
     render_audio, Audio, BufferedClip, CompleteUpdate, PlaybackState, ProgressUpdate, RequestUpdate,
 };
 use rtrb::{Consumer, Producer, RingBuffer};
-use settings::{
-    build_ui, Settings, DEFAULT_FADEIN, DEFAULT_FADEOUT, LINE_THICKNESS, MIN_RADIUS,
-    RING_BUFFER_SIZE, SAMPLE_RATE, UPDATE_INTERVAL,
-};
+use settings::{Cli, Settings, LINE_THICKNESS, MIN_RADIUS, RING_BUFFER_SIZE, UPDATE_INTERVAL};
 use tween::TweenTime;
+use ui::build_ui;
 use utils::{get_clip_index_with_id, get_clip_index_with_id_mut, get_duration_range};
 
 use crate::utils::{get_highest_id, millis_to_frames};
@@ -21,6 +19,7 @@ use crate::utils::{get_highest_id, millis_to_frames};
 mod loader;
 mod playback;
 mod settings;
+mod ui;
 mod utils;
 
 pub struct Model {
@@ -72,6 +71,10 @@ fn main() {
 }
 
 fn model(app: &App) -> Model {
+    let cli = Cli::parse();
+
+    let settings = Settings::defaults();
+
     // Create a window to receive key pressed events.
     let window_id = app
         .new_window()
@@ -92,11 +95,12 @@ fn model(app: &App) -> Model {
     let stream = audio_host
         .new_output_stream(audio_model)
         .render(render_audio)
-        .sample_rate(SAMPLE_RATE)
+        .sample_rate(cli.sample_rate)
         .build()
         .unwrap();
 
     let window = app.window(window_id).unwrap();
+    window.set_title(&format!("Tether Soundscape @{} Hz", cli.sample_rate));
     let egui = Egui::from_window(&window);
 
     let sound_bank = SoundBank::new(app, Path::new("./test_bank.json"));
@@ -113,10 +117,7 @@ fn model(app: &App) -> Model {
         action_queue: Vec::new(),
         window_id,
         egui,
-        settings: Settings {
-            fadein_duration: DEFAULT_FADEIN,
-            fadeout_duration: DEFAULT_FADEOUT,
-        },
+        settings,
     }
 }
 
