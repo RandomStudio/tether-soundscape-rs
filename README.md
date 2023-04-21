@@ -11,6 +11,14 @@ A multi-layered audio sequencer, remote-controllable via Tether, to create sound
 - Great way to learn about low-level audio sample/buffer control, multi-threading in Rust (Nannou always uses separate "realtime" thread for audio)
 
 ## Remote control
+
+All Instructions Message are expected to be received on the topic +/+/instructions
+
+An Instruction Message has the following fields:
+- `instructionType` (required): one of the following strings: "hit", "add", "remove", "scene"
+- `clipNames` (required): an array of one or more string names for the clips
+- `fadeDuration` (optional): an integer value for milliseconds to fade in or out (context-dependent)
+
 ### Examples
 
 Single clip hit:
@@ -55,8 +63,9 @@ tether-send --host 127.0.0.1 --topic dummy/dummy/instructions --message \{\"inst
 - [ ] Make use of tempo, quantisation for timing
 - [x] Env logging, CLI params
 - [ ] Low/no graphics mode
-- [ ] Add Tether remote control commands, as per API in [original](https://github.com/RandomStudio/tether-soundscape)
+- [x] Add Tether remote control commands, as per API in [original](https://github.com/RandomStudio/tether-soundscape)
 - [ ] Separate CLIP and STREAM sample rates are currently a problem - might need a separate Reader (and thread!) for each clip if sample rates are allowed to differ
 - [ ] Optionally connect to [Ableton link](https://docs.rs/ableton-link/latest/ableton_link/)
 - [ ] Possibly distribute radius by "index" not duration
+- [ ] Allow "instructions" to be subscribed to with a specified group (optional), so `+/someGroup/instructions` rather than the default `+/+/instructions`
 
