@@ -23,6 +23,26 @@ Multiple clip hits:
 tether-send --host 127.0.0.1 --topic dummy/dummy/instructions --message \{\"instructionType\":\"hit\"\,\"clipNames\":\[\"frog\"\,\"squirrel\"]\}
 ```
 
+Scene with two clips:
+```
+tether-send --host 127.0.0.1 --topic dummy/dummy/instructions --message \{\"instructionType\":\"scene\",\"clipNames\":\[\"frog\"\,\"squirrel\"]\}
+```
+
+Remove single clip
+```
+tether-send --host 127.0.0.1 --topic dummy/dummy/instructions --message \{\"instructionType\":\"remove\",\"clipNames\":\[\"frog\"\]\}
+```
+
+Add single clip, custom fade duration
+```
+tether-send --host 127.0.0.1 --topic dummy/dummy/instructions --message \{\"instructionType\":\"add\",\"clipNames\":\[\"squirrel2\"\],\"fadeDuration\":5000\}
+```
+
+Scene with zero clips (silence all), custom fade duration:
+```
+tether-send --host 127.0.0.1 --topic dummy/dummy/instructions --message \{\"instructionType\":\"scene\"\,\"clipNames\":\[\],\"fadeDuration\":500\}
+```
+
 
 ## TODO:
 - [ ] Demonstrate running (headless) on Raspberry Pi
