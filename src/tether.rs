@@ -10,6 +10,7 @@ use nannou::prelude::ToPrimitive;
 
 const INPUT_TOPICS: &[&str] = &["+/+/instructions"];
 const INPUT_QOS: &[i32; INPUT_TOPICS.len()] = &[2];
+const OUTPUT_TOPIC: &str = &"soundscape/unknown/state";
 
 type ClipName = String;
 pub enum Instruction {
@@ -174,7 +175,7 @@ impl TetherAgent {
                 is_playing: is_stream_playing,
             };
             let payload: Vec<u8> = to_vec_named(&state).unwrap();
-            let msg = mqtt::Message::new("soundscape/unknown/state", payload, 1);
+            let msg = mqtt::Message::new(OUTPUT_TOPIC, payload, 1);
             self.client
                 .publish(msg)
                 .expect("Failed to publish state/progress");
