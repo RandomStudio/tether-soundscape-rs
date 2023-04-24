@@ -148,6 +148,11 @@ pub fn render_audio(audio: &mut Audio, buffer: &mut Buffer) {
             for (sample, file_sample) in frame.iter_mut().zip(&file_frame) {
                 *sample += *file_sample * sound.current_volume;
             }
+            // // TODO: this is just for "panning" example
+            // let l = 0.8;
+            // let r = 0.1;
+            // frame[0] *= l;
+            // frame[1] *= r;
             frame_count += 1;
         }
 
