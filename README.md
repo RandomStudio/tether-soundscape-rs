@@ -55,7 +55,6 @@ tether-send --host 127.0.0.1 --topic dummy/dummy/instructions --message \{\"inst
 
 
 ## TODO:
-- [ ] Demonstrate running (headless) on Raspberry Pi
 - [x] Apply "loop" as well as trigger/hit/once-off functions
 - [x] Allow clips to be stopped/removed while playing (without stopping whole stream)
 - [x] Allow starting/fixed "maximum" volume per clip to be applied
@@ -64,7 +63,6 @@ tether-send --host 127.0.0.1 --topic dummy/dummy/instructions --message \{\"inst
 - [x] Allow "scenes" to be triggered (with transition)
 - [ ] Make use of tempo, quantisation for timing
 - [x] Env logging, CLI params
-- [ ] Low/no graphics mode
 - [x] Add Tether remote control commands, as per API in [original](https://github.com/RandomStudio/tether-soundscape)
 - [ ] Publish clip state / progress so that an external application can do visualisation or animation, for example
 - [ ] Allow for multi-channel output, at least "one clip per channel" config
@@ -72,4 +70,5 @@ tether-send --host 127.0.0.1 --topic dummy/dummy/instructions --message \{\"inst
 - [ ] Optionally connect to [Ableton link](https://docs.rs/ableton-link/latest/ableton_link/)
 - [ ] Possibly distribute radius by "index" not (only?) duration to avoid overlapping circles
 - [ ] Allow "instructions" to be subscribed to with a specified group (optional), so `+/someGroup/instructions` rather than the default `+/+/instructions`
-
+- [ ] Low/no graphics mode
+- [ ] Demonstrate running (headless?) on Raspberry Pi

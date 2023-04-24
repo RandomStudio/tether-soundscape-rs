@@ -1,10 +1,12 @@
 use log::{debug, error, info};
 use mqtt::{Client, Message, Receiver};
 use paho_mqtt as mqtt;
-use serde::Deserialize;
+use rmp_serde::to_vec_named;
+use serde::{Deserialize, Serialize};
 use std::{net::IpAddr, process, time::Duration};
 
-use crate::FadeDuration;
+use crate::{playback::PlaybackState, CurrentlyPlayingClip, FadeDuration};
+use nannou::prelude::ToPrimitive;
 
 const INPUT_TOPICS: &[&str] = &["+/+/instructions"];
 const INPUT_QOS: &[i32; INPUT_TOPICS.len()] = &[2];
@@ -20,6 +22,22 @@ pub enum Instruction {
     Add(Vec<ClipName>, Option<FadeDuration>),
     Remove(Vec<ClipName>, Option<FadeDuration>),
     Scene(Vec<ClipName>, Option<FadeDuration>),
+}
+
+#[derive(Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ClipPlayingEssentialState {
+    id: usize,
+    name: String,
+    progress: f32,
+    current_volume: f32,
+    looping: bool,
+}
+#[derive(Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct SoundscapeStateMessage {
+    pub is_playing: bool,
+    pub clips: Vec<ClipPlayingEssentialState>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -116,6 +134,37 @@ impl TetherAgent {
         } else {
             None
         }
+    }
+
+    pub fn publish_state(&self, is_stream_playing: bool, clips: &[CurrentlyPlayingClip]) {
+        let clip_states = clips
+            .iter()
+            .map(|c| {
+                let progress = match c.state {
+                    PlaybackState::Playing(frames_played) => {
+                        frames_played.to_f32().unwrap() / c.frames_count.to_f32().unwrap()
+                    }
+                    _ => 0.,
+                };
+
+                ClipPlayingEssentialState {
+                    id: c.id,
+                    name: c.name.clone(),
+                    progress,
+                    looping: c.should_loop,
+                    current_volume: c.current_volume,
+                }
+            })
+            .collect();
+        let state = SoundscapeStateMessage {
+            clips: clip_states,
+            is_playing: is_stream_playing,
+        };
+        let payload: Vec<u8> = to_vec_named(&state).unwrap();
+        let msg = mqtt::Message::new("soundscape/unknown/state", payload, 2);
+        self.client
+            .publish(msg)
+            .expect("Failed to publish state/progress");
     }
 }
 

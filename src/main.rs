@@ -6,7 +6,10 @@ use clap::Parser;
 
 use env_logger::{Builder, Env};
 use log::{debug, error, info, trace, warn};
-use std::path::{Path, PathBuf};
+use std::{
+    path::{Path, PathBuf},
+    time::SystemTime,
+};
 use tether::Instruction;
 
 use loader::{get_sound_asset_path, SoundBank};
@@ -45,6 +48,7 @@ pub struct Model {
     clips_playing: Vec<CurrentlyPlayingClip>,
     duration_range: [FadeDuration; 2],
     action_queue: Vec<QueueItem>,
+    last_state_publish: SystemTime,
     window_id: WindowId,
     egui: Egui,
     settings: Settings,
@@ -149,6 +153,7 @@ fn model(app: &App) -> Model {
         egui,
         settings,
         tether,
+        last_state_publish: std::time::SystemTime::now(),
     }
 }
 
@@ -258,6 +263,12 @@ fn update(app: &App, model: &mut Model, update: Update) {
                 .push(sound.id)
                 .expect("failed to send request");
         }
+    }
+
+    if model.last_state_publish.elapsed().unwrap() > UPDATE_INTERVAL {
+        model
+            .tether
+            .publish_state(model.stream.is_playing(), &model.clips_playing);
     }
 
     while let Ok(id) = model.rx_complete.pop() {
@@ -389,8 +400,6 @@ fn view(app: &App, model: &Model, frame: Frame) {
         String::from("paused")
     };
     draw.text(&stream_state).color(SLATEGREY);
-
-    // let start_y = app.window(model.window_id).unwrap().rect().h() / 3.;
 
     let max_radius = app.window(model.window_id).unwrap().rect().h() / 2. * 0.9;
     for (_i, c) in model.clips_playing.iter().enumerate() {
