@@ -11,11 +11,6 @@ use nannou::prelude::ToPrimitive;
 const INPUT_TOPICS: &[&str] = &["+/+/instructions"];
 const INPUT_QOS: &[i32; INPUT_TOPICS.len()] = &[2];
 
-pub struct TetherAgent {
-    client: Client,
-    receiver: Receiver<Option<Message>>,
-}
-
 type ClipName = String;
 pub enum Instruction {
     Hit(Vec<ClipName>),
@@ -48,6 +43,12 @@ pub struct InstructionMessage {
     pub fade_duration: Option<FadeDuration>,
 }
 
+pub struct TetherAgent {
+    client: Client,
+    receiver: Receiver<Option<Message>>,
+    last_clip_count_sent: Option<usize>,
+}
+
 impl TetherAgent {
     pub fn is_connected(&self) -> bool {
         self.client.is_connected()
@@ -67,7 +68,11 @@ impl TetherAgent {
         // Initialize the consumer before connecting
         let receiver = client.start_consuming();
 
-        TetherAgent { client, receiver }
+        TetherAgent {
+            client,
+            receiver,
+            last_clip_count_sent: None,
+        }
     }
 
     pub fn connect(&mut self) {
@@ -136,35 +141,44 @@ impl TetherAgent {
         }
     }
 
-    pub fn publish_state(&self, is_stream_playing: bool, clips: &[CurrentlyPlayingClip]) {
-        let clip_states = clips
-            .iter()
-            .map(|c| {
-                let progress = match c.state {
-                    PlaybackState::Playing(frames_played) => {
-                        frames_played.to_f32().unwrap() / c.frames_count.to_f32().unwrap()
-                    }
-                    _ => 0.,
-                };
-
-                ClipPlayingEssentialState {
-                    id: c.id,
-                    name: c.name.clone(),
-                    progress,
-                    looping: c.should_loop,
-                    current_volume: c.current_volume,
-                }
-            })
-            .collect();
-        let state = SoundscapeStateMessage {
-            clips: clip_states,
-            is_playing: is_stream_playing,
+    pub fn publish_state(&mut self, is_stream_playing: bool, clips: &[CurrentlyPlayingClip]) {
+        let should_publish = {
+            match self.last_clip_count_sent {
+                None => true,
+                Some(last_count) => clips.len() > 0 || clips.len() != last_count,
+            }
         };
-        let payload: Vec<u8> = to_vec_named(&state).unwrap();
-        let msg = mqtt::Message::new("soundscape/unknown/state", payload, 2);
-        self.client
-            .publish(msg)
-            .expect("Failed to publish state/progress");
+        if should_publish {
+            self.last_clip_count_sent = Some(clips.len());
+            let clip_states = clips
+                .iter()
+                .map(|c| {
+                    let progress = match c.state {
+                        PlaybackState::Playing(frames_played) => {
+                            frames_played.to_f32().unwrap() / c.frames_count.to_f32().unwrap()
+                        }
+                        _ => 0.,
+                    };
+
+                    ClipPlayingEssentialState {
+                        id: c.id,
+                        name: c.name.clone(),
+                        progress,
+                        looping: c.should_loop,
+                        current_volume: c.current_volume,
+                    }
+                })
+                .collect();
+            let state = SoundscapeStateMessage {
+                clips: clip_states,
+                is_playing: is_stream_playing,
+            };
+            let payload: Vec<u8> = to_vec_named(&state).unwrap();
+            let msg = mqtt::Message::new("soundscape/unknown/state", payload, 1);
+            self.client
+                .publish(msg)
+                .expect("Failed to publish state/progress");
+        }
     }
 }
 
