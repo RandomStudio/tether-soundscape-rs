@@ -90,5 +90,6 @@ TODO: discrete events (clip begin/end) should be published in addition to the st
 - [ ] Optionally connect to [Ableton link](https://docs.rs/ableton-link/latest/ableton_link/)
 - [ ] Possibly distribute radius by "index" not (only?) duration to avoid overlapping circles
 - [ ] Allow "instructions" to be subscribed to with a specified group (optional), so `+/someGroup/instructions` rather than the default `+/+/instructions`, and publish on `soundscape/someGroup/state` 
+- [ ] Basic ADSR (or just Attack-Release) triggering for samples
 - [ ] Low/no graphics mode
 - [ ] Demonstrate running (headless?) on Raspberry Pi

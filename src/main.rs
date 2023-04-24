@@ -122,6 +122,7 @@ fn model(app: &App) -> Model {
     let stream = audio_host
         .new_output_stream(audio_model)
         .render(render_audio)
+        .channels(2) // TODO: set num channels here
         .sample_rate(cli.sample_rate)
         .build()
         .unwrap();
