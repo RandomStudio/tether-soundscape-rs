@@ -67,6 +67,7 @@ tether-send --host 127.0.0.1 --topic dummy/dummy/instructions --message \{\"inst
 - [ ] Low/no graphics mode
 - [x] Add Tether remote control commands, as per API in [original](https://github.com/RandomStudio/tether-soundscape)
 - [ ] Publish clip state / progress so that an external application can do visualisation or animation, for example
+- [ ] Allow for multi-channel output, at least "one clip per channel" config
 - [ ] Separate CLIP and STREAM sample rates are currently a problem - might need a separate Reader (and thread!) for each clip if sample rates are allowed to differ
 - [ ] Optionally connect to [Ableton link](https://docs.rs/ableton-link/latest/ableton_link/)
 - [ ] Possibly distribute radius by "index" not (only?) duration to avoid overlapping circles
