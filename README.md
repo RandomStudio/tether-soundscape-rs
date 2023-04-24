@@ -10,7 +10,7 @@ A multi-layered audio sequencer, remote-controllable via Tether, to create sound
 - Visualisation via Nannou
 - Great way to learn about low-level audio sample/buffer control, multi-threading in Rust (Nannou always uses separate "realtime" thread for audio)
 
-## Remote control
+## Remote control (Input from Tether)
 
 All Instructions Message are expected to be received on the topic `+/+/instructions`
 
@@ -53,6 +53,24 @@ Scene with zero clips (silence all), custom fade duration:
 tether-send --host 127.0.0.1 --topic dummy/dummy/instructions --message \{\"instructionType\":\"scene\"\,\"clipNames\":\[\],\"fadeDuration\":500\}
 ```
 
+## Output to Tether
+
+### State
+This agent publishes frequently (every UPDATE_INTERVAL ms) on the topic `soundscape/unknown/state`, which can be useful for driving animation, lighting effects, visualisation, etc. in sync with playback. The state messages include the following fields:
+
+- `isPlaying`: whether or not the audio stream is playing
+- `clips`: an array of currently playing clips (only), with the following information for each:
+  - `id` (int)
+  - `name` (string)
+  - `progress` (float, normalised to range [0,1])
+  - `currentVolume` (float, normalised to range [0,1])
+  - `looping` (boolean)
+
+To minimise traffic, the agent will only publish an empty clip list (`clips: []`) **once** and then resume as soon as at least one clip begins playing again.
+
+### Events
+TODO: discrete events (clip begin/end) should be published in addition to the stream of "state" messages. This could be useful for driving external applications that only need to subscribe to significant begin/end events.
+
 
 ## TODO:
 - [x] Apply "loop" as well as trigger/hit/once-off functions
@@ -64,11 +82,13 @@ tether-send --host 127.0.0.1 --topic dummy/dummy/instructions --message \{\"inst
 - [ ] Make use of tempo, quantisation for timing
 - [x] Env logging, CLI params
 - [x] Add Tether remote control commands, as per API in [original](https://github.com/RandomStudio/tether-soundscape)
-- [ ] Publish clip state / progress so that an external application can do visualisation or animation, for example
+- [x] Publish clip state / progress so that an external application can do visualisation or animation, for example
+- [ ] Stream/global level instructions, e.g. "play", "pause" (all), "silenceAll", "master volume", etc.
+- [ ] Publish on separate topic for "events" - only when clip(s) begin/end
 - [ ] Allow for multi-channel output, at least "one clip per channel" config
 - [ ] Separate CLIP and STREAM sample rates are currently a problem - might need a separate Reader (and thread!) for each clip if sample rates are allowed to differ
 - [ ] Optionally connect to [Ableton link](https://docs.rs/ableton-link/latest/ableton_link/)
 - [ ] Possibly distribute radius by "index" not (only?) duration to avoid overlapping circles
-- [ ] Allow "instructions" to be subscribed to with a specified group (optional), so `+/someGroup/instructions` rather than the default `+/+/instructions`
+- [ ] Allow "instructions" to be subscribed to with a specified group (optional), so `+/someGroup/instructions` rather than the default `+/+/instructions`, and publish on `soundscape/someGroup/state` 
 - [ ] Low/no graphics mode
 - [ ] Demonstrate running (headless?) on Raspberry Pi
