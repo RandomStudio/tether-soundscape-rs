@@ -12,12 +12,15 @@ use crate::utils::millis_to_frames;
 /// Volume value, duration IN FRAMES
 type StoredTweener = Tweener<f32, u32, Box<dyn Tween<f32> + Send + Sync>>;
 
+const INPUT_CHANNEL_COUNT: usize = 1;
+
 pub struct BufferedClip {
     id: usize,
     current_volume: f32,
     reader: audrey::read::BufFileReader,
     frames_played: u32,
     phase: PlaybackPhase,
+    panning: [f32; 16],
 }
 
 /// Start volume, End volume, Duration IN MILLISECONDS
@@ -40,6 +43,7 @@ impl BufferedClip {
             None => 0.,
         };
         let sample_rate = reader.description().sample_rate();
+        // let channels = reader.description().channel_count();
         BufferedClip {
             id,
             reader,
@@ -63,6 +67,9 @@ impl BufferedClip {
                     PlaybackPhase::Attack(stored_tweener)
                 }
             },
+            panning: [
+                0., 0.5, 1.0, 0.25, 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+            ],
         }
     }
 
@@ -143,16 +150,24 @@ pub fn render_audio(audio: &mut Audio, buffer: &mut Buffer) {
     // Sum all of the sounds onto the buffer.
     for (i, sound) in audio.sounds.iter_mut().enumerate() {
         let mut frame_count: u32 = 0;
-        let file_frames = sound.reader.frames::<[f32; 2]>().filter_map(Result::ok);
+        let file_frames = sound
+            .reader
+            .frames::<[f32; INPUT_CHANNEL_COUNT]>()
+            .filter_map(Result::ok);
         for (frame, file_frame) in buffer.frames_mut().zip(file_frames) {
-            for (sample, file_sample) in frame.iter_mut().zip(&file_frame) {
-                *sample += *file_sample * sound.current_volume;
+            for (index, output_sample) in frame.iter_mut().enumerate() {
+                let this_channel_volume = sound.panning[index];
+                *output_sample += file_frame[0] * sound.current_volume * this_channel_volume;
             }
+            // for (output_sample, file_sample) in frame.iter_mut().zip(&file_frame) {
+            //     *output_sample += *file_sample * sound.current_volume;
+            // }
             // // TODO: this is just for "panning" example
             // let l = 0.8;
             // let r = 0.1;
             // frame[0] *= l;
             // frame[1] *= r;
+
             frame_count += 1;
         }
 

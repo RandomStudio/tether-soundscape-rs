@@ -114,6 +114,17 @@ fn model(app: &App) -> Model {
     // Initialise the audio host so we can spawn an audio stream.
     let audio_host = audio::Host::new();
 
+    let mut device_to_use = audio_host.default_output_device();
+    if let Ok(devices) = audio_host.output_devices() {
+        for d in devices {
+            println!("output device: {:?}", d.name());
+            if d.name().unwrap() == "BlackHole 16ch" {
+                info!("Found matching device");
+                device_to_use = Some(d);
+            }
+        }
+    }
+
     let (tx_progress, rx_progress) = RingBuffer::new(RING_BUFFER_SIZE * 16);
     let (tx_complete, rx_complete) = RingBuffer::new(RING_BUFFER_SIZE);
     let (tx_request, rx_request) = RingBuffer::new(RING_BUFFER_SIZE);
@@ -122,7 +133,8 @@ fn model(app: &App) -> Model {
     let stream = audio_host
         .new_output_stream(audio_model)
         .render(render_audio)
-        .channels(2) // TODO: set num channels here
+        .device(device_to_use.unwrap())
+        .channels(16) // TODO: set num channels here
         .sample_rate(cli.sample_rate)
         .build()
         .unwrap();

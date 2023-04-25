@@ -1,22 +1,22 @@
 {
   "clips": [
     {
-      "name": "frog",
-      "path": "frog.wav",
+      "name": "frog-mono",
+      "path": "frog-mono.wav",
       "volume": 0.9
     },
     {
       "name": "mice",
-      "path": "mice.wav",
+      "path": "mice-mono.wav",
       "volume": 0.2
     },
     {
       "name": "squirrel",
-      "path": "squirrel.wav"
+      "path": "squirrel-mono.wav"
     },
     {
       "name": "squirrel2",
-      "path": "squirrel2.wav"
+      "path": "squirrel2-mono.wav"
     }
   ],
   "scenes": [

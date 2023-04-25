@@ -84,6 +84,10 @@ TODO: discrete events (clip begin/end) should be published in addition to the st
 - [x] Add Tether remote control commands, as per API in [original](https://github.com/RandomStudio/tether-soundscape)
 - [x] Publish clip state / progress so that an external application can do visualisation or animation, for example
 - [ ] Allow for multi-channel output, at least "one clip per channel" config
+- [ ] CLI should allow custom path to JSON sample bank file
+- [ ] New standard demo clips (48Khz, stereo + mono)
+- [ ] Provide utility/test modes, e.g. tone per channel
+- [ ] Allow for random selection triggers (like "scene", but pick-one within the list)
 - [ ] Stream/global level instructions, e.g. "play", "pause" (all), "silenceAll", "master volume", etc.
 - [ ] Publish on separate topic for "events" - only when clip(s) begin/end
 - [ ] Separate CLIP and STREAM sample rates are currently a problem - might need a separate Reader (and thread!) for each clip if sample rates are allowed to differ
