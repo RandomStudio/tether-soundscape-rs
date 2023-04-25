@@ -5,22 +5,29 @@ use std::time::Duration;
 
 use crate::{
     queue_stop_all,
-    settings::Settings,
-    utils::{clips_to_add, clips_to_remove, frames_to_seconds, get_clip_index_with_name},
+    settings::ManualSettings,
+    utils::{
+        clips_to_add, clips_to_remove, frames_to_seconds, get_clip_index_with_name, simple_panning,
+    },
     Model, QueueItem,
 };
 
-pub fn build_ui(model: &mut Model, since_start: Duration, _window_rect: Rect) {
+pub fn build_ui(model: &mut Model, since_start: Duration) {
     let egui = &mut model.egui;
 
     egui.set_elapsed_time(since_start);
     let ctx = egui.begin_frame();
 
-    let Settings {
+    let ManualSettings {
         fadein_duration,
         fadeout_duration,
+        simple_pan_position,
+        simple_pan_spread,
+        ignore_panning,
         ..
     } = &mut model.settings;
+
+    let output_channel_count = model.stream.cpal_config().channels.to_u32().unwrap();
 
     egui::Window::new("Settings").show(&ctx, |ui| {
         ui.horizontal(|ui| {
@@ -35,6 +42,38 @@ pub fn build_ui(model: &mut Model, since_start: Duration, _window_rect: Rect) {
         ui.separator();
 
         ui.collapsing("Clip triggers", |ui| {
+            ui.heading("Panning");
+
+            ui.horizontal(|ui| {
+                ui.checkbox(ignore_panning, "Equal all channels (ignore panning)");
+            });
+
+            if !*ignore_panning {
+                ui.horizontal(|ui| {
+                    ui.label("Pan position");
+                    let channel_count = model.stream.cpal_config().channels.to_f32().unwrap() - 1.0;
+                    ui.add(Slider::new(simple_pan_position, 0. ..=channel_count));
+                });
+                ui.horizontal(|ui| {
+                    ui.label("Pan spread");
+                    let channel_count = model.stream.cpal_config().channels.to_f32().unwrap() - 1.0;
+                    ui.add(Slider::new(simple_pan_spread, 1. ..=channel_count));
+                });
+
+                if ui.button("Calculate").clicked() {
+                    let per_channel_volume = simple_panning(
+                        *simple_pan_position,
+                        *simple_pan_spread,
+                        output_channel_count,
+                    );
+                    println!("Mix: {:?}", per_channel_volume);
+                }
+            }
+
+            ui.separator();
+
+            ui.heading("Triggers");
+
             for c in model.sound_bank.clips() {
                 let duration_s = frames_to_seconds(c.frames_count(), c.sample_rate(), None);
                 let sample_rate = &format!("{}KHz", c.sample_rate().to_f32().unwrap() / 1000.);
@@ -45,6 +84,15 @@ pub fn build_ui(model: &mut Model, since_start: Duration, _window_rect: Rect) {
                             String::from(c.name()),
                             None,
                             false,
+                            if *ignore_panning {
+                                None
+                            } else {
+                                Some(simple_panning(
+                                    *simple_pan_position,
+                                    *simple_pan_spread,
+                                    output_channel_count,
+                                ))
+                            },
                         ));
                     }
                     if ui.button("hit (fade in)").clicked() {
@@ -52,6 +100,15 @@ pub fn build_ui(model: &mut Model, since_start: Duration, _window_rect: Rect) {
                             String::from(c.name()),
                             Some(*fadein_duration),
                             false,
+                            if *ignore_panning {
+                                None
+                            } else {
+                                Some(simple_panning(
+                                    *simple_pan_position,
+                                    *simple_pan_spread,
+                                    output_channel_count,
+                                ))
+                            },
                         ));
                     }
                     if ui.button("loop").clicked() {
@@ -59,6 +116,15 @@ pub fn build_ui(model: &mut Model, since_start: Duration, _window_rect: Rect) {
                             String::from(c.name()),
                             None,
                             true,
+                            if *ignore_panning {
+                                None
+                            } else {
+                                Some(simple_panning(
+                                    *simple_pan_position,
+                                    *simple_pan_spread,
+                                    output_channel_count,
+                                ))
+                            },
                         ));
                     }
                     if ui.button("stop").clicked() {
@@ -99,10 +165,12 @@ pub fn build_ui(model: &mut Model, since_start: Duration, _window_rect: Rect) {
                         let to_add = clips_to_add(&model.clips_playing, &s.clips);
                         info!("Scene transition: x{} clips to add", to_add.len());
                         for name in to_add {
+                            // TODO: get optional panning via instruction message
                             model.action_queue.push(QueueItem::Play(
                                 name,
                                 Some(*fadein_duration),
                                 true,
+                                None,
                             ));
                         }
                         let to_remove = clips_to_remove(&model.clips_playing, &s.clips);

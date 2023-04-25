@@ -20,7 +20,7 @@ pub struct BufferedClip {
     reader: audrey::read::BufFileReader,
     frames_played: u32,
     phase: PlaybackPhase,
-    panning: [f32; 16],
+    per_channel_volume: Vec<f32>,
 }
 
 /// Start volume, End volume, Duration IN MILLISECONDS
@@ -34,7 +34,12 @@ pub enum PlaybackPhase {
 }
 
 impl BufferedClip {
-    pub fn new(id: usize, fade_in: Option<Fade>, reader: Reader<BufReader<File>>) -> Self {
+    pub fn new(
+        id: usize,
+        fade_in: Option<Fade>,
+        reader: Reader<BufReader<File>>,
+        per_channel_volume: Vec<f32>,
+    ) -> Self {
         let start_volume = match fade_in {
             Some(fade) => {
                 let (start, _end, _duration) = fade;
@@ -67,9 +72,7 @@ impl BufferedClip {
                     PlaybackPhase::Attack(stored_tweener)
                 }
             },
-            panning: [
-                0., 0.5, 1.0, 0.25, 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
-            ],
+            per_channel_volume,
         }
     }
 
@@ -156,7 +159,7 @@ pub fn render_audio(audio: &mut Audio, buffer: &mut Buffer) {
             .filter_map(Result::ok);
         for (frame, file_frame) in buffer.frames_mut().zip(file_frames) {
             for (index, output_sample) in frame.iter_mut().enumerate() {
-                let this_channel_volume = sound.panning[index];
+                let this_channel_volume = sound.per_channel_volume[index];
                 *output_sample += file_frame[0] * sound.current_volume * this_channel_volume;
             }
             // for (output_sample, file_sample) in frame.iter_mut().zip(&file_frame) {

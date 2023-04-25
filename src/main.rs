@@ -1,3 +1,4 @@
+use audio::Device;
 use nannou::prelude::*;
 use nannou_audio as audio;
 use nannou_egui::Egui;
@@ -17,12 +18,14 @@ use playback::{
     render_audio, Audio, BufferedClip, CompleteUpdate, PlaybackState, ProgressUpdate, RequestUpdate,
 };
 use rtrb::{Consumer, Producer, RingBuffer};
-use settings::{Cli, Settings, LINE_THICKNESS, MIN_RADIUS, RING_BUFFER_SIZE, UPDATE_INTERVAL};
+use settings::{
+    Cli, ManualSettings, LINE_THICKNESS, MIN_RADIUS, RING_BUFFER_SIZE, UPDATE_INTERVAL,
+};
 use tween::TweenTime;
 use ui::build_ui;
 use utils::{
-    get_clip_index_with_id, get_clip_index_with_id_mut, get_clip_index_with_name,
-    get_duration_range,
+    all_channels_equal, get_clip_index_with_id, get_clip_index_with_id_mut,
+    get_clip_index_with_name, get_duration_range,
 };
 
 use crate::{
@@ -51,12 +54,13 @@ pub struct Model {
     last_state_publish: SystemTime,
     window_id: WindowId,
     egui: Egui,
-    settings: Settings,
+    settings: ManualSettings,
     tether: TetherAgent,
 }
 pub enum QueueItem {
-    /// Start playback: name, optional fade duration in ms, should_loop
-    Play(String, Option<FadeDuration>, bool),
+    /// Start playback: name, optional fade duration in ms, should_loop,
+    /// optional per-channel-volume
+    Play(String, Option<FadeDuration>, bool, Option<Vec<f32>>),
     /// Stop/fade out: id in currently_playing Vec, optional fade duration in ms
     Stop(usize, Option<FadeDuration>),
     /// Remove clip: id in currently_playing Vec
@@ -100,7 +104,7 @@ fn model(app: &App) -> Model {
     info!("Started; args: {:?}", cli);
     debug!("Debugging is enabled; could be verbose");
 
-    let settings = Settings::defaults();
+    let settings = ManualSettings::defaults();
 
     // Create a window to receive key pressed events.
     let window_id = app
@@ -114,16 +118,28 @@ fn model(app: &App) -> Model {
     // Initialise the audio host so we can spawn an audio stream.
     let audio_host = audio::Host::new();
 
-    let mut device_to_use = audio_host.default_output_device();
-    if let Ok(devices) = audio_host.output_devices() {
-        for d in devices {
-            println!("output device: {:?}", d.name());
-            if d.name().unwrap() == "BlackHole 16ch" {
-                info!("Found matching device");
-                device_to_use = Some(d);
+    let device = match cli.preferred_output_device {
+        Some(device_name) => {
+            if let Ok(devices) = audio_host.output_devices() {
+                let mut matching_device: Option<Device> = None;
+                for d in devices {
+                    debug!("output device: {:?}", d.name());
+                    if d.name().unwrap() == device_name {
+                        info!(
+                            "Found matching device {} == {}",
+                            &d.name().unwrap(),
+                            &device_name
+                        );
+                        matching_device = Some(d);
+                    }
+                }
+                matching_device
+            } else {
+                panic!("Failed to enumerate host audio devices");
             }
         }
-    }
+        None => audio_host.default_output_device(),
+    };
 
     let (tx_progress, rx_progress) = RingBuffer::new(RING_BUFFER_SIZE * 16);
     let (tx_complete, rx_complete) = RingBuffer::new(RING_BUFFER_SIZE);
@@ -133,8 +149,8 @@ fn model(app: &App) -> Model {
     let stream = audio_host
         .new_output_stream(audio_model)
         .render(render_audio)
-        .device(device_to_use.unwrap())
-        .channels(16) // TODO: set num channels here
+        .device(device.unwrap())
+        .channels(cli.output_channels.try_into().unwrap())
         .sample_rate(cli.sample_rate)
         .build()
         .unwrap();
@@ -193,6 +209,7 @@ fn start_one(
     fade: Option<u32>,
     should_loop: bool,
     stream: &audio::Stream<Audio>,
+    per_channel_volume: Vec<f32>,
 ) -> Result<(), ()> {
     if let Some(clip_matched) = sound_bank
         .clips()
@@ -212,6 +229,7 @@ fn start_one(
                 id,
                 Some((0., clip_matched.volume().unwrap_or(1.0), fade.unwrap_or(0))),
                 reader,
+                per_channel_volume,
             );
             clips_playing.push(CurrentlyPlayingClip {
                 id,
@@ -252,9 +270,9 @@ fn key_pressed(_app: &App, model: &mut Model, key: Key) {
 }
 
 fn update(app: &App, model: &mut Model, update: Update) {
-    let window = app.window(model.window_id).unwrap();
+    // let window = app.window(model.window_id).unwrap();
 
-    build_ui(model, update.since_start, window.rect());
+    build_ui(model, update.since_start);
 
     // Note the while loop - we try to process ALL progress update messages
     // every frame
@@ -289,9 +307,12 @@ fn update(app: &App, model: &mut Model, update: Update) {
         if let Some((_index, clip)) = get_clip_index_with_id(&model.clips_playing, id) {
             if clip.should_loop {
                 debug!("Should loop! Repeat clip with name {}", clip.name);
-                model
-                    .action_queue
-                    .push(QueueItem::Play(String::from(&clip.name), None, true));
+                model.action_queue.push(QueueItem::Play(
+                    String::from(&clip.name),
+                    None,
+                    true,
+                    None, // TODO: get previous per-channel-volume
+                ));
             }
             model.action_queue.push(QueueItem::Remove(id));
         } else {
@@ -301,7 +322,7 @@ fn update(app: &App, model: &mut Model, update: Update) {
 
     while let Some(queue_item) = model.action_queue.pop() {
         match queue_item {
-            QueueItem::Play(name, fade, should_loop) => {
+            QueueItem::Play(name, fade, should_loop, per_channel_volume) => {
                 start_one(
                     &name,
                     &model.sound_bank,
@@ -310,6 +331,9 @@ fn update(app: &App, model: &mut Model, update: Update) {
                     fade,
                     should_loop,
                     &model.stream,
+                    per_channel_volume.unwrap_or(all_channels_equal(
+                        model.stream.cpal_config().channels.into(),
+                    )),
                 )
                 .expect("failed to start clip");
             }
@@ -355,15 +379,19 @@ fn update(app: &App, model: &mut Model, update: Update) {
             match instruction {
                 Instruction::Hit(clip_names) => {
                     for c in clip_names {
-                        model.action_queue.push(QueueItem::Play(c, None, false));
+                        // TODO: get optional panning via instruction message
+                        model
+                            .action_queue
+                            .push(QueueItem::Play(c, None, false, None));
                     }
                 }
                 Instruction::Add(clip_names, fade_duration) => {
                     for c in clip_names {
+                        // TODO: get optional panning via instruction message
                         info!("Remote request to play clip named {}", &c);
                         model
                             .action_queue
-                            .push(QueueItem::Play(c, fade_duration, false));
+                            .push(QueueItem::Play(c, fade_duration, false, None));
                     }
                 }
                 Instruction::Remove(clip_names, fade_duration) => {
@@ -385,10 +413,12 @@ fn update(app: &App, model: &mut Model, update: Update) {
                     info!("Scene transition: x{} clips to add", to_add.len());
                     for name in to_add {
                         // TODO: check at this point whether the clips exist (available)?
+                        // TODO: get optional panning via instruction message
                         model.action_queue.push(QueueItem::Play(
                             String::from(name),
                             fade_duration,
                             true,
+                            None,
                         ));
                     }
                     let to_remove = clips_to_remove(&model.clips_playing, &clip_names);

@@ -1,4 +1,4 @@
-use nannou::prelude::ToPrimitive;
+use nannou::prelude::{map_range, ToPrimitive};
 
 use crate::{loader::AudioClipOnDisk, CurrentlyPlayingClip};
 
@@ -125,4 +125,29 @@ pub fn clips_to_remove(
         }
     }
     ids
+}
+
+pub fn all_channels_equal(output_channel_count: u32) -> Vec<f32> {
+    let mut result: Vec<f32> = Vec::new();
+    for _i in 0..output_channel_count {
+        result.push(1.0);
+    }
+    if result.len() != output_channel_count.to_usize().unwrap() {
+        panic!(
+            "Per-channel vector should have {} values, got {}",
+            output_channel_count,
+            result.len()
+        );
+    }
+    result
+}
+
+pub fn simple_panning(position: f32, spread: f32, output_channel_count: u32) -> Vec<f32> {
+    let mut result: Vec<f32> = Vec::new();
+    for i in 0..output_channel_count {
+        let distance = (position - i.to_f32().unwrap()).abs();
+        let this_channel_volume = f32::max(map_range(distance, 0., spread, 1.0, 0.), 0.);
+        result.push(this_channel_volume);
+    }
+    result
 }
