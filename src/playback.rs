@@ -203,17 +203,6 @@ pub fn render_audio_stereo(audio: &mut Audio, buffer: &mut Buffer) {
                 }
                 frame_count += 1;
             }
-
-            handle_audio_progress(
-                frame_count,
-                len_frames,
-                sound,
-                &mut have_ended,
-                i,
-                &mut audio.tx_progress,
-                &mut audio.tx_complete,
-                &mut audio.rx_request,
-            );
         } else {
             // MONO SOURCE - duplicate channels
 
@@ -232,17 +221,18 @@ pub fn render_audio_stereo(audio: &mut Audio, buffer: &mut Buffer) {
                     frame_count += 1;
                 }
             }
-            handle_audio_progress(
-                frame_count,
-                len_frames,
-                sound,
-                &mut have_ended,
-                i,
-                &mut audio.tx_progress,
-                &mut audio.tx_complete,
-                &mut audio.rx_request,
-            );
         }
+
+        handle_audio_progress(
+            frame_count,
+            len_frames,
+            sound,
+            &mut have_ended,
+            i,
+            &mut audio.tx_progress,
+            &mut audio.tx_complete,
+            &mut audio.rx_request,
+        );
     }
 
     // Remove all sounds that have ended.

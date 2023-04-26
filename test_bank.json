@@ -5,16 +5,7 @@
       "path": "ding-dong-mono.wav",
       "volume": 0.9
     },
-    {
-      "name": "ding-dong-stereo",
-      "path": "ding-dong-stereo.wav",
-      "volume": 0.9
-    },
-    {
-      "name": "frog-stereo",
-      "path": "frog-48.wav",
-      "volume": 0.9
-    },
+
     {
       "name": "mice",
       "path": "mice-mono.wav",

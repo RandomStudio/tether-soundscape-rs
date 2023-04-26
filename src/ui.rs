@@ -12,7 +12,7 @@ use crate::{
     Model, QueueItem,
 };
 
-pub fn build_ui(model: &mut Model, since_start: Duration, is_stereo_mode: bool) {
+pub fn build_ui(model: &mut Model, since_start: Duration, is_multichannel_mode: bool) {
     let egui = &mut model.egui;
 
     egui.set_elapsed_time(since_start);
@@ -41,7 +41,7 @@ pub fn build_ui(model: &mut Model, since_start: Duration, is_stereo_mode: bool) 
 
         ui.separator();
 
-        if !is_stereo_mode {
+        if is_multichannel_mode {
             ui.collapsing("Multi-channel Panning", |ui| {
                 ui.horizontal(|ui| {
                     ui.checkbox(ignore_panning, "Equal all channels (ignore panning)");
@@ -72,79 +72,78 @@ pub fn build_ui(model: &mut Model, since_start: Duration, is_stereo_mode: bool) 
             });
         }
 
-        ui.collapsing("Clip triggers", |ui| {
-            for c in model.sound_bank.clips() {
-                let duration_s = frames_to_seconds(c.frames_count(), c.sample_rate(), None);
-                let sample_rate = &format!("{}KHz", c.sample_rate().to_f32().unwrap() / 1000.);
-                ui.horizontal(|ui| {
-                    ui.label(format!("{} ({}s @{})", c.name(), duration_s, sample_rate));
-                    if ui.button("hit").clicked() {
-                        model.action_queue.push(QueueItem::Play(
-                            String::from(c.name()),
-                            None,
-                            false,
-                            if *ignore_panning {
-                                None
-                            } else {
-                                Some(simple_panning(
-                                    *simple_pan_position,
-                                    *simple_pan_spread,
-                                    output_channel_count,
-                                ))
-                            },
-                        ));
+        ui.heading("Clip triggers");
+        for c in model.sound_bank.clips() {
+            let duration_s = frames_to_seconds(c.frames_count(), c.sample_rate(), None);
+            let sample_rate = &format!("{}KHz", c.sample_rate().to_f32().unwrap() / 1000.);
+            ui.horizontal(|ui| {
+                ui.label(format!("{} ({}s @{})", c.name(), duration_s, sample_rate));
+                if ui.button("hit").clicked() {
+                    model.action_queue.push(QueueItem::Play(
+                        String::from(c.name()),
+                        None,
+                        false,
+                        if *ignore_panning {
+                            None
+                        } else {
+                            Some(simple_panning(
+                                *simple_pan_position,
+                                *simple_pan_spread,
+                                output_channel_count,
+                            ))
+                        },
+                    ));
+                }
+                if ui.button("hit (fade in)").clicked() {
+                    model.action_queue.push(QueueItem::Play(
+                        String::from(c.name()),
+                        Some(*fadein_duration),
+                        false,
+                        if *ignore_panning {
+                            None
+                        } else {
+                            Some(simple_panning(
+                                *simple_pan_position,
+                                *simple_pan_spread,
+                                output_channel_count,
+                            ))
+                        },
+                    ));
+                }
+                if ui.button("loop").clicked() {
+                    model.action_queue.push(QueueItem::Play(
+                        String::from(c.name()),
+                        None,
+                        true,
+                        if *ignore_panning {
+                            None
+                        } else {
+                            Some(simple_panning(
+                                *simple_pan_position,
+                                *simple_pan_spread,
+                                output_channel_count,
+                            ))
+                        },
+                    ));
+                }
+                if ui.button("stop").clicked() {
+                    if let Some((_index, info)) =
+                        get_clip_index_with_name(&model.clips_playing, c.name())
+                    {
+                        model.action_queue.push(QueueItem::Stop(info.id, None));
                     }
-                    if ui.button("hit (fade in)").clicked() {
-                        model.action_queue.push(QueueItem::Play(
-                            String::from(c.name()),
-                            Some(*fadein_duration),
-                            false,
-                            if *ignore_panning {
-                                None
-                            } else {
-                                Some(simple_panning(
-                                    *simple_pan_position,
-                                    *simple_pan_spread,
-                                    output_channel_count,
-                                ))
-                            },
-                        ));
+                }
+                if ui.button("stop (fade out)").clicked() {
+                    if let Some((_index, info)) =
+                        get_clip_index_with_name(&model.clips_playing, c.name())
+                    {
+                        model
+                            .action_queue
+                            .push(QueueItem::Stop(info.id, Some(*fadeout_duration)));
                     }
-                    if ui.button("loop").clicked() {
-                        model.action_queue.push(QueueItem::Play(
-                            String::from(c.name()),
-                            None,
-                            true,
-                            if *ignore_panning {
-                                None
-                            } else {
-                                Some(simple_panning(
-                                    *simple_pan_position,
-                                    *simple_pan_spread,
-                                    output_channel_count,
-                                ))
-                            },
-                        ));
-                    }
-                    if ui.button("stop").clicked() {
-                        if let Some((_index, info)) =
-                            get_clip_index_with_name(&model.clips_playing, c.name())
-                        {
-                            model.action_queue.push(QueueItem::Stop(info.id, None));
-                        }
-                    }
-                    if ui.button("stop (fade out)").clicked() {
-                        if let Some((_index, info)) =
-                            get_clip_index_with_name(&model.clips_playing, c.name())
-                        {
-                            model
-                                .action_queue
-                                .push(QueueItem::Stop(info.id, Some(*fadeout_duration)));
-                        }
-                    }
-                });
-            }
-        });
+                }
+            });
+        }
 
         ui.collapsing("Scenes", |ui| {
             for s in model.sound_bank.scenes() {

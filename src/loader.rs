@@ -51,10 +51,13 @@ pub fn get_sound_asset_path(assets_path: PathBuf, base_path: &str) -> String {
     path.to_str().unwrap().into()
 }
 
-fn read_length_and_rate(path: &std::path::Path) -> (u32, u32) {
+fn read_length_and_rate(path: &std::path::Path, mono_only: bool) -> (u32, u32) {
     let mut reader = audrey::open(path).unwrap();
     let mut count = 0;
     if reader.description().channel_count() == 2 {
+        if mono_only {
+            panic!("In multichannel mode, you may only load mono clips!");
+        }
         reader.frames::<[f32; 2]>().for_each(|_f| count += 1);
     } else {
         reader.frames::<[f32; 1]>().for_each(|_f| count += 1);
@@ -65,7 +68,7 @@ fn read_length_and_rate(path: &std::path::Path) -> (u32, u32) {
 }
 
 impl SoundBank {
-    pub fn new(app: &App, json_path: &Path) -> Self {
+    pub fn new(app: &App, json_path: &Path, mono_only: bool) -> Self {
         match std::fs::read_to_string(json_path) {
             Ok(text) => match serde_json::from_str::<SoundBank>(&text) {
                 Ok(bank) => {
@@ -79,7 +82,7 @@ impl SoundBank {
                                 sample.path(),
                             );
                             let path = Path::new(&path_str);
-                            let (frames_count, sample_rate) = read_length_and_rate(path);
+                            let (frames_count, sample_rate) = read_length_and_rate(path, mono_only);
                             let volume = sample.volume;
                             AudioClipOnDisk {
                                 name: String::from(&sample.name),

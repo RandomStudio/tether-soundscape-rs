@@ -57,7 +57,7 @@ pub struct Model {
     window_id: WindowId,
     egui: Egui,
     settings: ManualSettings,
-    stereo_mode: bool,
+    multi_channel_mode: bool,
     tether: TetherAgent,
 }
 pub enum QueueItem {
@@ -149,20 +149,21 @@ fn model(app: &App) -> Model {
     let (tx_request, rx_request) = RingBuffer::new(RING_BUFFER_SIZE);
     let audio_model = Audio::new(tx_progress, tx_complete, rx_request);
 
-    if cli.stereo_mode {
-        warn!("Stereo playback mode enabled; will disable multi-channel panning features")
+    if cli.multichannel_mode {
+        info!("Multichannel mode; use mono clips only");
+    } else {
+        info!("Stereo playback mode enabled; will disable multi-channel panning features");
     }
 
     // Initialise the state that we want to live on the audio thread.
     let stream = audio_host
         .new_output_stream(audio_model)
-        .render(if cli.stereo_mode {
-            render_audio_stereo
-        } else {
+        .render(if cli.multichannel_mode {
             render_audio_multichannel
+        } else {
+            render_audio_stereo
         })
         .device(device.unwrap())
-        .channels(cli.output_channels.try_into().unwrap())
         .sample_rate(cli.sample_rate)
         .build()
         .unwrap();
@@ -171,7 +172,7 @@ fn model(app: &App) -> Model {
     window.set_title(&format!("Tether Soundscape @{} Hz", cli.sample_rate));
     let egui = Egui::from_window(&window);
 
-    let sound_bank = SoundBank::new(app, Path::new("./test_bank.json"));
+    let sound_bank = SoundBank::new(app, Path::new("./test_bank.json"), cli.multichannel_mode);
     let duration_range = get_duration_range(sound_bank.clips());
 
     let mut tether = TetherAgent::new(cli.tether_host);
@@ -195,7 +196,7 @@ fn model(app: &App) -> Model {
         settings,
         tether,
         last_state_publish: std::time::SystemTime::now(),
-        stereo_mode: cli.stereo_mode,
+        multi_channel_mode: cli.multichannel_mode,
     }
 }
 
@@ -287,7 +288,7 @@ fn key_pressed(_app: &App, model: &mut Model, key: Key) {
 fn update(app: &App, model: &mut Model, update: Update) {
     // let window = app.window(model.window_id).unwrap();
 
-    build_ui(model, update.since_start, model.stereo_mode);
+    build_ui(model, update.since_start, model.multi_channel_mode);
 
     // Note the while loop - we try to process ALL progress update messages
     // every frame

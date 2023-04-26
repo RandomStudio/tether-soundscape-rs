@@ -32,18 +32,14 @@ pub struct Cli {
     #[arg(long = "tether.host", default_value_t=TETHER_HOST)]
     pub tether_host: std::net::IpAddr,
 
-    /// Number of output channels to use
-    #[arg(long = "outputChannels", default_value_t=OUTPUT_CHANNELS)]
-    pub output_channels: u32,
-
     /// Preferred output device name; use host default device if not supplied
     #[arg(long = "outputDevice")]
     pub preferred_output_device: Option<String>,
 
-    /// Disable multi-channel playback; play mono files to both L+R, and
-    /// play stereo files in normal stereo
-    #[arg(long = "stereo")]
-    pub stereo_mode: bool,
+    /// MultiChannel mode expects mono clips only; allows "panning"
+    /// within 2 or more channels
+    #[arg(long = "multiChannel")]
+    pub multichannel_mode: bool,
 }
 pub struct ManualSettings {
     pub fadein_duration: u32,
