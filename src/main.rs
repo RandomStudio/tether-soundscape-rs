@@ -57,6 +57,7 @@ pub struct Model {
     window_id: WindowId,
     egui: Egui,
     settings: ManualSettings,
+    stereo_mode: bool,
     tether: TetherAgent,
 }
 pub enum QueueItem {
@@ -194,6 +195,7 @@ fn model(app: &App) -> Model {
         settings,
         tether,
         last_state_publish: std::time::SystemTime::now(),
+        stereo_mode: cli.stereo_mode,
     }
 }
 
@@ -285,7 +287,7 @@ fn key_pressed(_app: &App, model: &mut Model, key: Key) {
 fn update(app: &App, model: &mut Model, update: Update) {
     // let window = app.window(model.window_id).unwrap();
 
-    build_ui(model, update.since_start);
+    build_ui(model, update.since_start, model.stereo_mode);
 
     // Note the while loop - we try to process ALL progress update messages
     // every frame

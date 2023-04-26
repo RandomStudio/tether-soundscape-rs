@@ -12,7 +12,7 @@ use crate::{
     Model, QueueItem,
 };
 
-pub fn build_ui(model: &mut Model, since_start: Duration) {
+pub fn build_ui(model: &mut Model, since_start: Duration, is_stereo_mode: bool) {
     let egui = &mut model.egui;
 
     egui.set_elapsed_time(since_start);
@@ -41,39 +41,38 @@ pub fn build_ui(model: &mut Model, since_start: Duration) {
 
         ui.separator();
 
-        ui.collapsing("Clip triggers", |ui| {
-            ui.heading("Panning");
-
-            ui.horizontal(|ui| {
-                ui.checkbox(ignore_panning, "Equal all channels (ignore panning)");
-            });
-
-            if !*ignore_panning {
+        if !is_stereo_mode {
+            ui.collapsing("Multi-channel Panning", |ui| {
                 ui.horizontal(|ui| {
-                    ui.label("Pan position");
-                    let channel_count = model.stream.cpal_config().channels.to_f32().unwrap() - 1.0;
-                    ui.add(Slider::new(simple_pan_position, 0. ..=channel_count));
-                });
-                ui.horizontal(|ui| {
-                    ui.label("Pan spread");
-                    let channel_count = model.stream.cpal_config().channels.to_f32().unwrap();
-                    ui.add(Slider::new(simple_pan_spread, 1. ..=channel_count));
+                    ui.checkbox(ignore_panning, "Equal all channels (ignore panning)");
                 });
 
-                if ui.button("Calculate").clicked() {
-                    let per_channel_volume = simple_panning(
-                        *simple_pan_position,
-                        *simple_pan_spread,
-                        output_channel_count,
-                    );
-                    println!("Mix: {:?}", per_channel_volume);
+                if !*ignore_panning {
+                    ui.horizontal(|ui| {
+                        ui.label("Pan position");
+                        let channel_count =
+                            model.stream.cpal_config().channels.to_f32().unwrap() - 1.0;
+                        ui.add(Slider::new(simple_pan_position, 0. ..=channel_count));
+                    });
+                    ui.horizontal(|ui| {
+                        ui.label("Pan spread");
+                        let channel_count = model.stream.cpal_config().channels.to_f32().unwrap();
+                        ui.add(Slider::new(simple_pan_spread, 1. ..=channel_count));
+                    });
+
+                    if ui.button("Calculate").clicked() {
+                        let per_channel_volume = simple_panning(
+                            *simple_pan_position,
+                            *simple_pan_spread,
+                            output_channel_count,
+                        );
+                        println!("Mix: {:?}", per_channel_volume);
+                    }
                 }
-            }
+            });
+        }
 
-            ui.separator();
-
-            ui.heading("Triggers");
-
+        ui.collapsing("Clip triggers", |ui| {
             for c in model.sound_bank.clips() {
                 let duration_s = frames_to_seconds(c.frames_count(), c.sample_rate(), None);
                 let sample_rate = &format!("{}KHz", c.sample_rate().to_f32().unwrap() / 1000.);

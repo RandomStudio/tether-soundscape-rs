@@ -1,8 +1,13 @@
 {
   "clips": [
     {
-      "name": "frog-mono",
-      "path": "frog-mono.wav",
+      "name": "ding-dong-mono",
+      "path": "ding-dong-mono.wav",
+      "volume": 0.9
+    },
+    {
+      "name": "ding-dong-stereo",
+      "path": "ding-dong-stereo.wav",
       "volume": 0.9
     },
     {

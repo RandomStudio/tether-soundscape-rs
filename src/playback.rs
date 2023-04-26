@@ -19,6 +19,7 @@ pub struct BufferedClip {
     frames_played: u32,
     phase: PlaybackPhase,
     per_channel_volume: Vec<f32>,
+    source_channels_count: u32,
 }
 
 /// Start volume, End volume, Duration IN MILLISECONDS
@@ -46,7 +47,7 @@ impl BufferedClip {
             None => 0.,
         };
         let sample_rate = reader.description().sample_rate();
-        // let channels = reader.description().channel_count();
+        let channels = reader.description().channel_count();
         BufferedClip {
             id,
             reader,
@@ -71,6 +72,7 @@ impl BufferedClip {
                 }
             },
             per_channel_volume,
+            source_channels_count: channels,
         }
     }
 
@@ -188,27 +190,59 @@ pub fn render_audio_stereo(audio: &mut Audio, buffer: &mut Buffer) {
     // Sum all of the sounds onto the buffer.
     for (i, sound) in audio.sounds.iter_mut().enumerate() {
         let mut frame_count: u32 = 0;
-        let file_frames = sound
-            .reader
-            .frames::<[f32; 2]>() //
-            .filter_map(Result::ok);
-        for (buffer_frame, file_frame) in buffer.frames_mut().zip(file_frames) {
-            for (output_sample, file_sample) in buffer_frame.iter_mut().zip(&file_frame) {
-                *output_sample += *file_sample * sound.current_volume;
-            }
-            frame_count += 1;
-        }
+        if sound.source_channels_count == 2 {
+            // STEREO SOURCE - zip (use as is)
 
-        handle_audio_progress(
-            frame_count,
-            len_frames,
-            sound,
-            &mut have_ended,
-            i,
-            &mut audio.tx_progress,
-            &mut audio.tx_complete,
-            &mut audio.rx_request,
-        );
+            let file_frames = sound
+                .reader
+                .frames::<[f32; 2]>() //
+                .filter_map(Result::ok);
+            for (buffer_frame, file_frame) in buffer.frames_mut().zip(file_frames) {
+                for (output_sample, file_sample) in buffer_frame.iter_mut().zip(&file_frame) {
+                    *output_sample += *file_sample * sound.current_volume;
+                }
+                frame_count += 1;
+            }
+
+            handle_audio_progress(
+                frame_count,
+                len_frames,
+                sound,
+                &mut have_ended,
+                i,
+                &mut audio.tx_progress,
+                &mut audio.tx_complete,
+                &mut audio.rx_request,
+            );
+        } else {
+            // MONO SOURCE - duplicate channels
+
+            // let len_frames = len_frames * 2;
+
+            let mut file_frames = sound
+                .reader
+                .frames::<[f32; 1]>() //
+                .filter_map(Result::ok);
+
+            for buffer_frame in buffer.frames_mut() {
+                if let Some(file_frame) = file_frames.next() {
+                    for output_sample in buffer_frame.iter_mut() {
+                        *output_sample += file_frame[0];
+                    }
+                    frame_count += 1;
+                }
+            }
+            handle_audio_progress(
+                frame_count,
+                len_frames,
+                sound,
+                &mut have_ended,
+                i,
+                &mut audio.tx_progress,
+                &mut audio.tx_complete,
+                &mut audio.rx_request,
+            );
+        }
     }
 
     // Remove all sounds that have ended.
@@ -227,7 +261,9 @@ fn handle_audio_progress(
     tx_complete: &mut Producer<CompleteUpdate>,
     rx_request: &mut Consumer<RequestUpdate>,
 ) {
-    // If the sound yielded less samples than are in the buffer, it must have ended.
+    // If
+    // - sound yielded less samples than are in the buffer, it must have ended
+    // - or we're in the Complete phase
     if frame_count < len_frames || matches!(&sound.phase, PlaybackPhase::Complete()) {
         if !tx_complete.is_full() {
             have_ended.push(i);

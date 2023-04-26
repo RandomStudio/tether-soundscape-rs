@@ -54,7 +54,11 @@ pub fn get_sound_asset_path(assets_path: PathBuf, base_path: &str) -> String {
 fn read_length_and_rate(path: &std::path::Path) -> (u32, u32) {
     let mut reader = audrey::open(path).unwrap();
     let mut count = 0;
-    reader.frames::<[f32; 2]>().for_each(|_f| count += 1);
+    if reader.description().channel_count() == 2 {
+        reader.frames::<[f32; 2]>().for_each(|_f| count += 1);
+    } else {
+        reader.frames::<[f32; 1]>().for_each(|_f| count += 1);
+    }
     let description = reader.description();
     let sample_rate = description.sample_rate();
     (count, sample_rate)
