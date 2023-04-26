@@ -39,6 +39,11 @@ pub struct Cli {
     /// Preferred output device name; use host default device if not supplied
     #[arg(long = "outputDevice")]
     pub preferred_output_device: Option<String>,
+
+    /// Disable multi-channel playback; play mono files to both L+R, and
+    /// play stereo files in normal stereo
+    #[arg(long = "stereo")]
+    pub stereo_mode: bool,
 }
 pub struct ManualSettings {
     pub fadein_duration: u32,

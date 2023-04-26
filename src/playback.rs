@@ -12,9 +12,6 @@ use crate::utils::millis_to_frames;
 /// Volume value, duration IN FRAMES
 type StoredTweener = Tweener<f32, u32, Box<dyn Tween<f32> + Send + Sync>>;
 
-// For now, this means that stereo source files will have one channel ignored
-const INPUT_CHANNEL_COUNT: usize = 1;
-
 pub struct BufferedClip {
     id: usize,
     current_volume: f32,
@@ -147,7 +144,7 @@ impl Audio {
     }
 }
 
-pub fn render_audio(audio: &mut Audio, buffer: &mut Buffer) {
+pub fn render_audio_multichannel(audio: &mut Audio, buffer: &mut Buffer) {
     let mut have_ended = vec![];
     let len_frames = buffer.len_frames().to_u32().unwrap();
 
@@ -156,7 +153,7 @@ pub fn render_audio(audio: &mut Audio, buffer: &mut Buffer) {
         let mut frame_count: u32 = 0;
         let file_frames = sound
             .reader
-            .frames::<[f32; INPUT_CHANNEL_COUNT]>()
+            .frames::<[f32; 1]>() //
             .filter_map(Result::ok);
         for (buffer_frame, file_frame) in buffer.frames_mut().zip(file_frames) {
             for (index, output_sample) in buffer_frame.iter_mut().enumerate() {
@@ -166,49 +163,106 @@ pub fn render_audio(audio: &mut Audio, buffer: &mut Buffer) {
             frame_count += 1;
         }
 
-        // If the sound yielded less samples than are in the buffer, it must have ended.
-        if frame_count < len_frames || matches!(&sound.phase, PlaybackPhase::Complete()) {
-            if !audio.tx_complete.is_full() {
-                have_ended.push(i);
-                audio.tx_complete.push(sound.id).unwrap();
-            }
-        } else {
-            sound.frames_played += frame_count;
-
-            sound.current_volume = match &mut sound.phase {
-                PlaybackPhase::Attack(tween) => tween.move_by(frame_count),
-                PlaybackPhase::Sustain() => sound.current_volume,
-                PlaybackPhase::Release(tween) => tween.move_by(frame_count),
-                PlaybackPhase::Complete() => 0.,
-            };
-
-            if let PlaybackPhase::Attack(tween) = &mut sound.phase {
-                if tween.is_finished() {
-                    debug!("sound attack => sustain");
-                    sound.phase = PlaybackPhase::Sustain();
-                }
-            }
-
-            if let PlaybackPhase::Release(tween) = &sound.phase {
-                if tween.is_finished() {
-                    debug!("sound release => complete");
-                    sound.phase = PlaybackPhase::Complete();
-                }
-            }
-
-            if let Ok(receive_id) = audio.rx_request.pop() {
-                if sound.id == receive_id && !audio.tx_progress.is_full() {
-                    audio
-                        .tx_progress
-                        .push((sound.id, sound.frames_played, sound.current_volume))
-                        .expect("failed to send progress");
-                }
-            }
-        }
+        handle_audio_progress(
+            frame_count,
+            len_frames,
+            sound,
+            &mut have_ended,
+            i,
+            &mut audio.tx_progress,
+            &mut audio.tx_complete,
+            &mut audio.rx_request,
+        );
     }
 
     // Remove all sounds that have ended.
     for i in have_ended.into_iter().rev() {
         audio.sounds.remove(i);
+    }
+}
+
+pub fn render_audio_stereo(audio: &mut Audio, buffer: &mut Buffer) {
+    let mut have_ended = vec![];
+    let len_frames = buffer.len_frames().to_u32().unwrap();
+
+    // Sum all of the sounds onto the buffer.
+    for (i, sound) in audio.sounds.iter_mut().enumerate() {
+        let mut frame_count: u32 = 0;
+        let file_frames = sound
+            .reader
+            .frames::<[f32; 2]>() //
+            .filter_map(Result::ok);
+        for (buffer_frame, file_frame) in buffer.frames_mut().zip(file_frames) {
+            for (output_sample, file_sample) in buffer_frame.iter_mut().zip(&file_frame) {
+                *output_sample += *file_sample * sound.current_volume;
+            }
+            frame_count += 1;
+        }
+
+        handle_audio_progress(
+            frame_count,
+            len_frames,
+            sound,
+            &mut have_ended,
+            i,
+            &mut audio.tx_progress,
+            &mut audio.tx_complete,
+            &mut audio.rx_request,
+        );
+    }
+
+    // Remove all sounds that have ended.
+    for i in have_ended.into_iter().rev() {
+        audio.sounds.remove(i);
+    }
+}
+
+fn handle_audio_progress(
+    frame_count: u32,
+    len_frames: u32,
+    sound: &mut BufferedClip,
+    have_ended: &mut Vec<usize>,
+    i: usize,
+    tx_progress: &mut Producer<ProgressUpdate>,
+    tx_complete: &mut Producer<CompleteUpdate>,
+    rx_request: &mut Consumer<RequestUpdate>,
+) {
+    // If the sound yielded less samples than are in the buffer, it must have ended.
+    if frame_count < len_frames || matches!(&sound.phase, PlaybackPhase::Complete()) {
+        if !tx_complete.is_full() {
+            have_ended.push(i);
+            tx_complete.push(sound.id).unwrap();
+        }
+    } else {
+        sound.frames_played += frame_count;
+
+        sound.current_volume = match &mut sound.phase {
+            PlaybackPhase::Attack(tween) => tween.move_by(frame_count),
+            PlaybackPhase::Sustain() => sound.current_volume,
+            PlaybackPhase::Release(tween) => tween.move_by(frame_count),
+            PlaybackPhase::Complete() => 0.,
+        };
+
+        if let PlaybackPhase::Attack(tween) = &mut sound.phase {
+            if tween.is_finished() {
+                debug!("sound attack => sustain");
+                sound.phase = PlaybackPhase::Sustain();
+            }
+        }
+
+        if let PlaybackPhase::Release(tween) = &sound.phase {
+            if tween.is_finished() {
+                debug!("sound release => complete");
+                sound.phase = PlaybackPhase::Complete();
+            }
+        }
+
+        if let Ok(receive_id) = rx_request.pop() {
+            if sound.id == receive_id && !tx_progress.is_full() {
+                tx_progress
+                    .push((sound.id, sound.frames_played, sound.current_volume))
+                    .expect("failed to send progress");
+            }
+        }
     }
 }

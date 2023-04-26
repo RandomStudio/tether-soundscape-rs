@@ -15,7 +15,8 @@ use tether::Instruction;
 
 use loader::{get_sound_asset_path, SoundBank};
 use playback::{
-    render_audio, Audio, BufferedClip, CompleteUpdate, PlaybackState, ProgressUpdate, RequestUpdate,
+    render_audio_multichannel, Audio, BufferedClip, CompleteUpdate, PlaybackState, ProgressUpdate,
+    RequestUpdate,
 };
 use rtrb::{Consumer, Producer, RingBuffer};
 use settings::{
@@ -29,6 +30,7 @@ use utils::{
 };
 
 use crate::{
+    playback::render_audio_stereo,
     tether::TetherAgent,
     utils::{clips_to_remove, get_highest_id, millis_to_frames},
 };
@@ -145,10 +147,19 @@ fn model(app: &App) -> Model {
     let (tx_complete, rx_complete) = RingBuffer::new(RING_BUFFER_SIZE);
     let (tx_request, rx_request) = RingBuffer::new(RING_BUFFER_SIZE);
     let audio_model = Audio::new(tx_progress, tx_complete, rx_request);
+
+    if cli.stereo_mode {
+        warn!("Stereo playback mode enabled; will disable multi-channel panning features")
+    }
+
     // Initialise the state that we want to live on the audio thread.
     let stream = audio_host
         .new_output_stream(audio_model)
-        .render(render_audio)
+        .render(if cli.stereo_mode {
+            render_audio_stereo
+        } else {
+            render_audio_multichannel
+        })
         .device(device.unwrap())
         .channels(cli.output_channels.try_into().unwrap())
         .sample_rate(cli.sample_rate)
