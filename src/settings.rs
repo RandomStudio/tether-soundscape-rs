@@ -13,13 +13,23 @@ pub const RING_BUFFER_SIZE: usize = 32;
 const TETHER_HOST: std::net::IpAddr = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
 
 pub const SAMPLE_RATE: u32 = 48000;
-pub const OUTPUT_CHANNELS: u32 = 2;
+
+pub const TEST_BANK_STEREO: &str = "./test_stereo.json";
+pub const TEST_BANK_MONO: &str = "./test_mono.json";
+
+pub fn pick_default_sample_bank(multi_channel_mode: bool) -> String {
+    if multi_channel_mode {
+        String::from(TEST_BANK_MONO)
+    } else {
+        String::from(TEST_BANK_STEREO)
+    }
+}
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 pub struct Cli {
-    #[arg(long = "loglevel",default_value_t=String::from("info"))]
-    pub log_level: String,
+    #[arg(long = "sampleBank")]
+    pub sample_bank_path: Option<String>,
 
     #[arg(long = "sampleRate",default_value_t=SAMPLE_RATE)]
     pub sample_rate: u32,
@@ -40,6 +50,9 @@ pub struct Cli {
     /// within 2 or more channels
     #[arg(long = "multiChannel")]
     pub multichannel_mode: bool,
+
+    #[arg(long = "loglevel",default_value_t=String::from("info"))]
+    pub log_level: String,
 }
 pub struct ManualSettings {
     pub fadein_duration: u32,

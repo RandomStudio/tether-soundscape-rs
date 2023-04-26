@@ -86,10 +86,11 @@ impl TetherAgent {
             .finalize();
 
         // Make the connection to the broker
-        info!("Connecting to the MQTT server...");
+        debug!("Connecting to the MQTT server...");
         match self.client.connect(conn_opts) {
             Ok(res) => {
-                info!("Connected OK: {res:?}");
+                info!("MQTT client connected OK");
+                debug!("Connected OK: {res:?}");
                 match self.client.subscribe_many(INPUT_TOPICS, INPUT_QOS) {
                     Ok(res) => {
                         debug!("Subscribe OK: {res:?}");

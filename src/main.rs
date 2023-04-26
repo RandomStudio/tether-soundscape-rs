@@ -31,6 +31,7 @@ use utils::{
 
 use crate::{
     playback::render_audio_stereo,
+    settings::pick_default_sample_bank,
     tether::TetherAgent,
     utils::{clips_to_remove, get_highest_id, millis_to_frames},
 };
@@ -169,10 +170,26 @@ fn model(app: &App) -> Model {
         .unwrap();
 
     let window = app.window(window_id).unwrap();
-    window.set_title(&format!("Tether Soundscape @{} Hz", cli.sample_rate));
+    let mode = if cli.multichannel_mode {
+        "MULTICHANNEL"
+    } else {
+        "STEREO"
+    };
+    window.set_title(&format!(
+        "Tether Soundscape @{} KHz - {} MODE",
+        cli.sample_rate / 1000,
+        mode
+    ));
     let egui = Egui::from_window(&window);
 
-    let sound_bank = SoundBank::new(app, Path::new("./test_bank.json"), cli.multichannel_mode);
+    let sound_bank = SoundBank::new(
+        app,
+        Path::new(
+            &cli.sample_bank_path
+                .unwrap_or(pick_default_sample_bank(cli.multichannel_mode)),
+        ),
+        cli.multichannel_mode,
+    );
     let duration_range = get_duration_range(sound_bank.clips());
 
     let mut tether = TetherAgent::new(cli.tether_host);

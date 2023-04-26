@@ -1,0 +1,38 @@
+{
+  "clips": [
+    {
+      "name": "ding-dong",
+      "path": "demo/ding-dong-mono.wav",
+      "volume": 0.9
+    },
+    {
+      "name": "frog",
+      "path": "demo/frog-mono.wav",
+      "volume": 0.2
+    },
+    {
+      "name": "mice",
+      "path": "demo/mice-mono.wav",
+      "volume": 0.2
+    },
+    {
+      "name": "squirrel",
+      "path": "demo/squirrel-mono.wav"
+    },
+    {
+      "name": "squirrel2",
+      "path": "demo/squirrel2-mono.wav"
+    }
+  ],
+  "scenes": [
+    {
+      "clips": ["frog", "mice"]
+    },
+    {
+      "clips": ["squirrel", "squirrel2"]
+    },
+    {
+      "clips": ["squirrel", "mice", "frog"]
+    }
+  ]
+}
