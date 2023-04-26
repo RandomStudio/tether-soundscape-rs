@@ -4,10 +4,10 @@ A multi-layered audio sequencer, remote-controllable via Tether, to create sound
 
 ![screenshot animation](./soundscape.gif)
 
-## Source files
-Currently, all source files are assumed to be mono (stereo files will play at "half speed").
+## Stereo vs Multichannel mode
+In the default mode (**stereo**), clips can be mono or stereo. Mono clips will be duplicated to both Left and Right output channels (dual mono), and stereo clips will play as normal (left and right channels directed correctly).
 
-The sample rate can be set using `--sampleRate 44100` for example, but by default is assumed to be 48Khz.
+In **multichannel** mode (`--multiChannel`), you must provide *only* mono files. You can then use "panning" (later this could be 2D or even 3D spatialised audio) to direct how the input channel is replicated to the available output channels.
 
 ## Remote control (Input from Tether)
 
