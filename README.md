@@ -89,7 +89,7 @@ ___
 - [x] Add Tether remote control commands, as per API in [original](https://github.com/RandomStudio/tether-soundscape)
 - [x] Publish clip state / progress so that an external application can do visualisation or animation, for example
 - [x] Allow for multi-channel output, at least "one clip per channel" config
-- [ ] Stereo source files should be handled differently from mono, i.e. add to channels 1 and 2 (in stereo output) or mixdown to mono before assigning to multi-channel output
+- [x] Stereo source files should be handled differently from mono, i.e. add to channels 1 and 2 (in stereo output)
 - [ ] CLI should allow custom path to JSON sample bank file
 - [ ] New standard demo clips (48Khz, stereo + mono)
 - [ ] Provide utility/test modes, e.g. tone per channel
