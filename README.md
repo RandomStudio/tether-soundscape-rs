@@ -4,11 +4,10 @@ A multi-layered audio sequencer, remote-controllable via Tether, to create sound
 
 ![screenshot animation](./soundscape.gif)
 
-## Using 🦀 Rust because:
-- Minimal memory/CPU footprint for high performance
-- Cross-platform but without any need to install browser, use Electron, etc.
-- Visualisation via Nannou
-- Great way to learn about low-level audio sample/buffer control, multi-threading in Rust (Nannou always uses separate "realtime" thread for audio)
+## Source files
+Currently, all source files are assumed to be mono (stereo files will play at "half speed").
+
+The sample rate can be set using `--sampleRate 44100` for example, but by default is assumed to be 48Khz.
 
 ## Remote control (Input from Tether)
 
@@ -71,7 +70,13 @@ To minimise traffic, the agent will only publish an empty clip list (`clips: []`
 ### Events
 TODO: discrete events (clip begin/end) should be published in addition to the stream of "state" messages. This could be useful for driving external applications that only need to subscribe to significant begin/end events.
 
+## Using 🦀 Rust because:
+- Minimal memory/CPU footprint for high performance
+- Cross-platform but without any need to install browser, use Electron, etc.
+- Visualisation via Nannou
+- Great way to learn about low-level audio sample/buffer control, multi-threading in Rust (Nannou always uses separate "realtime" thread for audio)
 
+___ 
 ## TODO:
 - [x] Apply "loop" as well as trigger/hit/once-off functions
 - [x] Allow clips to be stopped/removed while playing (without stopping whole stream)
@@ -83,7 +88,8 @@ TODO: discrete events (clip begin/end) should be published in addition to the st
 - [x] Env logging, CLI params
 - [x] Add Tether remote control commands, as per API in [original](https://github.com/RandomStudio/tether-soundscape)
 - [x] Publish clip state / progress so that an external application can do visualisation or animation, for example
-- [ ] Allow for multi-channel output, at least "one clip per channel" config
+- [x] Allow for multi-channel output, at least "one clip per channel" config
+- [ ] Stereo source files should be handled differently from mono, i.e. add to channels 1 and 2 (in stereo output) or mixdown to mono before assigning to multi-channel output
 - [ ] CLI should allow custom path to JSON sample bank file
 - [ ] New standard demo clips (48Khz, stereo + mono)
 - [ ] Provide utility/test modes, e.g. tone per channel

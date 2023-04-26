@@ -56,7 +56,7 @@ pub fn build_ui(model: &mut Model, since_start: Duration) {
                 });
                 ui.horizontal(|ui| {
                     ui.label("Pan spread");
-                    let channel_count = model.stream.cpal_config().channels.to_f32().unwrap() - 1.0;
+                    let channel_count = model.stream.cpal_config().channels.to_f32().unwrap();
                     ui.add(Slider::new(simple_pan_spread, 1. ..=channel_count));
                 });
 

@@ -10,7 +10,7 @@ use nannou::prelude::ToPrimitive;
 
 const INPUT_TOPICS: &[&str] = &["+/+/instructions"];
 const INPUT_QOS: &[i32; INPUT_TOPICS.len()] = &[2];
-const OUTPUT_TOPIC: &str = &"soundscape/unknown/state";
+const OUTPUT_TOPIC: &str = "soundscape/unknown/state";
 
 type ClipName = String;
 pub enum Instruction {
@@ -146,7 +146,7 @@ impl TetherAgent {
         let should_publish = {
             match self.last_clip_count_sent {
                 None => true,
-                Some(last_count) => clips.len() > 0 || clips.len() != last_count,
+                Some(last_count) => !clips.is_empty() || clips.len() != last_count,
             }
         };
         if should_publish {

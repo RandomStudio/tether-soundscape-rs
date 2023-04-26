@@ -201,6 +201,8 @@ pub fn queue_stop_all(
     }
 }
 
+// TODO: reduce the number of arguments here. Use an enum
+// to encapsulate the "settings" for starting this clip?
 fn start_one(
     name: &str,
     sound_bank: &SoundBank,

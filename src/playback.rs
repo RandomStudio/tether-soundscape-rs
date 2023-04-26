@@ -12,6 +12,7 @@ use crate::utils::millis_to_frames;
 /// Volume value, duration IN FRAMES
 type StoredTweener = Tweener<f32, u32, Box<dyn Tween<f32> + Send + Sync>>;
 
+// For now, this means that stereo source files will have one channel ignored
 const INPUT_CHANNEL_COUNT: usize = 1;
 
 pub struct BufferedClip {
@@ -157,20 +158,11 @@ pub fn render_audio(audio: &mut Audio, buffer: &mut Buffer) {
             .reader
             .frames::<[f32; INPUT_CHANNEL_COUNT]>()
             .filter_map(Result::ok);
-        for (frame, file_frame) in buffer.frames_mut().zip(file_frames) {
-            for (index, output_sample) in frame.iter_mut().enumerate() {
+        for (buffer_frame, file_frame) in buffer.frames_mut().zip(file_frames) {
+            for (index, output_sample) in buffer_frame.iter_mut().enumerate() {
                 let this_channel_volume = sound.per_channel_volume[index];
                 *output_sample += file_frame[0] * sound.current_volume * this_channel_volume;
             }
-            // for (output_sample, file_sample) in frame.iter_mut().zip(&file_frame) {
-            //     *output_sample += *file_sample * sound.current_volume;
-            // }
-            // // TODO: this is just for "panning" example
-            // let l = 0.8;
-            // let r = 0.1;
-            // frame[0] *= l;
-            // frame[1] *= r;
-
             frame_count += 1;
         }
 
