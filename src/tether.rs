@@ -17,12 +17,16 @@ type ClipName = String;
 /// Position (in range 0>numChannels-1) and spread (in range 1>numChannels)
 pub type SimplePanning = (f32, f32);
 
+pub enum ScenePickMode {
+    All,
+    Random,
+}
 pub enum Instruction {
     // Clip name, should_loop, optional fade duration, optional panning
     Add(ClipName, bool, Option<FadeDuration>, Option<SimplePanning>),
     // Clip name, option fade duration
     Remove(ClipName, Option<FadeDuration>),
-    Scene(Vec<ClipName>, Option<FadeDuration>),
+    Scene(ScenePickMode, Vec<ClipName>, Option<FadeDuration>),
 }
 
 #[derive(Serialize, Debug)]
@@ -174,12 +178,18 @@ impl TetherAgent {
                     if let Ok(parsed) = scene_message {
                         let pick_mode = parsed.pick.unwrap_or(String::from("all"));
                         match pick_mode.as_str() {
-                            "all" => {
-                                Some(Instruction::Scene(parsed.clip_names, parsed.fade_duration))
-                            }
-                            "pickRandom" => {
+                            "all" => Some(Instruction::Scene(
+                                ScenePickMode::All,
+                                parsed.clip_names,
+                                parsed.fade_duration,
+                            )),
+                            "random" => {
                                 // TODO: handle pick random
-                                Some(Instruction::Scene(parsed.clip_names, parsed.fade_duration))
+                                Some(Instruction::Scene(
+                                    ScenePickMode::Random,
+                                    parsed.clip_names,
+                                    parsed.fade_duration,
+                                ))
                             }
                             _ => {
                                 error!(

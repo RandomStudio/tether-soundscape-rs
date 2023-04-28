@@ -2825,6 +2825,7 @@ dependencies = [
  "nannou_audio",
  "nannou_egui",
  "paho-mqtt",
+ "rand 0.8.5",
  "rmp-serde",
  "rtrb",
  "serde",

@@ -32,8 +32,8 @@ use utils::{
 use crate::{
     playback::render_audio_stereo,
     settings::pick_default_sample_bank,
-    tether::TetherAgent,
-    utils::{clips_to_remove, get_highest_id, millis_to_frames},
+    tether::{ScenePickMode, TetherAgent},
+    utils::{clips_to_remove, get_highest_id, millis_to_frames, pick_random_clip},
 };
 
 mod loader;
@@ -430,23 +430,37 @@ fn update(app: &App, model: &mut Model, update: Update) {
                         error!("Could not find clip named {} to stop", &clip_name);
                     }
                 }
-                Instruction::Scene(clip_names, fade_duration) => {
+                Instruction::Scene(pick_mode, clip_names, fade_duration) => {
                     let to_add = &clip_names;
                     info!("Scene transition: x{} clips to add", to_add.len());
-                    for name in to_add {
-                        // TODO: check at this point whether the clips exist (available)?
-                        // TODO: get optional panning via instruction message
-                        model.action_queue.push(QueueItem::Play(
-                            String::from(name),
-                            fade_duration,
-                            true,
-                            equalise_channel_volumes(model.stream.cpal_config().channels.into()),
-                        ));
-                    }
-                    let to_remove = clips_to_remove(&model.clips_playing, &clip_names);
-                    info!("Scene transition: x{} clips to remove", to_remove.len());
-                    for id in to_remove {
-                        model.action_queue.push(QueueItem::Stop(id, fade_duration));
+                    match pick_mode {
+                        ScenePickMode::All => {
+                            for name in to_add {
+                                model.action_queue.push(QueueItem::Play(
+                                    String::from(name),
+                                    fade_duration,
+                                    true,
+                                    equalise_channel_volumes(
+                                        model.stream.cpal_config().channels.into(),
+                                    ),
+                                ));
+                            }
+                            let to_remove = clips_to_remove(&model.clips_playing, &clip_names);
+                            info!("Scene transition: x{} clips to remove", to_remove.len());
+                            for id in to_remove {
+                                model.action_queue.push(QueueItem::Stop(id, fade_duration));
+                            }
+                        }
+                        ScenePickMode::Random => {
+                            model.action_queue.push(QueueItem::Play(
+                                pick_random_clip(clip_names),
+                                fade_duration,
+                                false,
+                                equalise_channel_volumes(
+                                    model.stream.cpal_config().channels.into(),
+                                ),
+                            ));
+                        }
                     }
                 }
             }

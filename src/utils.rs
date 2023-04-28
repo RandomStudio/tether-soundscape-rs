@@ -1,4 +1,5 @@
 use nannou::prelude::{map_range, ToPrimitive};
+use rand::Rng;
 
 use crate::{loader::AudioClipOnDisk, tether::SimplePanning, CurrentlyPlayingClip};
 
@@ -178,4 +179,10 @@ pub fn provided_or_default_panning(
         }
         None => default_panning_channel_volumes(output_channel_count),
     }
+}
+
+pub fn pick_random_clip(clip_names: Vec<String>) -> String {
+    let mut rng = rand::thread_rng();
+    let index: usize = rng.gen_range(0..clip_names.len());
+    clip_names[index].clone()
 }

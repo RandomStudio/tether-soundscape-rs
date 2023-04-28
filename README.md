@@ -27,9 +27,14 @@ Single clip hit:
 tether-send --host 127.0.0.1 --topic dummy/dummy/clipCommands --message \{\"command\":\"hit\"\,\"clipName\":\"frog\"\}
 ```
 
-Scene with two clips:
+Scene with two clips (play all = default):
 ```
 tether-send --host 127.0.0.1 --topic dummy/dummy/scenes --message \{\"clipNames\":\[\"frog\"\,\"squirrel\"]\}
+```
+
+Scene where system should "pick one random" from the list:
+```
+tether-send --host 127.0.0.1 --topic dummy/dummy/scenes --message \{\"pick\":\"random\",\"clipNames\":\[\"frog\"\,\"squirrel\"]\}
 ```
 
 Remove single clip
@@ -46,6 +51,7 @@ Scene with zero clips (silence all), custom fade duration:
 ```
 tether-send --host 127.0.0.1 --topic dummy/dummy/scenes --message \{\"clipNames\":\[\],\"fadeDuration\":500\}
 ```
+
 
 ## Output to Tether
 
