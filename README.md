@@ -24,32 +24,27 @@ Unlike with the [original](https://github.com/RandomStudio/tether-soundscape) we
 
 Single clip hit:
 ```
-tether-send --host 127.0.0.1 --topic dummy/dummy/instructions --message \{\"instructionType\":\"hit\"\,\"clipNames\":\[\"frog\"\]\}
-```
-
-Multiple clip hits:
-```
-tether-send --host 127.0.0.1 --topic dummy/dummy/instructions --message \{\"instructionType\":\"hit\"\,\"clipNames\":\[\"frog\"\,\"squirrel\"]\}
+tether-send --host 127.0.0.1 --topic dummy/dummy/clipCommands --message \{\"command\":\"hit\"\,\"clipName\":\"frog\"\}
 ```
 
 Scene with two clips:
 ```
-tether-send --host 127.0.0.1 --topic dummy/dummy/instructions --message \{\"instructionType\":\"scene\",\"clipNames\":\[\"frog\"\,\"squirrel\"]\}
+tether-send --host 127.0.0.1 --topic dummy/dummy/scenes --message \{\"clipNames\":\[\"frog\"\,\"squirrel\"]\}
 ```
 
 Remove single clip
 ```
-tether-send --host 127.0.0.1 --topic dummy/dummy/instructions --message \{\"instructionType\":\"remove\",\"clipNames\":\[\"frog\"\]\}
+tether-send --host 127.0.0.1 --topic dummy/dummy/clipCommands --message \{\"command\":\"remove\",\"clipName\":\"frog\"\}
 ```
 
 Add single clip, custom fade duration
 ```
-tether-send --host 127.0.0.1 --topic dummy/dummy/instructions --message \{\"instructionType\":\"add\",\"clipNames\":\[\"squirrel2\"\],\"fadeDuration\":5000\}
+tether-send --host 127.0.0.1 --topic dummy/dummy/clipCommands --message \{\"command\":\"add\",\"clipName\":\"squirrel2\",\"fadeDuration\":5000\}
 ```
 
 Scene with zero clips (silence all), custom fade duration:
 ```
-tether-send --host 127.0.0.1 --topic dummy/dummy/instructions --message \{\"instructionType\":\"scene\"\,\"clipNames\":\[\],\"fadeDuration\":500\}
+tether-send --host 127.0.0.1 --topic dummy/dummy/scenes --message \{\"clipNames\":\[\],\"fadeDuration\":500\}
 ```
 
 ## Output to Tether

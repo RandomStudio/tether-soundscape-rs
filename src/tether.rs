@@ -51,7 +51,10 @@ pub struct SingleClipMessage {
     pub pan_spread: Option<f32>,
 }
 
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct SceneMessage {
+    pub pick: Option<String>,
     pub clip_names: Vec<ClipName>,
     pub fade_duration: Option<FadeDuration>,
 }
@@ -165,8 +168,31 @@ impl TetherAgent {
                     }
                 }
                 "scenes" => {
-                    // TODO
-                    None
+                    let scene_message: Result<SceneMessage, rmp_serde::decode::Error> =
+                        rmp_serde::from_slice(&payload);
+
+                    if let Ok(parsed) = scene_message {
+                        let pick_mode = parsed.pick.unwrap_or(String::from("all"));
+                        match pick_mode.as_str() {
+                            "all" => {
+                                Some(Instruction::Scene(parsed.clip_names, parsed.fade_duration))
+                            }
+                            "pickRandom" => {
+                                // TODO: handle pick random
+                                Some(Instruction::Scene(parsed.clip_names, parsed.fade_duration))
+                            }
+                            _ => {
+                                error!(
+                                    "Unrecognised 'pick' option for Scene Message: {}",
+                                    &pick_mode
+                                );
+                                None
+                            }
+                        }
+                    } else {
+                        error!("Error parsing Scene Message");
+                        None
+                    }
                 }
                 "globalControls" => {
                     // TODO
