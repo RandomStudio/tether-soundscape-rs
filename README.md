@@ -9,7 +9,6 @@ In the default mode (**stereo**), clips can be mono or stereo. Mono clips will b
 
 In **multichannel** mode (`--multiChannel`), you must provide *only* mono files. You can then use "panning" (later this could be 2D or even 3D spatialised audio) to direct how the input channel is replicated to the available output channels.
 
-___
 ## Remote control (Input from Tether)
 
 ### Single Clip Commands
@@ -73,7 +72,6 @@ Scene with zero clips (silence all), custom fade duration:
 tether-send --host 127.0.0.1 --topic dummy/dummy/scenes --message \{\"clipNames\":\[\],\"fadeDuration\":500\}
 ```
 
-___
 ## Output to Tether
 
 ### State
