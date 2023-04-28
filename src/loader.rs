@@ -1,8 +1,10 @@
 use std::path::{Path, PathBuf};
 
-use log::{error, info};
+use log::{debug, error, info};
 use nannou::App;
 use serde::{Deserialize, Serialize};
+
+use crate::tether::SimplePanning;
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -11,7 +13,7 @@ pub struct SoundBank {
     scenes: Vec<Scene>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct AudioClipOnDisk {
     name: String,
@@ -21,6 +23,7 @@ pub struct AudioClipOnDisk {
     #[serde(default)]
     sample_rate: u32,
     volume: Option<f32>,
+    panning: Option<SimplePanning>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -44,6 +47,9 @@ impl AudioClipOnDisk {
     }
     pub fn volume(&self) -> Option<f32> {
         self.volume
+    }
+    pub fn panning(&self) -> Option<SimplePanning> {
+        self.panning
     }
 }
 
@@ -88,13 +94,17 @@ impl SoundBank {
                             let path = Path::new(&path_str);
                             let (frames_count, sample_rate) = read_length_and_rate(path, mono_only);
                             let volume = sample.volume;
-                            AudioClipOnDisk {
+                            let panning = sample.panning;
+                            let entry = AudioClipOnDisk {
                                 name: String::from(&sample.name),
                                 path: String::from(path.to_str().unwrap()),
                                 frames_count,
                                 sample_rate,
                                 volume,
-                            }
+                                panning,
+                            };
+                            debug!("Created sample bank entry OK: {:?}", entry);
+                            entry
                         })
                         .collect();
                     let scenes = bank.scenes;

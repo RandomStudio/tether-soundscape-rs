@@ -1,3 +1,4 @@
+use log::debug;
 use nannou::prelude::{map_range, ToPrimitive};
 use rand::Rng;
 
@@ -167,17 +168,32 @@ pub fn default_panning_channel_volumes(output_channel_count: u32) -> Vec<f32> {
     simple_panning_channel_volumes(position, 1.0, output_channel_count)
 }
 
-/// If panning was "optionally" provided, calculate the per-channel volumes as given,
-/// otherwise return a suitable default
+/// Three possible levels (higher override lower):
+/// - Panning provided by Tether Message
+/// - Panning provided from clip settings
+/// - None provided; use default (equalise channels)
 pub fn provided_or_default_panning(
-    provided_panning: Option<SimplePanning>,
+    message_provided_panning: Option<SimplePanning>,
+    clip_default_panning: Option<SimplePanning>,
     output_channel_count: u32,
 ) -> Vec<f32> {
-    match provided_panning {
+    debug!("Message provided panning: {:?}", message_provided_panning);
+    debug!("Clip default panning: {:?}", clip_default_panning);
+    match message_provided_panning {
         Some((position, spread)) => {
+            debug!("Use message provided panning");
             simple_panning_channel_volumes(position, spread, output_channel_count)
         }
-        None => default_panning_channel_volumes(output_channel_count),
+        None => match clip_default_panning {
+            Some((position, spread)) => {
+                debug!("Use clip default panning");
+                simple_panning_channel_volumes(position, spread, output_channel_count)
+            }
+            None => {
+                debug!("No overrides; use equalised channels");
+                default_panning_channel_volumes(output_channel_count)
+            }
+        },
     }
 }
 

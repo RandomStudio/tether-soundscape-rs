@@ -18,7 +18,8 @@ type ClipName = String;
 pub type SimplePanning = (f32, f32);
 
 pub enum ScenePickMode {
-    All,
+    LoopAll,
+    OnceAll,
     Random,
 }
 pub enum Instruction {
@@ -58,7 +59,7 @@ pub struct SingleClipMessage {
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct SceneMessage {
-    pub pick: Option<String>,
+    pub mode: Option<String>,
     pub clip_names: Vec<ClipName>,
     pub fade_duration: Option<FadeDuration>,
 }
@@ -176,21 +177,23 @@ impl TetherAgent {
                         rmp_serde::from_slice(&payload);
 
                     if let Ok(parsed) = scene_message {
-                        let pick_mode = parsed.pick.unwrap_or(String::from("all"));
+                        let pick_mode = parsed.mode.unwrap_or(String::from("loopAll"));
                         match pick_mode.as_str() {
-                            "all" => Some(Instruction::Scene(
-                                ScenePickMode::All,
+                            "loopAll" => Some(Instruction::Scene(
+                                ScenePickMode::LoopAll,
                                 parsed.clip_names,
                                 parsed.fade_duration,
                             )),
-                            "random" => {
-                                // TODO: handle pick random
-                                Some(Instruction::Scene(
-                                    ScenePickMode::Random,
-                                    parsed.clip_names,
-                                    parsed.fade_duration,
-                                ))
-                            }
+                            "onceAll" => Some(Instruction::Scene(
+                                ScenePickMode::OnceAll,
+                                parsed.clip_names,
+                                parsed.fade_duration,
+                            )),
+                            "random" => Some(Instruction::Scene(
+                                ScenePickMode::Random,
+                                parsed.clip_names,
+                                parsed.fade_duration,
+                            )),
                             _ => {
                                 error!(
                                     "Unrecognised 'pick' option for Scene Message: {}",

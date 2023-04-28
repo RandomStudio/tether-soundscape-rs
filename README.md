@@ -9,17 +9,32 @@ In the default mode (**stereo**), clips can be mono or stereo. Mono clips will b
 
 In **multichannel** mode (`--multiChannel`), you must provide *only* mono files. You can then use "panning" (later this could be 2D or even 3D spatialised audio) to direct how the input channel is replicated to the available output channels.
 
+___
 ## Remote control (Input from Tether)
 
-All Instructions Message are expected to be received on the topic `+/+/instructions`
+### Single Clip Commands
+On the topic `+/+/clipCommands`
 
-An Instruction Message has the following fields:
-- `instructionType` (required): one of the following strings: "hit", "add", "remove", "scene"
-- `clipNames` (required): an array of one or more string names for the clips
-- `fadeDuration` (optional): an integer value for milliseconds to fade in or out (context-dependent)
+Has the following fields
+- `command` (required): one of the following strings: "hit", "add", "remove"
+  - "hit" does not loop
+  - "add" does loop
+- `clipName` (required): string name for the targetted clip
+- `fadeDuration` (optional): an integer value for milliseconds to fade in or out (command-dependent)
+- `panPosition`, `panSpread` (both optional): if `panPosition` is specified, this will override any per-clip panning or manually-specified panning (in the UI)
 
-Unlike with the [original](https://github.com/RandomStudio/tether-soundscape) we do not include a "silenceAll" instruction type because this requires making `clipNames` optional when this is only applicable to a single case. An empty scene `clipNames: []` is equivalent for now.
+### Scene Messages
+On the topic `+/+/scenes`
 
+Has the following fields
+- `mode` (optional, default is "loopAll"): one of the following strings: "loopAll", "onceAll", "random"
+- `clipNames` (required): zero or more clip names; if zero are provided, the system will transition to an empty scene (silence all clips)
+- `fade_duration` (optional):  an integer value for milliseconds to transition from current scene to the new one
+
+### Global Controls
+On the topic `+/+/globalControls`
+
+**TODO: these are not functional yet**
 ### Examples
 
 Single clip hit:
@@ -27,14 +42,20 @@ Single clip hit:
 tether-send --host 127.0.0.1 --topic dummy/dummy/clipCommands --message \{\"command\":\"hit\"\,\"clipName\":\"frog\"\}
 ```
 
-Scene with two clips (play all = default):
+Single clip hit, specify panning (ignored if in Stereo Mode):
+```
+tether-send --host 127.0.0.1 --topic dummy/dummy/clipCommands --message \{\"command\":\"hit\"\,\"clipName\":\"frog\"\,\"panPosition\":0,\"panSpread\":1\}
+```
+
+
+Scene with two clips (default mode is "loopAll"):
 ```
 tether-send --host 127.0.0.1 --topic dummy/dummy/scenes --message \{\"clipNames\":\[\"frog\"\,\"squirrel\"]\}
 ```
 
 Scene where system should "pick one random" from the list:
 ```
-tether-send --host 127.0.0.1 --topic dummy/dummy/scenes --message \{\"pick\":\"random\",\"clipNames\":\[\"frog\"\,\"squirrel\"]\}
+tether-send --host 127.0.0.1 --topic dummy/dummy/scenes --message \{\"mode\":\"random\",\"clipNames\":\[\"frog\"\,\"squirrel\"]\}
 ```
 
 Remove single clip
@@ -52,7 +73,7 @@ Scene with zero clips (silence all), custom fade duration:
 tether-send --host 127.0.0.1 --topic dummy/dummy/scenes --message \{\"clipNames\":\[\],\"fadeDuration\":500\}
 ```
 
-
+___
 ## Output to Tether
 
 ### State
@@ -71,7 +92,8 @@ To minimise traffic, the agent will only publish an empty clip list (`clips: []`
 ### Events
 TODO: discrete events (clip begin/end) should be published in addition to the stream of "state" messages. This could be useful for driving external applications that only need to subscribe to significant begin/end events.
 
-## Using 🦀 Rust because:
+___
+## Why 🦀 Rust?:
 - Minimal memory/CPU footprint for high performance
 - Cross-platform but without any need to install browser, use Electron, etc.
 - Visualisation via Nannou
@@ -93,16 +115,16 @@ ___
 - [x] Stereo source files should be handled differently from mono, i.e. add to channels 1 and 2 (in stereo output)
 - [x] CLI should allow custom path to JSON sample bank file
 - [x] New standard demo clips (48Khz, stereo + mono)
-- [ ] Panning settings should be possible within instruction messages
-- [ ] Panning settings should be optionally provided from sample banks (can be overriden)
+- [x] Panning settings should be possible within instruction messages
+- [x] Panning settings should be optionally provided from sample banks (can be overriden)
 - [ ] Provide utility/test modes, e.g. tone per channel
-- [ ] Allow for random selection triggers (like "scene", but pick-one within the list)
+- [x] Allow for random selection triggers (like "scene", but pick-one within the list)
 - [ ] Stream/global level instructions, e.g. "play", "pause" (all), "silenceAll", "master volume", etc.
 - [ ] Publish on separate topic for "events" - only when clip(s) begin/end
 - [ ] Separate CLIP and STREAM sample rates are currently a problem - might need a separate Reader (and thread!) for each clip if sample rates are allowed to differ
 - [ ] Optionally connect to [Ableton link](https://docs.rs/ableton-link/latest/ableton_link/)
 - [ ] Possibly distribute radius by "index" not (only?) duration to avoid overlapping circles
-- [ ] Allow "instructions" to be subscribed to with a specified group (optional), so `+/someGroup/instructions` rather than the default `+/+/instructions`, and publish on `soundscape/someGroup/state` 
+- [ ] Allow input plugs to be subscribed to with a specified group (optional), so `+/someGroup/clipCommands` rather than the default `+/+/clipCommands`, and also publish on `soundscape/someGroup/state` 
 - [ ] Basic ADSR (or just Attack-Release) triggering for samples
 - [ ] Low/no graphics mode
 - [ ] Demonstrate running (headless?) on Raspberry Pi
