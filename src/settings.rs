@@ -28,9 +28,12 @@ pub fn pick_default_sample_bank(multi_channel_mode: bool) -> String {
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 pub struct Cli {
+    /// Path to JSON file with clips array; if omitted, a suitable demo
+    /// file will be used
     #[arg(long = "sampleBank")]
     pub sample_bank_path: Option<String>,
 
+    /// Expected sample rate of input clips in Hz; all clips should match
     #[arg(long = "sampleRate",default_value_t=SAMPLE_RATE)]
     pub sample_rate: u32,
 

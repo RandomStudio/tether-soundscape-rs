@@ -90,7 +90,7 @@ ___
 - [x] Publish clip state / progress so that an external application can do visualisation or animation, for example
 - [x] Allow for multi-channel output, at least "one clip per channel" config
 - [x] Stereo source files should be handled differently from mono, i.e. add to channels 1 and 2 (in stereo output)
-- [ ] CLI should allow custom path to JSON sample bank file
+- [x] CLI should allow custom path to JSON sample bank file
 - [ ] New standard demo clips (48Khz, stereo + mono)
 - [ ] Provide utility/test modes, e.g. tone per channel
 - [ ] Allow for random selection triggers (like "scene", but pick-one within the list)
