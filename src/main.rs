@@ -25,8 +25,8 @@ use settings::{
 use tween::TweenTime;
 use ui::build_ui;
 use utils::{
-    all_channels_equal, get_clip_index_with_id, get_clip_index_with_id_mut,
-    get_clip_index_with_name, get_duration_range,
+    equalise_channel_volumes, get_clip_index_with_id, get_clip_index_with_id_mut,
+    get_clip_index_with_name, get_duration_range, provided_or_default_panning,
 };
 
 use crate::{
@@ -63,8 +63,8 @@ pub struct Model {
 }
 pub enum QueueItem {
     /// Start playback: name, optional fade duration in ms, should_loop,
-    /// optional per-channel-volume
-    Play(String, Option<FadeDuration>, bool, Option<Vec<f32>>),
+    /// finalised per-channel-volume
+    Play(String, Option<FadeDuration>, bool, Vec<f32>),
     /// Stop/fade out: id in currently_playing Vec, optional fade duration in ms
     Stop(usize, Option<FadeDuration>),
     /// Remove clip: id in currently_playing Vec
@@ -344,7 +344,7 @@ fn update(app: &App, model: &mut Model, update: Update) {
                     String::from(&clip.name),
                     None,
                     true,
-                    None, // TODO: get previous per-channel-volume
+                    equalise_channel_volumes(model.stream.cpal_config().channels.into()), // TODO: get previous per-channel-volume
                 ));
             }
             model.action_queue.push(QueueItem::Remove(id));
@@ -364,9 +364,7 @@ fn update(app: &App, model: &mut Model, update: Update) {
                     fade,
                     should_loop,
                     &model.stream,
-                    per_channel_volume.unwrap_or(all_channels_equal(
-                        model.stream.cpal_config().channels.into(),
-                    )),
+                    per_channel_volume,
                 )
                 .expect("failed to start clip");
             }
@@ -410,35 +408,26 @@ fn update(app: &App, model: &mut Model, update: Update) {
     if model.tether.is_connected() {
         if let Some(instruction) = model.tether.check_messages() {
             match instruction {
-                Instruction::Hit(clip_names) => {
-                    for c in clip_names {
-                        // TODO: get optional panning via instruction message
+                Instruction::Add(clip_name, should_loop, fade_duration, panning) => {
+                    model.action_queue.push(QueueItem::Play(
+                        clip_name,
+                        fade_duration,
+                        should_loop,
+                        provided_or_default_panning(
+                            panning,
+                            model.stream.cpal_config().channels.into(),
+                        ),
+                    ));
+                }
+                Instruction::Remove(clip_name, fade_duration) => {
+                    if let Some((_index, info)) =
+                        get_clip_index_with_name(&model.clips_playing, &clip_name)
+                    {
                         model
                             .action_queue
-                            .push(QueueItem::Play(c, None, false, None));
-                    }
-                }
-                Instruction::Add(clip_names, fade_duration) => {
-                    for c in clip_names {
-                        // TODO: get optional panning via instruction message
-                        info!("Remote request to play clip named {}", &c);
-                        model
-                            .action_queue
-                            .push(QueueItem::Play(c, fade_duration, false, None));
-                    }
-                }
-                Instruction::Remove(clip_names, fade_duration) => {
-                    for c in clip_names {
-                        if let Some((_index, info)) =
-                            get_clip_index_with_name(&model.clips_playing, &c)
-                        {
-                            info!("Remote request to remove (stop) clip named {}", &c);
-                            model
-                                .action_queue
-                                .push(QueueItem::Stop(info.id, fade_duration));
-                        } else {
-                            error!("Could not find clip named {} to stop", c);
-                        }
+                            .push(QueueItem::Stop(info.id, fade_duration));
+                    } else {
+                        error!("Could not find clip named {} to stop", &clip_name);
                     }
                 }
                 Instruction::Scene(clip_names, fade_duration) => {
@@ -451,7 +440,7 @@ fn update(app: &App, model: &mut Model, update: Update) {
                             String::from(name),
                             fade_duration,
                             true,
-                            None,
+                            equalise_channel_volumes(model.stream.cpal_config().channels.into()),
                         ));
                     }
                     let to_remove = clips_to_remove(&model.clips_playing, &clip_names);

@@ -7,7 +7,8 @@ use crate::{
     queue_stop_all,
     settings::ManualSettings,
     utils::{
-        clips_to_add, clips_to_remove, frames_to_seconds, get_clip_index_with_name, simple_panning,
+        clips_to_add, clips_to_remove, equalise_channel_volumes, frames_to_seconds,
+        get_clip_index_with_name, simple_panning_channel_volumes,
     },
     Model, QueueItem,
 };
@@ -44,7 +45,7 @@ pub fn build_ui(model: &mut Model, since_start: Duration, is_multichannel_mode: 
         if is_multichannel_mode {
             ui.collapsing("Multi-channel Panning", |ui| {
                 ui.horizontal(|ui| {
-                    ui.checkbox(ignore_panning, "Equal all channels (ignore panning)");
+                    ui.checkbox(ignore_panning, "Equalise all channels (ignore panning)");
                 });
 
                 if !*ignore_panning {
@@ -61,7 +62,7 @@ pub fn build_ui(model: &mut Model, since_start: Duration, is_multichannel_mode: 
                     });
 
                     if ui.button("Calculate").clicked() {
-                        let per_channel_volume = simple_panning(
+                        let per_channel_volume = simple_panning_channel_volumes(
                             *simple_pan_position,
                             *simple_pan_spread,
                             output_channel_count,
@@ -84,13 +85,13 @@ pub fn build_ui(model: &mut Model, since_start: Duration, is_multichannel_mode: 
                         None,
                         false,
                         if *ignore_panning {
-                            None
+                            equalise_channel_volumes(output_channel_count)
                         } else {
-                            Some(simple_panning(
+                            simple_panning_channel_volumes(
                                 *simple_pan_position,
                                 *simple_pan_spread,
                                 output_channel_count,
-                            ))
+                            )
                         },
                     ));
                 }
@@ -100,13 +101,13 @@ pub fn build_ui(model: &mut Model, since_start: Duration, is_multichannel_mode: 
                         Some(*fadein_duration),
                         false,
                         if *ignore_panning {
-                            None
+                            equalise_channel_volumes(output_channel_count)
                         } else {
-                            Some(simple_panning(
+                            simple_panning_channel_volumes(
                                 *simple_pan_position,
                                 *simple_pan_spread,
                                 output_channel_count,
-                            ))
+                            )
                         },
                     ));
                 }
@@ -116,13 +117,13 @@ pub fn build_ui(model: &mut Model, since_start: Duration, is_multichannel_mode: 
                         None,
                         true,
                         if *ignore_panning {
-                            None
+                            equalise_channel_volumes(output_channel_count)
                         } else {
-                            Some(simple_panning(
+                            simple_panning_channel_volumes(
                                 *simple_pan_position,
                                 *simple_pan_spread,
                                 output_channel_count,
-                            ))
+                            )
                         },
                     ));
                 }
@@ -168,7 +169,7 @@ pub fn build_ui(model: &mut Model, since_start: Duration, is_multichannel_mode: 
                                 name,
                                 Some(*fadein_duration),
                                 true,
-                                None,
+                                equalise_channel_volumes(output_channel_count),
                             ));
                         }
                         let to_remove = clips_to_remove(&model.clips_playing, &s.clips);

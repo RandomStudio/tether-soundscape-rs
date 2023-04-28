@@ -91,7 +91,9 @@ ___
 - [x] Allow for multi-channel output, at least "one clip per channel" config
 - [x] Stereo source files should be handled differently from mono, i.e. add to channels 1 and 2 (in stereo output)
 - [x] CLI should allow custom path to JSON sample bank file
-- [ ] New standard demo clips (48Khz, stereo + mono)
+- [x] New standard demo clips (48Khz, stereo + mono)
+- [ ] Panning settings should be possible within instruction messages
+- [ ] Panning settings should be optionally provided from sample banks (can be overriden)
 - [ ] Provide utility/test modes, e.g. tone per channel
 - [ ] Allow for random selection triggers (like "scene", but pick-one within the list)
 - [ ] Stream/global level instructions, e.g. "play", "pause" (all), "silenceAll", "master volume", etc.

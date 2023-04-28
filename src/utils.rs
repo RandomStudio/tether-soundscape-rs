@@ -1,6 +1,6 @@
 use nannou::prelude::{map_range, ToPrimitive};
 
-use crate::{loader::AudioClipOnDisk, CurrentlyPlayingClip};
+use crate::{loader::AudioClipOnDisk, tether::SimplePanning, CurrentlyPlayingClip};
 
 // pub fn frames_to_millis(frames_count: u32, sample_rate: u32) -> u32 {
 //     if sample_rate == 0 {
@@ -127,10 +127,11 @@ pub fn clips_to_remove(
     ids
 }
 
-pub fn all_channels_equal(output_channel_count: u32) -> Vec<f32> {
+pub fn equalise_channel_volumes(output_channel_count: u32) -> Vec<f32> {
     let mut result: Vec<f32> = Vec::new();
+    let max_volume = 1.0 / output_channel_count.to_f32().unwrap();
     for _i in 0..output_channel_count {
-        result.push(1.0);
+        result.push(max_volume);
     }
     if result.len() != output_channel_count.to_usize().unwrap() {
         panic!(
@@ -142,7 +143,13 @@ pub fn all_channels_equal(output_channel_count: u32) -> Vec<f32> {
     result
 }
 
-pub fn simple_panning(position: f32, spread: f32, output_channel_count: u32) -> Vec<f32> {
+/// Calculates a final set of per-channel volume levels, given a "position" and a "spread" value,
+/// as well as the number of output channels available
+pub fn simple_panning_channel_volumes(
+    position: f32,
+    spread: f32,
+    output_channel_count: u32,
+) -> Vec<f32> {
     let mut result: Vec<f32> = Vec::new();
     for i in 0..output_channel_count {
         let distance = (position - i.to_f32().unwrap()).abs();
@@ -150,4 +157,25 @@ pub fn simple_panning(position: f32, spread: f32, output_channel_count: u32) -> 
         result.push(this_channel_volume);
     }
     result
+}
+
+/// Calculate a final set of per-channel volume levels in a "default case", suitable for a given
+/// channel count
+pub fn default_panning_channel_volumes(output_channel_count: u32) -> Vec<f32> {
+    let position = (output_channel_count.to_f32().unwrap() - 1.0) / 2.;
+    simple_panning_channel_volumes(position, 1.0, output_channel_count)
+}
+
+/// If panning was "optionally" provided, calculate the per-channel volumes as given,
+/// otherwise return a suitable default
+pub fn provided_or_default_panning(
+    provided_panning: Option<SimplePanning>,
+    output_channel_count: u32,
+) -> Vec<f32> {
+    match provided_panning {
+        Some((position, spread)) => {
+            simple_panning_channel_volumes(position, spread, output_channel_count)
+        }
+        None => default_panning_channel_volumes(output_channel_count),
+    }
 }

@@ -8,15 +8,20 @@ use std::{net::IpAddr, process, time::Duration};
 use crate::{playback::PlaybackState, CurrentlyPlayingClip, FadeDuration};
 use nannou::prelude::ToPrimitive;
 
-const INPUT_TOPICS: &[&str] = &["+/+/instructions"];
-const INPUT_QOS: &[i32; INPUT_TOPICS.len()] = &[2];
+const INPUT_TOPICS: &[&str] = &["+/+/clipCommands", "+/+/scenes", "+/+/globalControls"];
+const INPUT_QOS: &[i32; INPUT_TOPICS.len()] = &[2, 2, 2];
 const OUTPUT_TOPIC: &str = "soundscape/unknown/state";
 
 type ClipName = String;
+
+/// Position (in range 0>numChannels-1) and spread (in range 1>numChannels)
+pub type SimplePanning = (f32, f32);
+
 pub enum Instruction {
-    Hit(Vec<ClipName>),
-    Add(Vec<ClipName>, Option<FadeDuration>),
-    Remove(Vec<ClipName>, Option<FadeDuration>),
+    // Clip name, should_loop, optional fade duration, optional panning
+    Add(ClipName, bool, Option<FadeDuration>, Option<SimplePanning>),
+    // Clip name, option fade duration
+    Remove(ClipName, Option<FadeDuration>),
     Scene(Vec<ClipName>, Option<FadeDuration>),
 }
 
@@ -38,8 +43,15 @@ pub struct SoundscapeStateMessage {
 
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct InstructionMessage {
-    pub instruction_type: String,
+pub struct SingleClipMessage {
+    pub command: String,
+    pub clip_name: ClipName,
+    pub fade_duration: Option<FadeDuration>,
+    pub pan_position: Option<f32>,
+    pub pan_spread: Option<f32>,
+}
+
+pub struct SceneMessage {
     pub clip_names: Vec<ClipName>,
     pub fade_duration: Option<FadeDuration>,
 }
@@ -114,24 +126,51 @@ impl TetherAgent {
             let plug_name = parse_plug_name(m.topic());
 
             match plug_name {
-                "instructions" => {
-                    let light_message: Result<InstructionMessage, rmp_serde::decode::Error> =
+                "clipCommands" => {
+                    let clip_message: Result<SingleClipMessage, rmp_serde::decode::Error> =
                         rmp_serde::from_slice(&payload);
 
-                    match light_message {
-                        Ok(parsed) => {
-                            info!("Parsed InstructionMessage: {parsed:?}");
-                            if let Ok(valid_instruction) = get_instruction(&parsed) {
-                                Some(valid_instruction)
-                            } else {
+                    if let Ok(parsed) = clip_message {
+                        info!("Parsed Single Clip Message: {parsed:?}");
+
+                        let panning: Option<SimplePanning> = parse_optional_panning(&parsed);
+
+                        match parsed.command.as_str() {
+                            "hit" => Some(Instruction::Add(
+                                parsed.clip_name,
+                                false,
+                                parsed.fade_duration,
+                                panning,
+                            )),
+                            "add" => Some(Instruction::Add(
+                                parsed.clip_name,
+                                true,
+                                parsed.fade_duration,
+                                panning,
+                            )),
+                            "remove" => {
+                                Some(Instruction::Remove(parsed.clip_name, parsed.fade_duration))
+                            }
+                            _ => {
+                                error!(
+                                    "Unrecognised command for Single Clip Message: {}",
+                                    &parsed.command
+                                );
                                 None
                             }
                         }
-                        Err(e) => {
-                            error!("Failed to parse InstructionMessage: {}", e);
-                            None
-                        }
+                    } else {
+                        error!("Error parsing Single Clip Message");
+                        None
                     }
+                }
+                "scenes" => {
+                    // TODO
+                    None
+                }
+                "globalControls" => {
+                    // TODO
+                    None
                 }
                 _ => {
                     error!("Should not be receiving message on topic {}", m.topic());
@@ -139,6 +178,7 @@ impl TetherAgent {
                 }
             }
         } else {
+            // No error - there simply is no message waiting on the queue
             None
         }
     }
@@ -184,18 +224,13 @@ impl TetherAgent {
     }
 }
 
-fn get_instruction(msg: &InstructionMessage) -> Result<Instruction, ()> {
-    let instruction_type = msg.instruction_type.as_str();
-    let fade_duration = msg.fade_duration;
-    match instruction_type {
-        "hit" => Ok(Instruction::Hit(msg.clip_names.clone())),
-        "add" => Ok(Instruction::Add(msg.clip_names.clone(), fade_duration)),
-        "remove" => Ok(Instruction::Remove(msg.clip_names.clone(), fade_duration)),
-        "scene" => Ok(Instruction::Scene(msg.clip_names.clone(), fade_duration)),
-        _ => {
-            error!("Unknown instructionType {}", msg.instruction_type);
-            Err(())
-        }
+/// If at least a pan position is provided, then return a valid "SimplePanning" tuple,
+/// and use a default "pan spread" unless provided with one as well;
+/// otherwise, return None
+fn parse_optional_panning(parsed: &SingleClipMessage) -> Option<SimplePanning> {
+    match parsed.pan_position {
+        None => None,
+        Some(pan_position) => Some((pan_position, parsed.pan_spread.unwrap_or(1.0))),
     }
 }
 
