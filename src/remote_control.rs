@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use log::{error, info};
+use log::{error, info, warn};
 use nannou::prelude::ToPrimitive;
 use rmp_serde::to_vec_named;
 use serde::{Deserialize, Serialize};
@@ -193,6 +193,7 @@ impl RemoteControl {
                 }
                 "globalControls" => {
                     // TODO
+                    warn!("globalControls not handled yet");
                     Err(())
                 }
                 &_ => {
