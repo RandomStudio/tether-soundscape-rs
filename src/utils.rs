@@ -2,7 +2,7 @@ use log::debug;
 use nannou::prelude::{map_range, ToPrimitive};
 use rand::Rng;
 
-use crate::{loader::AudioClipOnDisk, tether::SimplePanning, CurrentlyPlayingClip};
+use crate::{loader::AudioClipOnDisk, remote_control::SimplePanning, CurrentlyPlayingClip};
 
 // pub fn frames_to_millis(frames_count: u32, sample_rate: u32) -> u32 {
 //     if sample_rate == 0 {

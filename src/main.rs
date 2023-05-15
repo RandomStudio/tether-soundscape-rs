@@ -7,11 +7,12 @@ use clap::Parser;
 
 use env_logger::{Builder, Env};
 use log::{debug, error, info, trace, warn};
+use remote_control::{Instruction, RemoteControl};
 use std::{
     path::{Path, PathBuf},
     time::SystemTime,
 };
-use tether::Instruction;
+use tether_agent::TetherAgent;
 
 use loader::{get_sound_asset_path, SoundBank};
 use playback::{
@@ -31,15 +32,15 @@ use utils::{
 
 use crate::{
     playback::render_audio_stereo,
+    remote_control::ScenePickMode,
     settings::pick_default_sample_bank,
-    tether::{ScenePickMode, TetherAgent},
     utils::{clips_to_remove, get_highest_id, millis_to_frames, pick_random_clip},
 };
 
 mod loader;
 mod playback;
+mod remote_control;
 mod settings;
-mod tether;
 mod ui;
 mod utils;
 
@@ -60,6 +61,7 @@ pub struct Model {
     settings: ManualSettings,
     multi_channel_mode: bool,
     tether: TetherAgent,
+    remote_control: RemoteControl,
 }
 pub enum QueueItem {
     /// Start playback: name, optional fade duration in ms, should_loop,
@@ -193,12 +195,14 @@ fn model(app: &App) -> Model {
     );
     let duration_range = get_duration_range(sound_bank.clips());
 
-    let mut tether = TetherAgent::new(cli.tether_host);
+    let tether = TetherAgent::new("soundscape", None, None);
     if !cli.tether_disable {
-        tether.connect();
+        tether.connect().expect("Failed to connect to Tether");
     } else {
         warn!("Tether connection disabled")
     }
+
+    let remote_state_update = RemoteControl::new(&tether);
 
     Model {
         stream,
@@ -215,6 +219,7 @@ fn model(app: &App) -> Model {
         tether,
         last_state_publish: std::time::SystemTime::now(),
         multi_channel_mode: cli.multichannel_mode,
+        remote_control: remote_state_update,
     }
 }
 
@@ -331,9 +336,11 @@ fn update(app: &App, model: &mut Model, update: Update) {
     }
 
     if model.last_state_publish.elapsed().unwrap() > UPDATE_INTERVAL {
-        model
-            .tether
-            .publish_state(model.stream.is_playing(), &model.clips_playing);
+        model.remote_control.publish_state(
+            model.stream.is_playing(),
+            &model.clips_playing,
+            &model.tether,
+        );
     }
 
     while let Ok(id) = model.rx_complete.pop() {
@@ -407,9 +414,12 @@ fn update(app: &App, model: &mut Model, update: Update) {
     }
 
     if model.tether.is_connected() {
-        if let Some(instruction) = model.tether.check_messages() {
-            match instruction {
-                Instruction::Add(clip_name, should_loop, fade_duration, message_panning) => {
+        if let Some((plug_name, message)) = model.tether.check_messages() {
+            match model
+                .remote_control
+                .parse_instructions(&plug_name, &message)
+            {
+                Ok(Instruction::Add(clip_name, should_loop, fade_duration, message_panning)) => {
                     if let Some(clip_matched) = model
                         .sound_bank
                         .clips()
@@ -431,7 +441,7 @@ fn update(app: &App, model: &mut Model, update: Update) {
                         error!("Could not find clip named {} to play", &clip_name);
                     }
                 }
-                Instruction::Remove(clip_name, fade_duration) => {
+                Ok(Instruction::Remove(clip_name, fade_duration)) => {
                     if let Some((_index, info)) =
                         get_clip_index_with_name(&model.clips_playing, &clip_name)
                     {
@@ -442,7 +452,7 @@ fn update(app: &App, model: &mut Model, update: Update) {
                         error!("Could not find clip named {} to stop", &clip_name);
                     }
                 }
-                Instruction::Scene(pick_mode, clip_names, fade_duration) => {
+                Ok(Instruction::Scene(pick_mode, clip_names, fade_duration)) => {
                     let to_add = &clip_names;
                     info!("Scene transition: x{} clips to add", to_add.len());
                     match pick_mode {
@@ -528,6 +538,9 @@ fn update(app: &App, model: &mut Model, update: Update) {
                             }
                         }
                     }
+                }
+                Err(_) => {
+                    error!("Failed to parse remote Instruction");
                 }
             }
         }

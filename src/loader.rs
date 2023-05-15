@@ -4,7 +4,7 @@ use log::{debug, error, info};
 use nannou::App;
 use serde::{Deserialize, Serialize};
 
-use crate::tether::SimplePanning;
+use crate::remote_control::SimplePanning;
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

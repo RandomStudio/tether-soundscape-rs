@@ -9,6 +9,7 @@ edition = "2021"
 nannou = "0.18.0"
 nannou_audio = "0.18.0"
 nannou_egui = "0.5.0"
+tether-agent = "0.3.2"
 audrey = "0.3"
 rtrb = "0.2.3"
 serde = { version = "1.0", features = ["derive"] }

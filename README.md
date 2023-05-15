@@ -117,6 +117,7 @@ ___
 - [x] Panning settings should be optionally provided from sample banks (can be overriden)
 - [ ] Provide utility/test modes, e.g. tone per channel
 - [x] Allow for random selection triggers (like "scene", but pick-one within the list)
+- [ ] Direct MIDI control or MIDI-to-Tether Agent
 - [ ] Stream/global level instructions, e.g. "play", "pause" (all), "silenceAll", "master volume", etc.
 - [ ] Publish on separate topic for "events" - only when clip(s) begin/end
 - [ ] Separate CLIP and STREAM sample rates are currently a problem - might need a separate Reader (and thread!) for each clip if sample rates are allowed to differ

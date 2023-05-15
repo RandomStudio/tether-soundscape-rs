@@ -1,16 +1,15 @@
-use log::{debug, error, info};
-use mqtt::{Client, Message, Receiver};
-use paho_mqtt as mqtt;
+use std::collections::HashMap;
+
+use log::{error, info};
+use nannou::prelude::ToPrimitive;
 use rmp_serde::to_vec_named;
 use serde::{Deserialize, Serialize};
-use std::{net::IpAddr, process, time::Duration};
+use tether_agent::{mqtt::Message, PlugDefinition, TetherAgent};
 
 use crate::{playback::PlaybackState, CurrentlyPlayingClip, FadeDuration};
-use nannou::prelude::ToPrimitive;
 
-const INPUT_TOPICS: &[&str] = &["+/+/clipCommands", "+/+/scenes", "+/+/globalControls"];
-const INPUT_QOS: &[i32; INPUT_TOPICS.len()] = &[2, 2, 2];
-const OUTPUT_TOPIC: &str = "soundscape/unknown/state";
+// const INPUT_TOPICS: &[&str] = &["+/+/clipCommands", "+/+/scenes", "+/+/globalControls"];
+// const INPUT_QOS: &[i32; INPUT_TOPICS.len()] = &[2, 2, 2];
 
 type ClipName = String;
 
@@ -64,76 +63,61 @@ pub struct SceneMessage {
     pub fade_duration: Option<FadeDuration>,
 }
 
-pub struct TetherAgent {
-    client: Client,
-    receiver: Receiver<Option<Message>>,
+/// If at least a pan position is provided, then return a valid "SimplePanning" tuple,
+/// and use a default "pan spread" unless provided with one as well;
+/// otherwise, return None
+fn parse_optional_panning(parsed: &SingleClipMessage) -> Option<SimplePanning> {
+    match parsed.pan_position {
+        None => None,
+        Some(pan_position) => Some((pan_position, parsed.pan_spread.unwrap_or(1.0))),
+    }
+}
+
+pub struct RemoteControl {
+    output_plug: PlugDefinition,
+    input_plugs: HashMap<String, PlugDefinition>,
     last_clip_count_sent: Option<usize>,
 }
 
-impl TetherAgent {
-    pub fn is_connected(&self) -> bool {
-        self.client.is_connected()
-    }
-
-    pub fn new(tether_host: IpAddr) -> Self {
-        let broker_uri = format!("tcp://{tether_host}:1883");
-
-        let create_opts = mqtt::CreateOptionsBuilder::new()
-            .server_uri(broker_uri)
-            .client_id("")
-            .finalize();
-
-        // Create the client connection
-        let client = mqtt::Client::new(create_opts).unwrap();
-
-        // Initialize the consumer before connecting
-        let receiver = client.start_consuming();
-
-        TetherAgent {
-            client,
-            receiver,
+impl RemoteControl {
+    pub fn new(tether_agent: &TetherAgent) -> Self {
+        let mut input_plugs: HashMap<String, PlugDefinition> = HashMap::new();
+        input_plugs.insert(
+            "clipCommands".into(),
+            tether_agent
+                .create_input_plug("clipCommands", Some(2), None)
+                .unwrap(),
+        );
+        input_plugs.insert(
+            "scenes".into(),
+            tether_agent
+                .create_input_plug("scenes", Some(2), None)
+                .unwrap(),
+        );
+        input_plugs.insert(
+            "globalControls".into(),
+            tether_agent
+                .create_input_plug("globalControls", Some(2), None)
+                .unwrap(),
+        );
+        RemoteControl {
+            output_plug: tether_agent
+                .create_output_plug("state", Some(1), None)
+                .expect("failed to create state Output Plug"),
+            input_plugs,
             last_clip_count_sent: None,
         }
     }
 
-    pub fn connect(&mut self) {
-        let conn_opts = mqtt::ConnectOptionsBuilder::new()
-            .user_name("tether")
-            .password("sp_ceB0ss!")
-            .keep_alive_interval(Duration::from_secs(30))
-            .mqtt_version(mqtt::MQTT_VERSION_3_1_1)
-            .clean_session(true)
-            .finalize();
+    pub fn parse_instructions(
+        &self,
+        plug_name: &str,
+        message: &Message,
+    ) -> Result<Instruction, ()> {
+        let payload = message.payload();
 
-        // Make the connection to the broker
-        debug!("Connecting to the MQTT server...");
-        match self.client.connect(conn_opts) {
-            Ok(res) => {
-                info!("MQTT client connected OK");
-                debug!("Connected OK: {res:?}");
-                match self.client.subscribe_many(INPUT_TOPICS, INPUT_QOS) {
-                    Ok(res) => {
-                        debug!("Subscribe OK: {res:?}");
-                    }
-                    Err(e) => {
-                        error!("Error subscribing: {e:?}");
-                    }
-                }
-            }
-            Err(e) => {
-                error!("Error connecting to the broker: {e:?}");
-                process::exit(1);
-            }
-        }
-    }
-
-    pub fn check_messages(&self) -> Option<Instruction> {
-        if let Some(m) = self.receiver.try_iter().find_map(|m| m) {
-            let payload = m.payload().to_vec();
-
-            let plug_name = parse_plug_name(m.topic());
-
-            match plug_name {
+        if let Some(matched_plug) = self.input_plugs.get(plug_name) {
+            match matched_plug.name.as_str() {
                 "clipCommands" => {
                     let clip_message: Result<SingleClipMessage, rmp_serde::decode::Error> =
                         rmp_serde::from_slice(&payload);
@@ -144,32 +128,32 @@ impl TetherAgent {
                         let panning: Option<SimplePanning> = parse_optional_panning(&parsed);
 
                         match parsed.command.as_str() {
-                            "hit" => Some(Instruction::Add(
+                            "hit" => Ok(Instruction::Add(
                                 parsed.clip_name,
                                 false,
                                 parsed.fade_duration,
                                 panning,
                             )),
-                            "add" => Some(Instruction::Add(
+                            "add" => Ok(Instruction::Add(
                                 parsed.clip_name,
                                 true,
                                 parsed.fade_duration,
                                 panning,
                             )),
                             "remove" => {
-                                Some(Instruction::Remove(parsed.clip_name, parsed.fade_duration))
+                                Ok(Instruction::Remove(parsed.clip_name, parsed.fade_duration))
                             }
                             _ => {
                                 error!(
                                     "Unrecognised command for Single Clip Message: {}",
                                     &parsed.command
                                 );
-                                None
+                                Err(())
                             }
                         }
                     } else {
                         error!("Error parsing Single Clip Message");
-                        None
+                        Err(())
                     }
                 }
                 "scenes" => {
@@ -179,17 +163,17 @@ impl TetherAgent {
                     if let Ok(parsed) = scene_message {
                         let pick_mode = parsed.mode.unwrap_or(String::from("loopAll"));
                         match pick_mode.as_str() {
-                            "loopAll" => Some(Instruction::Scene(
+                            "loopAll" => Ok(Instruction::Scene(
                                 ScenePickMode::LoopAll,
                                 parsed.clip_names,
                                 parsed.fade_duration,
                             )),
-                            "onceAll" => Some(Instruction::Scene(
+                            "onceAll" => Ok(Instruction::Scene(
                                 ScenePickMode::OnceAll,
                                 parsed.clip_names,
                                 parsed.fade_duration,
                             )),
-                            "random" => Some(Instruction::Scene(
+                            "random" => Ok(Instruction::Scene(
                                 ScenePickMode::Random,
                                 parsed.clip_names,
                                 parsed.fade_duration,
@@ -199,30 +183,35 @@ impl TetherAgent {
                                     "Unrecognised 'pick' option for Scene Message: {}",
                                     &pick_mode
                                 );
-                                None
+                                Err(())
                             }
                         }
                     } else {
                         error!("Error parsing Scene Message");
-                        None
+                        Err(())
                     }
                 }
                 "globalControls" => {
                     // TODO
-                    None
+                    Err(())
                 }
-                _ => {
-                    error!("Should not be receiving message on topic {}", m.topic());
-                    None
+                &_ => {
+                    error!("Unrecognised plug name");
+                    Err(())
                 }
             }
         } else {
-            // No error - there simply is no message waiting on the queue
-            None
+            error!("Could not match any plug");
+            Err(())
         }
     }
 
-    pub fn publish_state(&mut self, is_stream_playing: bool, clips: &[CurrentlyPlayingClip]) {
+    pub fn publish_state(
+        &mut self,
+        is_stream_playing: bool,
+        clips: &[CurrentlyPlayingClip],
+        agent: &TetherAgent,
+    ) {
         let should_publish = {
             match self.last_clip_count_sent {
                 None => true,
@@ -255,25 +244,9 @@ impl TetherAgent {
                 is_playing: is_stream_playing,
             };
             let payload: Vec<u8> = to_vec_named(&state).unwrap();
-            let msg = mqtt::Message::new(OUTPUT_TOPIC, payload, 1);
-            self.client
-                .publish(msg)
+            agent
+                .publish(&self.output_plug, Some(&payload))
                 .expect("Failed to publish state/progress");
         }
     }
-}
-
-/// If at least a pan position is provided, then return a valid "SimplePanning" tuple,
-/// and use a default "pan spread" unless provided with one as well;
-/// otherwise, return None
-fn parse_optional_panning(parsed: &SingleClipMessage) -> Option<SimplePanning> {
-    match parsed.pan_position {
-        None => None,
-        Some(pan_position) => Some((pan_position, parsed.pan_spread.unwrap_or(1.0))),
-    }
-}
-
-fn parse_plug_name(topic: &str) -> &str {
-    let parts: Vec<&str> = topic.split('/').collect();
-    parts[2]
 }

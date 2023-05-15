@@ -2169,7 +2169,23 @@ dependencies = [
  "futures-timer",
  "libc",
  "log",
- "paho-mqtt-sys",
+ "paho-mqtt-sys 0.7.2",
+ "thiserror",
+]
+
+[[package]]
+name = "paho-mqtt"
+version = "0.12.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f6a19171f5b405f350373e32b6c2c4b47c225afccc837c11d2e7e22ba1749c62"
+dependencies = [
+ "async-channel",
+ "crossbeam-channel",
+ "futures",
+ "futures-timer",
+ "libc",
+ "log",
+ "paho-mqtt-sys 0.8.1",
  "thiserror",
 ]
 
@@ -2181,6 +2197,15 @@ checksum = "d9a32c2ecd70105b9410210de25aad2a2382e97d43684d10f2150d059f9f11c8"
 dependencies = [
  "cmake",
  "openssl-sys",
+]
+
+[[package]]
+name = "paho-mqtt-sys"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1782b5e75d712f951a2a4c7d3175a2ef37d93ddb3ad8656b37092f3f05464bc9"
+dependencies = [
+ "cmake",
 ]
 
 [[package]]
@@ -2814,6 +2839,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "tether-agent"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "66715b9d4ab32bdff07520f0922617843ce79be3306d675a1df6d1d677fe1132"
+dependencies = [
+ "env_logger",
+ "log",
+ "paho-mqtt 0.12.1",
+ "rmp-serde",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "tether-soundscape-rs"
 version = "0.1.0"
 dependencies = [
@@ -2824,12 +2863,13 @@ dependencies = [
  "nannou",
  "nannou_audio",
  "nannou_egui",
- "paho-mqtt",
+ "paho-mqtt 0.11.1",
  "rand 0.8.5",
  "rmp-serde",
  "rtrb",
  "serde",
  "serde_json",
+ "tether-agent",
  "tween",
 ]
 
