@@ -40,5 +40,19 @@
       },
       "value": "{\"clipNames\":[]}"
     }
+  },
+  {
+    "generic": {
+      "common": {
+        "name": "scenes",
+        "description": "pick random",
+        "plug": {
+          "name": "scenes",
+          "topic": "gui/any/scenes",
+          "qos": 1
+        }
+      },
+      "value": "{\"clipNames\":[\"frog\",\"squirrel\"],\"mode\":\"random\"}"
+    }
   }
 ]
