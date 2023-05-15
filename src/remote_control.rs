@@ -102,7 +102,7 @@ impl RemoteControl {
         );
         RemoteControl {
             output_plug: tether_agent
-                .create_output_plug("state", Some(1), None)
+                .create_output_plug("state", Some(0), None)
                 .expect("failed to create state Output Plug"),
             input_plugs,
             last_clip_count_sent: None,
