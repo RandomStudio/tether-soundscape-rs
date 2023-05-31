@@ -1,12 +1,16 @@
 use dioxus::prelude::*;
 
+use env_logger::{Builder, Env};
 use loader::SoundBank;
+use log::{debug, info};
 use rodio::{source::Source, Decoder, OutputStream};
 use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
 
-// use clap::Parser;
+use clap::Parser;
+
+use crate::settings::{Cli, ManualSettings};
 
 // use env_logger::{Builder, Env};
 // use log::{debug, error, info, trace, warn};
@@ -20,12 +24,12 @@ use std::path::Path;
 // use tween::TweenTime;
 
 mod loader;
+mod settings;
 
 pub type SimplePanning = (f32, f32);
 
 // // mod playback;
 // mod remote_control;
-// mod settings;
 // // mod ui;
 // // mod utils;
 
@@ -89,10 +93,29 @@ pub type SimplePanning = (f32, f32);
 // }
 
 fn main() {
-    dioxus_desktop::launch(app);
+    let cli = Cli::parse();
+
+    let mut builder = Builder::from_env(Env::default().default_filter_or(&cli.log_level));
+    builder.filter_module("wgpu_core", log::LevelFilter::Error);
+    builder.filter_module("wgpu_hal", log::LevelFilter::Warn);
+    builder.filter_module("naga", log::LevelFilter::Warn);
+    builder.filter_module("paho_mqtt", log::LevelFilter::Warn);
+    builder.init();
+    info!("Started; args: {:?}", cli);
+    debug!("Debugging is enabled; could be verbose");
+
+    let settings = ManualSettings::defaults();
+
+    if cli.text_mode {
+        info!("TUI text-mode enabled; low graphics");
+        dioxus_tui::launch(app);
+    } else {
+        info!("Full graphics mode enabled");
+        dioxus_desktop::launch(app);
+    }
 }
 
-pub fn app(cx: Scope<()>) -> Element {
+pub fn app(cx: Scope) -> Element {
     let (stream, stream_handle) = OutputStream::try_default().unwrap();
 
     let stream_handle_saved = use_ref(cx, || stream_handle);
@@ -106,22 +129,34 @@ pub fn app(cx: Scope<()>) -> Element {
 
     // let play_sound = ;
 
-    cx.render(rsx!({
+    cx.render(rsx!(
+        div {
+            display: "flex",
+            flex_direction: "column",
+            width: "100%",
+            height: "100%",
+
         sound_bank.clips().iter().map(|clip| {
             let label = format!("Play {}", clip.name());
-            rsx!(button {
-                onclick: |_| {
-                    println!("Playing {} ...", clip.path());
-                    let file = BufReader::new(File::open(clip.path()).unwrap());
-                    let source = Decoder::new(file).unwrap();
-                    stream_handle_saved.with(|stream_ref| {
-                        stream_ref
-                            .play_raw(source.convert_samples())
-                            .expect("failed to play");
-                    });
-                },
-                label
-            })
+            rsx!(
+                    div {
+            display: "flex",
+            flex_direction: "row",
+                        button {
+                        onclick: |_| {
+                            // println!("Playing {} ...", clip.path());
+                            let file = BufReader::new(File::open(clip.path()).unwrap());
+                            let source = Decoder::new(file).unwrap();
+                            stream_handle_saved.with(|stream_ref| {
+                                stream_ref
+                                    .play_raw(source.convert_samples())
+                                    .expect("failed to play");
+                            });
+                        },
+                        label
+                    }
+                    }
+            )
         })
     }))
 }

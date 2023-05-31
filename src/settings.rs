@@ -28,6 +28,10 @@ pub fn pick_default_sample_bank(multi_channel_mode: bool) -> String {
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 pub struct Cli {
+    #[arg(long = "textMode")]
+    /// Flag to enable low graphics TUI mode
+    pub text_mode: bool,
+
     /// Path to JSON file with clips array; if omitted, a suitable demo
     /// file will be used
     #[arg(long = "sampleBank")]

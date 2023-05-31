@@ -17,7 +17,8 @@ clap = { version = "4.1.1", features = ["derive"] }
 env_logger = "0.7"
 log = "0.4.17"
 rand = "0.8.5"
-dioxus = "0.3.2"
-dioxus-desktop = "0.3.0"
+dioxus ={ git = "https://github.com/DioxusLabs/dioxus.git" }
+dioxus-desktop = { git = "https://github.com/DioxusLabs/dioxus.git" }
 rodio = "0.17.1"
 tokio = { version = "1.16.1", features = ["full"] }
+dioxus-tui = { git = "https://github.com/DioxusLabs/dioxus.git" }
