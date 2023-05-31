@@ -1,9 +1,10 @@
 use dioxus::prelude::*;
 
-use rodio::OutputStreamHandle;
 use rodio::{source::Source, Decoder, OutputStream};
+use rodio::{OutputStreamHandle, Sink};
 use std::fs::File;
 use std::io::BufReader;
+use std::sync::{Arc, Mutex};
 
 // use clap::Parser;
 
@@ -90,21 +91,39 @@ fn main() {
 
 pub fn app(cx: Scope<()>) -> Element {
     // let state = use_ref(cx, Model::new);
+    // let state = use_state(cx, || OutputStream::try_default().unwrap());
+    let (_stream, stream_handle) = OutputStream::try_default().unwrap();
+    // let sink = Sink::try_new(&stream_handle).unwrap();
+
+    // let sink_saved = use_ref(cx, || sink);
+    let stream_saved = use_ref(cx, || stream_handle);
+
+    let play_sound = move |_| {
+        println!("Button clicked");
+        // *played.make_mut() += 1;
+        // println!("Button clicked {} times", *played);
+        // Get a output stream handle to the default physical sound device
+        let (_stream, stream_handle) = OutputStream::try_default().unwrap();
+        // Load a sound from a file, using a path relative to Cargo.toml
+        let file = BufReader::new(File::open("assets/sounds/music.wav").unwrap());
+        // Decode that sound file into a source
+        let source: Decoder<BufReader<File>> = Decoder::new(file).unwrap();
+        // stream_saved.with(|stream_ref| {
+        println!("Playing...");
+        stream_handle
+            .play_raw(source.convert_samples())
+            .expect("failed to play");
+        println!("Done");
+        // });
+        // async move {
+        //     // tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+        //     println!("Done");
+        // }
+    };
 
     cx.render(rsx! {
         button {
-            onclick:  |_| async move  {
-                println!("Button clicked");
-                // Get a output stream handle to the default physical sound device
-                let (_stream, stream_handle) = OutputStream::try_default().unwrap();
-                // Load a sound from a file, using a path relative to Cargo.toml
-                let file = BufReader::new(File::open("assets/sounds/music.wav").unwrap());
-                // Decode that sound file into a source
-                let source = Decoder::new(file).unwrap();
-                stream_handle.play_raw(source.convert_samples()).expect("failed to play sound");
-                tokio::time::sleep(std::time::Duration::from_secs(5)).await;
-                    println!("Done");
-            },
+            onclick: play_sound,
             "Play sound"
         }
     })
