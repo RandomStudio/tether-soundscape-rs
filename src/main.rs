@@ -93,7 +93,7 @@ pub fn app(cx: Scope<()>) -> Element {
 
     cx.render(rsx! {
         button {
-            onclick: move |_|  {
+            onclick:  |_| async move  {
                 println!("Button clicked");
                 // Get a output stream handle to the default physical sound device
                 let (_stream, stream_handle) = OutputStream::try_default().unwrap();
@@ -102,11 +102,8 @@ pub fn app(cx: Scope<()>) -> Element {
                 // Decode that sound file into a source
                 let source = Decoder::new(file).unwrap();
                 stream_handle.play_raw(source.convert_samples()).expect("failed to play sound");
-                std::thread::sleep(std::time::Duration::from_secs(5));
-                println!("Done");
-                // let s = state.read().stream_handle;
-
-                // stream.play_raw(sound.convert_samples());
+                tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+                    println!("Done");
             },
             "Play sound"
         }
