@@ -90,35 +90,20 @@ fn main() {
 }
 
 pub fn app(cx: Scope<()>) -> Element {
-    // let state = use_ref(cx, Model::new);
-    // let state = use_state(cx, || OutputStream::try_default().unwrap());
     let (_stream, stream_handle) = OutputStream::try_default().unwrap();
-    // let sink = Sink::try_new(&stream_handle).unwrap();
-
-    // let sink_saved = use_ref(cx, || sink);
     let stream_saved = use_ref(cx, || stream_handle);
 
     let play_sound = move |_| {
         println!("Button clicked");
-        // *played.make_mut() += 1;
-        // println!("Button clicked {} times", *played);
-        // Get a output stream handle to the default physical sound device
-        let (_stream, stream_handle) = OutputStream::try_default().unwrap();
-        // Load a sound from a file, using a path relative to Cargo.toml
         let file = BufReader::new(File::open("assets/sounds/music.wav").unwrap());
-        // Decode that sound file into a source
-        let source: Decoder<BufReader<File>> = Decoder::new(file).unwrap();
-        // stream_saved.with(|stream_ref| {
-        println!("Playing...");
-        stream_handle
-            .play_raw(source.convert_samples())
-            .expect("failed to play");
-        println!("Done");
-        // });
-        // async move {
-        //     // tokio::time::sleep(std::time::Duration::from_secs(5)).await;
-        //     println!("Done");
-        // }
+        let source = Decoder::new(file).unwrap();
+        stream_saved.with(|stream_ref| {
+            println!("Playing...");
+            stream_ref
+                .play_raw(source.convert_samples())
+                .expect("failed to play");
+            println!("Done");
+        });
     };
 
     cx.render(rsx! {
