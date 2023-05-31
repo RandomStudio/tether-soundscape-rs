@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use log::{error, info, warn};
-use nannou::prelude::ToPrimitive;
 use rmp_serde::to_vec_named;
 use serde::{Deserialize, Serialize};
 use tether_agent::{mqtt::Message, PlugDefinition, TetherAgent};

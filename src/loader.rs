@@ -3,7 +3,9 @@ use std::path::{Path, PathBuf};
 use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
 
-use crate::remote_control::SimplePanning;
+use crate::SimplePanning;
+
+// use crate::remote_control::SimplePanning;
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -17,10 +19,10 @@ pub struct SoundBank {
 pub struct AudioClipOnDisk {
     name: String,
     path: String,
-    #[serde(default)]
-    frames_count: u32,
-    #[serde(default)]
-    sample_rate: u32,
+    // #[serde(default)]
+    // frames_count: u32,
+    // #[serde(default)]
+    // sample_rate: u32,
     volume: Option<f32>,
     panning: Option<SimplePanning>,
 }
@@ -35,12 +37,12 @@ impl AudioClipOnDisk {
     pub fn name(&self) -> &str {
         &self.name
     }
-    pub fn frames_count(&self) -> u32 {
-        self.frames_count
-    }
-    pub fn sample_rate(&self) -> u32 {
-        self.sample_rate
-    }
+    // pub fn duration(&self) -> u32 {
+    //     self.frames_count
+    // }
+    // pub fn sample_rate(&self) -> u32 {
+    //     self.sample_rate
+    // }
     pub fn path(&self) -> &str {
         &self.path
     }
@@ -57,26 +59,26 @@ pub fn get_sound_asset_path(assets_path: PathBuf, base_path: &str) -> String {
     path.to_str().unwrap().into()
 }
 
-fn read_length_and_rate(path: &std::path::Path, mono_only: bool) -> (u32, u32) {
-    let mut reader =
-        audrey::open(path).expect(&format!("Failed to load sound file with path {:?}", &path));
-    let mut count = 0;
-    if reader.description().channel_count() == 2 {
-        if mono_only {
-            error!("Clip {:?} has 2 channels", path);
-            panic!("In multichannel mode, you may only load mono clips!");
-        }
-        reader.frames::<[f32; 2]>().for_each(|_f| count += 1);
-    } else {
-        reader.frames::<[f32; 1]>().for_each(|_f| count += 1);
-    }
-    let description = reader.description();
-    let sample_rate = description.sample_rate();
-    (count, sample_rate)
-}
+// fn read_length_and_rate(path: &std::path::Path, mono_only: bool) -> (u32, u32) {
+//     let mut reader =
+//         audrey::open(path).expect(&format!("Failed to load sound file with path {:?}", &path));
+//     let mut count = 0;
+//     if reader.description().channel_count() == 2 {
+//         if mono_only {
+//             error!("Clip {:?} has 2 channels", path);
+//             panic!("In multichannel mode, you may only load mono clips!");
+//         }
+//         reader.frames::<[f32; 2]>().for_each(|_f| count += 1);
+//     } else {
+//         reader.frames::<[f32; 1]>().for_each(|_f| count += 1);
+//     }
+//     let description = reader.description();
+//     let sample_rate = description.sample_rate();
+//     (count, sample_rate)
+// }
 
 impl SoundBank {
-    pub fn new(app: &App, json_path: &Path, mono_only: bool) -> Self {
+    pub fn new(json_path: &Path, mono_only: bool) -> Self {
         info!("Loading sample bank from {:?} ...", &json_path);
         match std::fs::read_to_string(json_path) {
             Ok(text) => match serde_json::from_str::<SoundBank>(&text) {
@@ -87,18 +89,18 @@ impl SoundBank {
                         .enumerate()
                         .map(|(_i, sample)| {
                             let path_str = get_sound_asset_path(
-                                app.assets_path().expect("failed to fetch asset path"),
-                                sample.path(),
+                                Path::new("assets").to_path_buf(),
+                                &sample.path,
                             );
                             let path = Path::new(&path_str);
-                            let (frames_count, sample_rate) = read_length_and_rate(path, mono_only);
+                            // let (frames_count, sample_rate) = read_length_and_rate(path, mono_only);
                             let volume = sample.volume;
                             let panning = sample.panning;
                             let entry = AudioClipOnDisk {
                                 name: String::from(&sample.name),
                                 path: String::from(path.to_str().unwrap()),
-                                frames_count,
-                                sample_rate,
+                                // frames_count,
+                                // sample_rate,
                                 volume,
                                 panning,
                             };

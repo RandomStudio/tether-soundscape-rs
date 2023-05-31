@@ -1,10 +1,10 @@
 use dioxus::prelude::*;
 
+use loader::SoundBank;
 use rodio::{source::Source, Decoder, OutputStream};
-use rodio::{OutputStreamHandle, Sink};
 use std::fs::File;
 use std::io::BufReader;
-use std::sync::{Arc, Mutex};
+use std::path::Path;
 
 // use clap::Parser;
 
@@ -19,7 +19,10 @@ use std::sync::{Arc, Mutex};
 // };
 // use tween::TweenTime;
 
-// mod loader;
+mod loader;
+
+pub type SimplePanning = (f32, f32);
+
 // // mod playback;
 // mod remote_control;
 // mod settings;
@@ -99,24 +102,28 @@ pub fn app(cx: Scope<()>) -> Element {
     // See https://github.com/RustAudio/rodio/issues/330
     let _stream_saved = use_ref(cx, || stream);
 
-    let play_sound = |_| {
-        println!("Button clicked");
-        let file = BufReader::new(File::open("assets/sounds/music.wav").unwrap());
-        let source = Decoder::new(file).unwrap();
-        stream_handle_saved.with(|stream_ref| {
-            println!("Playing...");
-            stream_ref
-                .play_raw(source.convert_samples())
-                .expect("failed to play");
-        });
-    };
+    let sound_bank = use_state(cx, || SoundBank::new(Path::new("test_stereo.json"), false));
 
-    cx.render(rsx! {
-        button {
-            onclick: play_sound,
-            "Play sound"
-        }
-    })
+    // let play_sound = ;
+
+    cx.render(rsx!({
+        sound_bank.clips().iter().map(|clip| {
+            let label = format!("Play {}", clip.name());
+            rsx!(button {
+                onclick: |_| {
+                    println!("Playing {} ...", clip.path());
+                    let file = BufReader::new(File::open(clip.path()).unwrap());
+                    let source = Decoder::new(file).unwrap();
+                    stream_handle_saved.with(|stream_ref| {
+                        stream_ref
+                            .play_raw(source.convert_samples())
+                            .expect("failed to play");
+                    });
+                },
+                label
+            })
+        })
+    }))
 }
 
 // fn model(app: &App) -> Model {
