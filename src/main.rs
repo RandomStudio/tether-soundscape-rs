@@ -1,4 +1,10 @@
 use dioxus::prelude::*;
+
+use rodio::OutputStreamHandle;
+use rodio::{source::Source, Decoder, OutputStream};
+use std::fs::File;
+use std::io::BufReader;
+
 // use clap::Parser;
 
 // use env_logger::{Builder, Env};
@@ -62,6 +68,20 @@ use dioxus::prelude::*;
 //             .to_u32()
 //             .unwrap()
 //     }
+// // }
+
+// struct Model {
+//     source: Decoder<BufReader<File>>,
+//     stream_handle: OutputStreamHandle,
+// }
+
+// impl Model {
+//     pub fn new() -> Self {
+//         Model {
+//             source,
+//             stream_handle,
+//         }
+//     }
 // }
 
 fn main() {
@@ -69,9 +89,28 @@ fn main() {
 }
 
 pub fn app(cx: Scope<()>) -> Element {
-    cx.render(rsx! (
-        div { "Hello, world!" }
-    ))
+    // let state = use_ref(cx, Model::new);
+
+    cx.render(rsx! {
+        button {
+            onclick: move |_|  {
+                println!("Button clicked");
+                // Get a output stream handle to the default physical sound device
+                let (_stream, stream_handle) = OutputStream::try_default().unwrap();
+                // Load a sound from a file, using a path relative to Cargo.toml
+                let file = BufReader::new(File::open("assets/sounds/music.wav").unwrap());
+                // Decode that sound file into a source
+                let source = Decoder::new(file).unwrap();
+                stream_handle.play_raw(source.convert_samples()).expect("failed to play sound");
+                std::thread::sleep(std::time::Duration::from_secs(5));
+                println!("Done");
+                // let s = state.read().stream_handle;
+
+                // stream.play_raw(sound.convert_samples());
+            },
+            "Play sound"
+        }
+    })
 }
 
 // fn model(app: &App) -> Model {
