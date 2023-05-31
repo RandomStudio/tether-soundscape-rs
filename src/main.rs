@@ -90,19 +90,24 @@ fn main() {
 }
 
 pub fn app(cx: Scope<()>) -> Element {
-    let (_stream, stream_handle) = OutputStream::try_default().unwrap();
-    let stream_saved = use_ref(cx, || stream_handle);
+    let (stream, stream_handle) = OutputStream::try_default().unwrap();
 
-    let play_sound = move |_| {
+    let stream_handle_saved = use_ref(cx, || stream_handle);
+
+    // Although we don't use Stream, we MUST retain a reference to it somewhere, or it will be silently
+    // dropped, along with the OutputStreamHandle, before we try to use it!
+    // See https://github.com/RustAudio/rodio/issues/330
+    let _stream_saved = use_ref(cx, || stream);
+
+    let play_sound = |_| {
         println!("Button clicked");
         let file = BufReader::new(File::open("assets/sounds/music.wav").unwrap());
         let source = Decoder::new(file).unwrap();
-        stream_saved.with(|stream_ref| {
+        stream_handle_saved.with(|stream_ref| {
             println!("Playing...");
             stream_ref
                 .play_raw(source.convert_samples())
                 .expect("failed to play");
-            println!("Done");
         });
     };
 
