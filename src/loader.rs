@@ -1,7 +1,6 @@
 use std::path::{Path, PathBuf};
 
 use log::{debug, error, info};
-use nannou::App;
 use serde::{Deserialize, Serialize};
 
 use crate::remote_control::SimplePanning;
