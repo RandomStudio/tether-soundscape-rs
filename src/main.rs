@@ -104,7 +104,7 @@ fn main() {
     info!("Started; args: {:?}", cli);
     debug!("Debugging is enabled; could be verbose");
 
-    let settings = ManualSettings::defaults();
+    // let settings = ManualSettings::defaults();
 
     if cli.text_mode {
         info!("TUI text-mode enabled; low graphics");
