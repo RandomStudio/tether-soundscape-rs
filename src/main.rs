@@ -61,7 +61,7 @@ pub struct Model {
     settings: ManualSettings,
     multi_channel_mode: bool,
     tether: TetherAgent,
-    remote_control: RemoteControl,
+    remote_control: Option<RemoteControl>,
 }
 pub enum QueueItem {
     /// Start playback: name, optional fade duration in ms, should_loop,
@@ -202,7 +202,11 @@ fn model(app: &App) -> Model {
         warn!("Tether connection disabled")
     }
 
-    let remote_state_update = RemoteControl::new(&tether);
+    let remote_control = if cli.tether_disable {
+        None
+    } else {
+        Some(RemoteControl::new(&tether))
+    };
 
     Model {
         stream,
@@ -219,7 +223,7 @@ fn model(app: &App) -> Model {
         tether,
         last_state_publish: std::time::SystemTime::now(),
         multi_channel_mode: cli.multichannel_mode,
-        remote_control: remote_state_update,
+        remote_control,
     }
 }
 
@@ -324,7 +328,7 @@ fn update(app: &App, model: &mut Model, update: Update) {
         }
     }
 
-    for mut sound in &mut model.clips_playing {
+    for sound in &mut model.clips_playing {
         if sound.last_update_sent.elapsed().unwrap() > UPDATE_INTERVAL {
             sound.last_update_sent = std::time::SystemTime::now();
             trace!("Request for clip ID#{}", sound.id);
@@ -336,11 +340,13 @@ fn update(app: &App, model: &mut Model, update: Update) {
     }
 
     if model.last_state_publish.elapsed().unwrap() > UPDATE_INTERVAL {
-        model.remote_control.publish_state(
-            model.stream.is_playing(),
-            &model.clips_playing,
-            &model.tether,
-        );
+        if let Some(remote_control) = &mut model.remote_control {
+            remote_control.publish_state(
+                model.stream.is_playing(),
+                &model.clips_playing,
+                &model.tether,
+            );
+        }
     }
 
     while let Ok(id) = model.rx_complete.pop() {
@@ -415,88 +421,127 @@ fn update(app: &App, model: &mut Model, update: Update) {
 
     if model.tether.is_connected() {
         if let Some((plug_name, message)) = model.tether.check_messages() {
-            match model
-                .remote_control
-                .parse_instructions(&plug_name, &message)
-            {
-                Ok(Instruction::Add(clip_name, should_loop, fade_duration, message_panning)) => {
-                    if let Some(clip_matched) = model
-                        .sound_bank
-                        .clips()
-                        .iter()
-                        .find(|c| c.name().eq_ignore_ascii_case(&clip_name))
-                    {
-                        let clip_default_panning = clip_matched.panning();
-                        model.action_queue.push(QueueItem::Play(
-                            clip_name,
-                            fade_duration,
-                            should_loop,
-                            provided_or_default_panning(
-                                message_panning,
-                                clip_default_panning,
-                                model.stream.cpal_config().channels.into(),
-                            ),
-                        ));
-                    } else {
-                        error!("Could not find clip named {} to play", &clip_name);
+            if let Some(remote_control) = &mut model.remote_control {
+                match remote_control.parse_instructions(&plug_name, &message) {
+                    Ok(Instruction::Add(
+                        clip_name,
+                        should_loop,
+                        fade_duration,
+                        message_panning,
+                    )) => {
+                        if let Some(clip_matched) = model
+                            .sound_bank
+                            .clips()
+                            .iter()
+                            .find(|c| c.name().eq_ignore_ascii_case(&clip_name))
+                        {
+                            let clip_default_panning = clip_matched.panning();
+                            model.action_queue.push(QueueItem::Play(
+                                clip_name,
+                                fade_duration,
+                                should_loop,
+                                provided_or_default_panning(
+                                    message_panning,
+                                    clip_default_panning,
+                                    model.stream.cpal_config().channels.into(),
+                                ),
+                            ));
+                        } else {
+                            error!("Could not find clip named {} to play", &clip_name);
+                        }
                     }
-                }
-                Ok(Instruction::Remove(clip_name, fade_duration)) => {
-                    if let Some((_index, info)) =
-                        get_clip_index_with_name(&model.clips_playing, &clip_name)
-                    {
-                        model
-                            .action_queue
-                            .push(QueueItem::Stop(info.id, fade_duration));
-                    } else {
-                        error!("Could not find clip named {} to stop", &clip_name);
+                    Ok(Instruction::Remove(clip_name, fade_duration)) => {
+                        if let Some((_index, info)) =
+                            get_clip_index_with_name(&model.clips_playing, &clip_name)
+                        {
+                            model
+                                .action_queue
+                                .push(QueueItem::Stop(info.id, fade_duration));
+                        } else {
+                            error!("Could not find clip named {} to stop", &clip_name);
+                        }
                     }
-                }
-                Ok(Instruction::Scene(pick_mode, clip_names, fade_duration)) => {
-                    let to_add = &clip_names;
-                    info!("Scene transition: x{} clips to add", to_add.len());
-                    match pick_mode {
-                        ScenePickMode::LoopAll => {
-                            for name in to_add {
-                                if let Some(clip_matched) = model
-                                    .sound_bank
-                                    .clips()
-                                    .iter()
-                                    .find(|c| c.name().eq_ignore_ascii_case(&name))
-                                {
-                                    let clip_default_panning = clip_matched.panning();
-                                    model.action_queue.push(QueueItem::Play(
-                                        String::from(name),
-                                        fade_duration,
-                                        true,
-                                        provided_or_default_panning(
-                                            None,
-                                            clip_default_panning,
-                                            model.stream.cpal_config().channels.into(),
-                                        ),
-                                    ));
-                                } else {
-                                    error!("Could not find clip named {} to play in scene", name);
+                    Ok(Instruction::Scene(pick_mode, clip_names, fade_duration)) => {
+                        let to_add = &clip_names;
+                        info!("Scene transition: x{} clips to add", to_add.len());
+                        match pick_mode {
+                            ScenePickMode::LoopAll => {
+                                for name in to_add {
+                                    if let Some(clip_matched) = model
+                                        .sound_bank
+                                        .clips()
+                                        .iter()
+                                        .find(|c| c.name().eq_ignore_ascii_case(&name))
+                                    {
+                                        let clip_default_panning = clip_matched.panning();
+                                        model.action_queue.push(QueueItem::Play(
+                                            String::from(name),
+                                            fade_duration,
+                                            true,
+                                            provided_or_default_panning(
+                                                None,
+                                                clip_default_panning,
+                                                model.stream.cpal_config().channels.into(),
+                                            ),
+                                        ));
+                                    } else {
+                                        error!(
+                                            "Could not find clip named {} to play in scene",
+                                            name
+                                        );
+                                    }
+                                }
+
+                                let to_remove = clips_to_remove(&model.clips_playing, &clip_names);
+                                info!("Scene transition: x{} clips to remove", to_remove.len());
+                                for id in to_remove {
+                                    model.action_queue.push(QueueItem::Stop(id, fade_duration));
                                 }
                             }
+                            ScenePickMode::OnceAll => {
+                                for name in to_add {
+                                    if let Some(clip_matched) = model
+                                        .sound_bank
+                                        .clips()
+                                        .iter()
+                                        .find(|c| c.name().eq_ignore_ascii_case(&name))
+                                    {
+                                        let clip_default_panning = clip_matched.panning();
+                                        model.action_queue.push(QueueItem::Play(
+                                            String::from(name),
+                                            fade_duration,
+                                            false,
+                                            provided_or_default_panning(
+                                                None,
+                                                clip_default_panning,
+                                                model.stream.cpal_config().channels.into(),
+                                            ),
+                                        ));
+                                    } else {
+                                        error!(
+                                            "Could not find clip named {} to play in scene",
+                                            name
+                                        );
+                                    }
+                                }
 
-                            let to_remove = clips_to_remove(&model.clips_playing, &clip_names);
-                            info!("Scene transition: x{} clips to remove", to_remove.len());
-                            for id in to_remove {
-                                model.action_queue.push(QueueItem::Stop(id, fade_duration));
+                                let to_remove = clips_to_remove(&model.clips_playing, &clip_names);
+                                info!("Scene transition: x{} clips to remove", to_remove.len());
+                                for id in to_remove {
+                                    model.action_queue.push(QueueItem::Stop(id, fade_duration));
+                                }
                             }
-                        }
-                        ScenePickMode::OnceAll => {
-                            for name in to_add {
+                            ScenePickMode::Random => {
+                                let random_clip_name = pick_random_clip(clip_names);
                                 if let Some(clip_matched) = model
                                     .sound_bank
                                     .clips()
                                     .iter()
-                                    .find(|c| c.name().eq_ignore_ascii_case(&name))
+                                    .find(|c| c.name().eq_ignore_ascii_case(&random_clip_name))
                                 {
                                     let clip_default_panning = clip_matched.panning();
                                     model.action_queue.push(QueueItem::Play(
-                                        String::from(name),
+                                        String::from(clip_matched.name()),
                                         fade_duration,
                                         false,
                                         provided_or_default_panning(
@@ -505,42 +550,13 @@ fn update(app: &App, model: &mut Model, update: Update) {
                                             model.stream.cpal_config().channels.into(),
                                         ),
                                     ));
-                                } else {
-                                    error!("Could not find clip named {} to play in scene", name);
                                 }
-                            }
-
-                            let to_remove = clips_to_remove(&model.clips_playing, &clip_names);
-                            info!("Scene transition: x{} clips to remove", to_remove.len());
-                            for id in to_remove {
-                                model.action_queue.push(QueueItem::Stop(id, fade_duration));
-                            }
-                        }
-                        ScenePickMode::Random => {
-                            let random_clip_name = pick_random_clip(clip_names);
-                            if let Some(clip_matched) = model
-                                .sound_bank
-                                .clips()
-                                .iter()
-                                .find(|c| c.name().eq_ignore_ascii_case(&random_clip_name))
-                            {
-                                let clip_default_panning = clip_matched.panning();
-                                model.action_queue.push(QueueItem::Play(
-                                    String::from(clip_matched.name()),
-                                    fade_duration,
-                                    false,
-                                    provided_or_default_panning(
-                                        None,
-                                        clip_default_panning,
-                                        model.stream.cpal_config().channels.into(),
-                                    ),
-                                ));
                             }
                         }
                     }
-                }
-                Err(_) => {
-                    error!("Failed to parse remote Instruction");
+                    Err(_) => {
+                        error!("Failed to parse remote Instruction");
+                    }
                 }
             }
         }
