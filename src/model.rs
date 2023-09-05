@@ -1,9 +1,9 @@
 use clap::Parser;
 use log::{debug, info, warn};
-use std::{path::Path, time::SystemTime};
+use std::{fs::File, io::BufReader, path::Path, time::SystemTime};
 
 use env_logger::{Builder, Env};
-use rodio::OutputStreamHandle;
+use rodio::{Decoder, OutputStreamHandle, Source};
 use tether_agent::TetherAgent;
 
 use crate::{
@@ -105,10 +105,20 @@ impl Model {
 
 impl eframe::App for Model {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        let model = &self;
         // // TODO: continuous mode essential?
         // ctx.request_repaint();
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.label("egui");
+            for sample in model.sound_bank.clips() {
+                if ui.button(format!("{}", sample.name())).clicked() {
+                    let file = BufReader::new(File::open(sample.path()).unwrap());
+                    let source = Decoder::new(file).unwrap();
+                    model
+                        .output_stream_handle
+                        .play_raw(source.convert_samples())
+                        .expect("failed to play");
+                }
+            }
         });
     }
 }
