@@ -20,10 +20,15 @@ pub struct ClipWithSink {
     sink: Sink,
     duration: Option<Duration>,
     started: SystemTime,
+    description: String,
 }
 
 impl ClipWithSink {
-    pub fn new(sample: &AudioClipOnDisk, output_stream_handle: &OutputStreamHandle) -> Self {
+    pub fn new(
+        sample: &AudioClipOnDisk,
+        output_stream_handle: &OutputStreamHandle,
+        description: String,
+    ) -> Self {
         let file = BufReader::new(File::open(sample.path()).unwrap());
         let source = Decoder::new(file).unwrap();
 
@@ -36,6 +41,7 @@ impl ClipWithSink {
             sink,
             duration,
             started: SystemTime::now(),
+            description,
         }
     }
 
@@ -56,6 +62,10 @@ impl ClipWithSink {
                 Some(progress)
             }
         }
+    }
+
+    pub fn description(&self) -> &str {
+        &self.description
     }
 }
 

@@ -5,7 +5,7 @@
 
 use std::{fs::File, io::BufReader};
 
-use egui::Ui;
+use egui::{ProgressBar, Ui};
 use rodio::{Decoder, Sink};
 
 use crate::{model::Model, playback::ClipWithSink};
@@ -14,7 +14,11 @@ pub fn render_ui(ui: &mut Ui, model: &mut Model) {
     ui.heading("samples");
     for sample in model.sound_bank.clips() {
         if ui.button(format!("{}", sample.name())).clicked() {
-            let clip_with_sink = ClipWithSink::new(&sample, &model.output_stream_handle);
+            let clip_with_sink = ClipWithSink::new(
+                &sample,
+                &model.output_stream_handle,
+                String::from(sample.name()),
+            );
             model.clips_playing.push(clip_with_sink);
         }
     }
@@ -24,7 +28,10 @@ pub fn render_ui(ui: &mut Ui, model: &mut Model) {
         model.clips_playing.len()
     ));
     for clip in model.clips_playing.iter() {
-        ui.label(format!("progress: {}", clip.progress().unwrap_or(0.)));
+        ui.horizontal(|ui| {
+            ui.label(format!("{}:", clip.description()));
+            ui.add(ProgressBar::new(clip.progress().unwrap_or(0.)));
+        });
     }
 }
 
