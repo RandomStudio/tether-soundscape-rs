@@ -1,12 +1,13 @@
 use std::{
     fs::File,
     io::BufReader,
+    sync::mpsc,
+    thread,
     time::{Duration, SystemTime},
 };
 
 use log::debug;
 use rodio::{Decoder, OutputStreamHandle, Sink, Source};
-use rtrb::{Consumer, Producer};
 use tween::{Linear, QuadIn, SineInOut, Tween, Tweener};
 
 use crate::{loader::AudioClipOnDisk, model::FadeDuration};
@@ -20,6 +21,7 @@ pub struct ClipWithSink {
     sink: Sink,
     duration: Option<Duration>,
     started: SystemTime,
+    last_known_progress: Option<f32>,
     name: String,
 }
 
@@ -50,6 +52,7 @@ impl ClipWithSink {
             sink,
             duration,
             started: SystemTime::now(),
+            last_known_progress: Some(0.),
             name,
         }
     }
@@ -58,8 +61,8 @@ impl ClipWithSink {
         self.sink.empty()
     }
 
-    pub fn progress(&self) -> Option<f32> {
-        match self.duration {
+    pub fn update_progress(&mut self) {
+        self.last_known_progress = match self.duration {
             None => None,
             Some(d) => {
                 let elapsed = self.started.elapsed().unwrap_or(Duration::ZERO);
@@ -69,9 +72,24 @@ impl ClipWithSink {
         }
     }
 
+    pub fn progress(&self) -> Option<f32> {
+        self.last_known_progress
+    }
+
     pub fn stop(&self) {
         self.sink.clear();
     }
+
+    // pub fn fade_out(&self, duration: Duration) {
+    //     let (tx, rx) = mpsc::channel();
+    //     let started_fade = SystemTime::now();
+    //     let handle = thread::spawn(move || loop {
+    //         // self.sink.set_volume(self.sink.volume() - 0.01);
+    //         tx.send(started_fade.elapsed());
+    //         thread::sleep(Duration::from_millis(1));
+    //     });
+
+    // }
 
     pub fn name(&self) -> &str {
         &self.name

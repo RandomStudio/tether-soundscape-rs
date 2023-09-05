@@ -1,7 +1,14 @@
 use clap::Parser;
 use egui::Align2;
 use log::{debug, info, warn};
-use std::{fs::File, io::BufReader, path::Path, time::SystemTime};
+use std::{
+    fs::File,
+    io::BufReader,
+    path::Path,
+    sync::mpsc::{self, Receiver, Sender},
+    thread::{self, JoinHandle},
+    time::{Duration, SystemTime},
+};
 
 use env_logger::{Builder, Env};
 use rodio::{Decoder, OutputStreamHandle, Sink, Source};
@@ -19,9 +26,9 @@ use crate::{
 pub type FadeDuration = u32;
 
 pub struct Model {
-    // rx_progress: Consumer<ProgressUpdate>,
-    // rx_complete: Consumer<CompleteUpdate>,
-    // tx_request: Producer<RequestUpdate>,
+    request_loop_handle: JoinHandle<()>,
+    // pub request_channel: (Sender<()>, Receiver<()>),
+    pub request_rx: Receiver<()>,
     pub output_stream_handle: OutputStreamHandle,
     pub sound_bank: SoundBank,
     pub clips_playing: Vec<ClipWithSink>,
@@ -38,33 +45,6 @@ pub struct Model {
 impl Model {
     pub fn new(cli: &Cli, output_stream_handle: OutputStreamHandle) -> Model {
         let settings = ManualSettings::defaults();
-
-        // let device = match cli.preferred_output_device {
-        //     Some(device_name) => {
-        //         if let Ok(devices) = audio_host.output_devices() {
-        //             let mut matching_device: Option<Device> = None;
-        //             for d in devices {
-        //                 debug!("output device: {:?}", d.name());
-        //                 if d.name().unwrap() == device_name {
-        //                     info!(
-        //                         "Found matching device {} == {}",
-        //                         &d.name().unwrap(),
-        //                         &device_name
-        //                     );
-        //                     matching_device = Some(d);
-        //                 }
-        //             }
-        //             matching_device
-        //         } else {
-        //             panic!("Failed to enumerate host audio devices");
-        //         }
-        //     }
-        //     None => audio_host.default_output_device(),
-        // };
-
-        // let (tx_progress, rx_progress) = RingBuffer::new(RING_BUFFER_SIZE * 16);
-        // let (tx_complete, rx_complete) = RingBuffer::new(RING_BUFFER_SIZE);
-        // let (tx_request, rx_request) = RingBuffer::new(RING_BUFFER_SIZE);
 
         if cli.multichannel_mode {
             info!("Multichannel mode; use mono clips only");
@@ -94,7 +74,20 @@ impl Model {
         //     Some(RemoteControl::new(&tether))
         // };
 
+        let (tx, rx) = mpsc::channel();
+
+        // let request_tx = tx.clone();
+
+        let request_loop_handle = thread::spawn(move || loop {
+            tx.send(()).expect("failed to send via channel");
+            debug!("tx request");
+            thread::sleep(Duration::from_millis(1000));
+        });
+
         Model {
+            // request_channel: (tx, rx),
+            request_rx: rx,
+            request_loop_handle,
             output_stream_handle,
             sound_bank,
             clips_playing: Vec::new(),
@@ -107,6 +100,9 @@ impl Model {
     }
 
     pub fn check_progress(&mut self) {
+        for clip in &mut self.clips_playing {
+            clip.update_progress();
+        }
         let completed = self.clips_playing.iter().position(|x| x.is_completed());
         if let Some(i) = completed {
             debug!("Removing clip index {}", i);
@@ -130,6 +126,9 @@ impl eframe::App for Model {
             render_vis(ui, self);
         });
 
-        self.check_progress();
+        if let Ok(_) = self.request_rx.try_recv() {
+            debug!("Received request rx");
+            self.check_progress();
+        }
     }
 }
