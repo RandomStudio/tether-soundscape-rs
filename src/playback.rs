@@ -9,7 +9,7 @@ use rodio::{Decoder, OutputStreamHandle, Sink, Source};
 use rtrb::{Consumer, Producer};
 use tween::{Linear, QuadIn, SineInOut, Tween, Tweener};
 
-use crate::loader::AudioClipOnDisk;
+use crate::{loader::AudioClipOnDisk, model::FadeDuration};
 
 // use crate::utils::millis_to_frames;
 
@@ -27,18 +27,24 @@ impl ClipWithSink {
     pub fn new(
         sample: &AudioClipOnDisk,
         should_loop: bool,
+        fade_in: Option<Duration>,
         output_stream_handle: &OutputStreamHandle,
         name: String,
     ) -> Self {
         let file = BufReader::new(File::open(sample.path()).unwrap());
         let source = Decoder::new(file).unwrap();
+
         let duration = source.total_duration();
 
         let sink = Sink::try_new(output_stream_handle).expect("failed to create sink");
         if should_loop {
-            sink.append(source.repeat_infinite());
+            sink.append(
+                source
+                    .repeat_infinite()
+                    .fade_in(fade_in.unwrap_or_default()),
+            );
         } else {
-            sink.append(source);
+            sink.append(source.fade_in(fade_in.unwrap_or_default()));
         }
         ClipWithSink {
             sink,

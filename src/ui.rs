@@ -3,7 +3,7 @@
 // use nannou_egui::egui::{self, Slider};
 // use std::time::Duration;
 
-use std::{fs::File, io::BufReader};
+use std::{fs::File, io::BufReader, time::Duration};
 
 use egui::{ProgressBar, Ui};
 use rodio::{Decoder, Sink};
@@ -19,6 +19,17 @@ pub fn render_local_controls(ui: &mut Ui, model: &mut Model) {
                 let clip_with_sink = ClipWithSink::new(
                     &sample,
                     false,
+                    None,
+                    &model.output_stream_handle,
+                    String::from(sample.name()),
+                );
+                model.clips_playing.push(clip_with_sink);
+            }
+            if ui.button("once (fade 2s)").clicked() {
+                let clip_with_sink = ClipWithSink::new(
+                    &sample,
+                    false,
+                    Some(Duration::from_millis(2000)),
                     &model.output_stream_handle,
                     String::from(sample.name()),
                 );
@@ -28,6 +39,17 @@ pub fn render_local_controls(ui: &mut Ui, model: &mut Model) {
                 let clip_with_sink = ClipWithSink::new(
                     &sample,
                     true,
+                    None,
+                    &model.output_stream_handle,
+                    String::from(sample.name()),
+                );
+                model.clips_playing.push(clip_with_sink);
+            }
+            if ui.button("loop (fade 5s)").clicked() {
+                let clip_with_sink = ClipWithSink::new(
+                    &sample,
+                    true,
+                    Some(Duration::from_millis(5000)),
                     &model.output_stream_handle,
                     String::from(sample.name()),
                 );
