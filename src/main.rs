@@ -31,10 +31,10 @@ use crate::model::Model;
 
 mod loader;
 mod model;
+mod playback;
 mod settings;
-// mod playback;
+mod ui;
 // mod remote_control;
-// mod ui;
 // mod utils;
 
 pub enum QueueItem {

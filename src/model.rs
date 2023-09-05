@@ -3,14 +3,16 @@ use log::{debug, info, warn};
 use std::{fs::File, io::BufReader, path::Path, time::SystemTime};
 
 use env_logger::{Builder, Env};
-use rodio::{Decoder, OutputStreamHandle, Source};
+use rodio::{Decoder, OutputStreamHandle, Sink, Source};
 use tether_agent::TetherAgent;
 
 use crate::{
     loader::SoundBank,
+    playback::ClipWithSink,
+    // CurrentlyPlayingClip, QueueItem,
     // remote_control::RemoteControl,
     settings::{Cli, ManualSettings, RING_BUFFER_SIZE},
-    // CurrentlyPlayingClip, QueueItem,
+    ui::render_ui,
 };
 
 pub type FadeDuration = u32;
@@ -19,15 +21,16 @@ pub struct Model {
     // rx_progress: Consumer<ProgressUpdate>,
     // rx_complete: Consumer<CompleteUpdate>,
     // tx_request: Producer<RequestUpdate>,
-    output_stream_handle: OutputStreamHandle,
-    sound_bank: SoundBank,
+    pub output_stream_handle: OutputStreamHandle,
+    pub sound_bank: SoundBank,
+    pub clips_playing: Vec<ClipWithSink>,
     // clips_playing: Vec<CurrentlyPlayingClip>,
     // duration_range: [FadeDuration; 2],
     // action_queue: Vec<QueueItem>,
-    last_state_publish: SystemTime,
-    settings: ManualSettings,
+    pub last_state_publish: SystemTime,
+    pub settings: ManualSettings,
     // multi_channel_mode: bool,
-    tether: TetherAgent,
+    pub tether: TetherAgent,
     // remote_control: Option<RemoteControl>,
 }
 
@@ -93,7 +96,7 @@ impl Model {
         Model {
             output_stream_handle,
             sound_bank,
-            // clips_playing: Vec::new(),
+            clips_playing: Vec::new(),
             // action_queue: Vec::new(),
             last_state_publish: std::time::SystemTime::now(),
             settings,
@@ -101,24 +104,24 @@ impl Model {
             // remote_control,
         }
     }
+
+    pub fn check_progress(&mut self) {
+        let completed = self.clips_playing.iter().position(|x| x.sink().empty());
+        if let Some(i) = completed {
+            debug!("Removing clip index {}", i);
+            self.clips_playing.remove(i);
+        }
+    }
 }
 
 impl eframe::App for Model {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        let model = &self;
         // // TODO: continuous mode essential?
         // ctx.request_repaint();
         egui::CentralPanel::default().show(ctx, |ui| {
-            for sample in model.sound_bank.clips() {
-                if ui.button(format!("{}", sample.name())).clicked() {
-                    let file = BufReader::new(File::open(sample.path()).unwrap());
-                    let source = Decoder::new(file).unwrap();
-                    model
-                        .output_stream_handle
-                        .play_raw(source.convert_samples())
-                        .expect("failed to play");
-                }
-            }
+            render_ui(ui, self);
         });
+
+        self.check_progress();
     }
 }
