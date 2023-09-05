@@ -98,7 +98,16 @@ ___
 - Great way to learn about low-level audio sample/buffer control, multi-threading in Rust (Nannou always uses separate "realtime" thread for audio)
 
 ___ 
-## TODO:
+
+## TODO - rodio/egui version:
+- [ ] Re-implement Phases
+- [ ] Fade in/out should use Phase/Tweens
+- [ ] Allow MIDI to trigger clips (MIDI Mediator and/or directly)
+- [ ] Allow bank to be created, edited, saved directly from GUI, start from "blank" or load demo if nothing
+- [ ] Drag and drop samples into bank
+- [ ] Visualise clip playback in circles, not just progress bars
+
+## TODO - original:
 - [x] Apply "loop" as well as trigger/hit/once-off functions
 - [x] Allow clips to be stopped/removed while playing (without stopping whole stream)
 - [x] Allow starting/fixed "maximum" volume per clip to be applied

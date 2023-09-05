@@ -80,8 +80,9 @@ impl Model {
 
         let request_loop_handle = thread::spawn(move || loop {
             tx.send(()).expect("failed to send via channel");
-            debug!("tx request");
-            thread::sleep(Duration::from_millis(1000));
+            // debug!("tx request");
+            // TODO: the interval below should be configured
+            thread::sleep(Duration::from_millis(16));
         });
 
         Model {
@@ -126,8 +127,9 @@ impl eframe::App for Model {
             render_vis(ui, self);
         });
 
+        // TODO: this call can be made in a loop manually, when in text-mode
         if let Ok(_) = self.request_rx.try_recv() {
-            debug!("Received request rx");
+            // debug!("Received request rx");
             self.check_progress();
         }
     }
