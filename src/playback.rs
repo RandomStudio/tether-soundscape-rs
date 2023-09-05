@@ -26,17 +26,20 @@ pub struct ClipWithSink {
 impl ClipWithSink {
     pub fn new(
         sample: &AudioClipOnDisk,
+        should_loop: bool,
         output_stream_handle: &OutputStreamHandle,
         description: String,
     ) -> Self {
         let file = BufReader::new(File::open(sample.path()).unwrap());
         let source = Decoder::new(file).unwrap();
-
         let duration = source.total_duration();
 
         let sink = Sink::try_new(output_stream_handle).expect("failed to create sink");
-        sink.append(source);
-
+        if should_loop {
+            sink.append(source.repeat_infinite());
+        } else {
+            sink.append(source);
+        }
         ClipWithSink {
             sink,
             duration,
@@ -58,7 +61,7 @@ impl ClipWithSink {
             None => None,
             Some(d) => {
                 let elapsed = self.started.elapsed().unwrap_or(Duration::ZERO);
-                let progress = elapsed.as_millis() as f32 / d.as_millis() as f32;
+                let progress = (elapsed.as_millis() % d.as_millis()) as f32 / d.as_millis() as f32;
                 Some(progress)
             }
         }

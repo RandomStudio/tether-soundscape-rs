@@ -18,6 +18,16 @@ pub fn render_local_controls(ui: &mut Ui, model: &mut Model) {
             if ui.button("once").clicked() {
                 let clip_with_sink = ClipWithSink::new(
                     &sample,
+                    false,
+                    &model.output_stream_handle,
+                    String::from(sample.name()),
+                );
+                model.clips_playing.push(clip_with_sink);
+            }
+            if ui.button("loop").clicked() {
+                let clip_with_sink = ClipWithSink::new(
+                    &sample,
+                    true,
                     &model.output_stream_handle,
                     String::from(sample.name()),
                 );
@@ -35,7 +45,7 @@ pub fn render_vis(ui: &mut Ui, model: &mut Model) {
     for clip in model.clips_playing.iter() {
         ui.horizontal(|ui| {
             ui.label(format!("{}:", clip.description()));
-            ui.add(ProgressBar::new(clip.progress().unwrap_or(0.)));
+            ui.add(ProgressBar::new(clip.progress().unwrap_or(0.)).show_percentage());
         });
     }
 }
