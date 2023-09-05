@@ -28,7 +28,12 @@ pub fn build_ui(model: &mut Model, since_start: Duration, is_multichannel_mode: 
         ..
     } = &mut model.settings;
 
-    let output_channel_count = model.stream.cpal_config().channels.to_u32().unwrap();
+    let output_channel_count = model
+        .output_stream_handle
+        .cpal_config()
+        .channels
+        .to_u32()
+        .unwrap();
 
     egui::Window::new("Settings").show(&ctx, |ui| {
         ui.horizontal(|ui| {
@@ -51,13 +56,23 @@ pub fn build_ui(model: &mut Model, since_start: Duration, is_multichannel_mode: 
                 if !*ignore_panning {
                     ui.horizontal(|ui| {
                         ui.label("Pan position");
-                        let channel_count =
-                            model.stream.cpal_config().channels.to_f32().unwrap() - 1.0;
+                        let channel_count = model
+                            .output_stream_handle
+                            .cpal_config()
+                            .channels
+                            .to_f32()
+                            .unwrap()
+                            - 1.0;
                         ui.add(Slider::new(simple_pan_position, 0. ..=channel_count));
                     });
                     ui.horizontal(|ui| {
                         ui.label("Pan spread");
-                        let channel_count = model.stream.cpal_config().channels.to_f32().unwrap();
+                        let channel_count = model
+                            .output_stream_handle
+                            .cpal_config()
+                            .channels
+                            .to_f32()
+                            .unwrap();
                         ui.add(Slider::new(simple_pan_spread, 1. ..=channel_count));
                     });
 
