@@ -85,7 +85,7 @@ fn main() {
     let mut model = Model::new(&cli, stream_handle);
 
     eframe::run_native(
-        "Tether MIDI Mediator",
+        "Tether Remote Soundscape",
         options,
         Box::new(|_cc| Box::<Model>::new(model)),
     )
