@@ -107,7 +107,7 @@ impl Model {
     }
 
     pub fn check_progress(&mut self) {
-        let completed = self.clips_playing.iter().position(|x| x.sink().empty());
+        let completed = self.clips_playing.iter().position(|x| x.is_completed());
         if let Some(i) = completed {
             debug!("Removing clip index {}", i);
             self.clips_playing.remove(i);

@@ -33,6 +33,13 @@ pub fn render_local_controls(ui: &mut Ui, model: &mut Model) {
                 );
                 model.clips_playing.push(clip_with_sink);
             }
+            if ui.button("stop").clicked() {
+                for clip in &model.clips_playing {
+                    if clip.name() == sample.name() {
+                        clip.stop();
+                    }
+                }
+            }
         });
     }
 }
@@ -44,7 +51,10 @@ pub fn render_vis(ui: &mut Ui, model: &mut Model) {
     ));
     for clip in model.clips_playing.iter() {
         ui.horizontal(|ui| {
-            ui.label(format!("{}:", clip.description()));
+            ui.label(format!("{}:", clip.name()));
+            if ui.button("X").clicked() {
+                clip.stop();
+            }
             ui.add(ProgressBar::new(clip.progress().unwrap_or(0.)).show_percentage());
         });
     }
