@@ -14,11 +14,7 @@ pub fn render_ui(ui: &mut Ui, model: &mut Model) {
     ui.heading("samples");
     for sample in model.sound_bank.clips() {
         if ui.button(format!("{}", sample.name())).clicked() {
-            let file = BufReader::new(File::open(sample.path()).unwrap());
-            let source = Decoder::new(file).unwrap();
-            let sink = Sink::try_new(&model.output_stream_handle).expect("failed to create sink");
-            sink.append(source);
-            let clip_with_sink = ClipWithSink::new(sink);
+            let clip_with_sink = ClipWithSink::new(&sample, &model.output_stream_handle);
             model.clips_playing.push(clip_with_sink);
         }
     }
@@ -27,6 +23,9 @@ pub fn render_ui(ui: &mut Ui, model: &mut Model) {
         "currently playing: x{} clips",
         model.clips_playing.len()
     ));
+    for clip in model.clips_playing.iter() {
+        ui.label(format!("progress: {}", clip.progress().unwrap_or(0.)));
+    }
 }
 
 // use crate::{

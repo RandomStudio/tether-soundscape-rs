@@ -116,8 +116,8 @@ impl Model {
 
 impl eframe::App for Model {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        // // TODO: continuous mode essential?
-        // ctx.request_repaint();
+        // TODO: continuous mode essential?
+        ctx.request_repaint();
         egui::CentralPanel::default().show(ctx, |ui| {
             render_ui(ui, self);
         });

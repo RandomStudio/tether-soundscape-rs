@@ -1,9 +1,15 @@
-use std::{fs::File, io::BufReader};
+use std::{
+    fs::File,
+    io::BufReader,
+    time::{Duration, SystemTime},
+};
 
 use log::debug;
-use rodio::Sink;
+use rodio::{Decoder, OutputStreamHandle, Sink, Source};
 use rtrb::{Consumer, Producer};
 use tween::{Linear, QuadIn, SineInOut, Tween, Tweener};
+
+use crate::loader::AudioClipOnDisk;
 
 // use crate::utils::millis_to_frames;
 
@@ -12,14 +18,44 @@ type StoredTweener = Tweener<f32, u32, Box<dyn Tween<f32> + Send + Sync>>;
 
 pub struct ClipWithSink {
     sink: Sink,
+    duration: Option<Duration>,
+    started: SystemTime,
 }
 
 impl ClipWithSink {
-    pub fn new(sink: Sink) -> Self {
-        ClipWithSink { sink }
+    pub fn new(sample: &AudioClipOnDisk, output_stream_handle: &OutputStreamHandle) -> Self {
+        let file = BufReader::new(File::open(sample.path()).unwrap());
+        let source = Decoder::new(file).unwrap();
+
+        let duration = source.total_duration();
+
+        let sink = Sink::try_new(output_stream_handle).expect("failed to create sink");
+        sink.append(source);
+
+        ClipWithSink {
+            sink,
+            duration,
+            started: SystemTime::now(),
+        }
     }
+
     pub fn sink(&self) -> &Sink {
         &self.sink
+    }
+
+    pub fn is_completed(&self) -> bool {
+        self.sink.empty()
+    }
+
+    pub fn progress(&self) -> Option<f32> {
+        match self.duration {
+            None => None,
+            Some(d) => {
+                let elapsed = self.started.elapsed().unwrap_or(Duration::ZERO);
+                let progress = elapsed.as_millis() as f32 / d.as_millis() as f32;
+                Some(progress)
+            }
+        }
     }
 }
 
