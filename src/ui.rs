@@ -10,20 +10,25 @@ use rodio::{Decoder, Sink};
 
 use crate::{model::Model, playback::ClipWithSink};
 
-pub fn render_ui(ui: &mut Ui, model: &mut Model) {
-    ui.heading("samples");
+pub fn render_local_controls(ui: &mut Ui, model: &mut Model) {
+    ui.heading("Sample Bank");
     for sample in model.sound_bank.clips() {
-        if ui.button(format!("{}", sample.name())).clicked() {
-            let clip_with_sink = ClipWithSink::new(
-                &sample,
-                &model.output_stream_handle,
-                String::from(sample.name()),
-            );
-            model.clips_playing.push(clip_with_sink);
-        }
+        ui.horizontal(|ui| {
+            ui.label(sample.name());
+            if ui.button("once").clicked() {
+                let clip_with_sink = ClipWithSink::new(
+                    &sample,
+                    &model.output_stream_handle,
+                    String::from(sample.name()),
+                );
+                model.clips_playing.push(clip_with_sink);
+            }
+        });
     }
-    ui.heading("state");
-    ui.label(format!(
+}
+
+pub fn render_vis(ui: &mut Ui, model: &mut Model) {
+    ui.heading(format!(
         "currently playing: x{} clips",
         model.clips_playing.len()
     ));

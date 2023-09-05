@@ -82,7 +82,7 @@ fn main() {
         ..Default::default()
     };
 
-    let mut model = Model::new(&cli, stream_handle);
+    let model = Model::new(&cli, stream_handle);
 
     eframe::run_native(
         "Tether Remote Soundscape",

@@ -1,4 +1,5 @@
 use clap::Parser;
+use egui::Align2;
 use log::{debug, info, warn};
 use std::{fs::File, io::BufReader, path::Path, time::SystemTime};
 
@@ -12,7 +13,7 @@ use crate::{
     // CurrentlyPlayingClip, QueueItem,
     // remote_control::RemoteControl,
     settings::{Cli, ManualSettings, RING_BUFFER_SIZE},
-    ui::render_ui,
+    ui::{render_local_controls, render_vis},
 };
 
 pub type FadeDuration = u32;
@@ -119,7 +120,14 @@ impl eframe::App for Model {
         // TODO: continuous mode essential?
         ctx.request_repaint();
         egui::CentralPanel::default().show(ctx, |ui| {
-            render_ui(ui, self);
+            let rect = ctx.screen_rect();
+            egui::Window::new("Local Control")
+                .default_pos([rect.width() * 0.75, rect.height() / 2.])
+                .min_width(320.0)
+                .show(ctx, |ui| {
+                    render_local_controls(ui, self);
+                });
+            render_vis(ui, self);
         });
 
         self.check_progress();
