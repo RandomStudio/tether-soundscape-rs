@@ -26,7 +26,7 @@ Has the following fields
 On the topic `+/+/scenes`
 
 Has the following fields
-- `mode` (optional, default is "loopAll"): one of the following strings: "loopAll", "onceAll", "random"
+- `mode` (optional, default is "loopAll"): one of the following strings: "loopAll", "onceAll", "onceRandom",
 - `clipNames` (required): zero or more clip names; if zero are provided, the system will transition to an empty scene (silence all clips)
 - `fade_duration` (optional):  an integer value for milliseconds to transition from current scene to the new one
 

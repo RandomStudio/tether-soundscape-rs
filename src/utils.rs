@@ -1,200 +1,48 @@
+use std::time::Duration;
+
 use log::debug;
-use nannou::prelude::{map_range, ToPrimitive};
 use rand::Rng;
 
-use crate::{loader::AudioClipOnDisk, remote_control::SimplePanning, CurrentlyPlayingClip};
-
-// pub fn frames_to_millis(frames_count: u32, sample_rate: u32) -> u32 {
-//     if sample_rate == 0 {
-//         panic!("Sample rate should be non-zero");
-//     }
-//     (frames_count.to_f32().unwrap() / sample_rate.to_f32().unwrap() * 1000.)
-//         .to_u32()
-//         .unwrap()
-// }
-
-pub fn frames_to_seconds(frames_count: u32, sample_rate: u32, precision: Option<u32>) -> f32 {
-    if sample_rate == 0 {
-        panic!("Sample rate should be non-zero");
-    }
-    let precision = (10_f32).powi(precision.unwrap_or(1).to_i32().unwrap());
-    (frames_count.to_f32().unwrap() / sample_rate.to_f32().unwrap() * precision).trunc() / precision
-}
-
-pub fn millis_to_frames(millis: u32, sample_rate: u32) -> u32 {
-    if sample_rate == 0 {
-        panic!("Sample rate should be non-zero");
-    }
-    (millis.to_f32().unwrap() / 1000. * sample_rate.to_f32().unwrap())
-        .to_u32()
-        .unwrap()
-}
+use crate::{loader::AudioClipOnDisk, playback::ClipWithSink, remote_control::PanWithRange};
 
 pub fn get_clip_index_with_name<'a>(
-    clips: &'a [CurrentlyPlayingClip],
+    clips: &'a [ClipWithSink],
     name: &str,
-) -> Option<(usize, &'a CurrentlyPlayingClip)> {
+) -> Option<(usize, &'a ClipWithSink)> {
     clips
         .iter()
         .enumerate()
-        .find(|(_index, c)| c.name == name)
+        .find(|(_index, c)| c.name() == name)
         .map(|(index, c)| (index, c))
 }
 
-pub fn get_clip_index_with_id(
-    clips: &[CurrentlyPlayingClip],
-    id: usize,
-) -> Option<(usize, &CurrentlyPlayingClip)> {
+pub fn get_clip_index_with_id(clips: &[ClipWithSink], id: usize) -> Option<(usize, &ClipWithSink)> {
     clips
         .iter()
         .enumerate()
-        .find(|(_index, c)| c.id == id)
+        .find(|(_index, c)| c.id() == id)
         .map(|(index, c)| (index, c))
 }
 
 pub fn get_clip_index_with_id_mut(
-    clips: &mut [CurrentlyPlayingClip],
+    clips: &mut [ClipWithSink],
     id: usize,
-) -> Option<(usize, &mut CurrentlyPlayingClip)> {
+) -> Option<(usize, &mut ClipWithSink)> {
     clips
         .iter_mut()
         .enumerate()
-        .find(|(_index, c)| c.id == id)
+        .find(|(_index, c)| c.id() == id)
         .map(|(index, c)| (index, c))
 }
 
-pub fn get_highest_id(clips: &[CurrentlyPlayingClip]) -> usize {
+pub fn get_highest_id(clips: &[ClipWithSink]) -> usize {
     let mut highest_so_far = 0;
     for el in clips {
-        if el.id >= highest_so_far {
-            highest_so_far = el.id + 1;
+        if el.id() >= highest_so_far {
+            highest_so_far = el.id() + 1;
         }
     }
     highest_so_far
-}
-
-pub fn get_duration_range(clips: &[AudioClipOnDisk]) -> [u32; 2] {
-    let mut longest: u32 = 0;
-    let mut shortest: Option<u32> = None;
-
-    for c in clips {
-        if c.frames_count() > longest {
-            longest = c.frames_count()
-        }
-        match shortest {
-            Some(shortest_sofar) => {
-                if c.frames_count() < shortest_sofar {
-                    shortest = Some(c.frames_count())
-                }
-            }
-            None => shortest = Some(c.frames_count()),
-        }
-    }
-    [shortest.unwrap_or(0), longest]
-}
-
-/// Given a list of currently playing clips and a list of clips we *want* to play,
-/// filter the list to return only the names which need to be *added* (i.e. are
-/// in the latter list, but not the former)
-pub fn clips_to_add(currently_playing: &[CurrentlyPlayingClip], to_play: &[String]) -> Vec<String> {
-    let mut names: Vec<String> = Vec::new();
-    for name in to_play {
-        if !currently_playing
-            .iter()
-            .any(|c| c.name.eq_ignore_ascii_case(name))
-        {
-            names.push(String::from(name));
-        }
-    }
-
-    names
-}
-
-/// Given a list of currently playing clips and a list of clips we *want* to play/continue,
-/// filter the list to return only the IDs for the clips which need to be *removed*
-/// (i.e. are in the former list, but not the latter)
-pub fn clips_to_remove(
-    currently_playing: &[CurrentlyPlayingClip],
-    should_be_playing: &[String],
-) -> Vec<usize> {
-    let mut ids: Vec<usize> = Vec::new();
-    for c in currently_playing {
-        if !should_be_playing
-            .iter()
-            .any(|name| name.eq_ignore_ascii_case(&c.name))
-        {
-            ids.push(c.id);
-        }
-    }
-    ids
-}
-
-pub fn equalise_channel_volumes(output_channel_count: u32) -> Vec<f32> {
-    let mut result: Vec<f32> = Vec::new();
-    let max_volume = 1.0 / output_channel_count.to_f32().unwrap();
-    for _i in 0..output_channel_count {
-        result.push(max_volume);
-    }
-    if result.len() != output_channel_count.to_usize().unwrap() {
-        panic!(
-            "Per-channel vector should have {} values, got {}",
-            output_channel_count,
-            result.len()
-        );
-    }
-    result
-}
-
-/// Calculates a final set of per-channel volume levels, given a "position" and a "spread" value,
-/// as well as the number of output channels available
-pub fn simple_panning_channel_volumes(
-    position: f32,
-    spread: f32,
-    output_channel_count: u32,
-) -> Vec<f32> {
-    let mut result: Vec<f32> = Vec::new();
-    for i in 0..output_channel_count {
-        let distance = (position - i.to_f32().unwrap()).abs();
-        let this_channel_volume = f32::max(map_range(distance, 0., spread, 1.0, 0.), 0.);
-        result.push(this_channel_volume);
-    }
-    result
-}
-
-/// Calculate a final set of per-channel volume levels in a "default case", suitable for a given
-/// channel count
-pub fn default_panning_channel_volumes(output_channel_count: u32) -> Vec<f32> {
-    let position = (output_channel_count.to_f32().unwrap() - 1.0) / 2.;
-    simple_panning_channel_volumes(position, 1.0, output_channel_count)
-}
-
-/// Three possible levels (higher override lower):
-/// - Panning provided by Tether Message
-/// - Panning provided from clip settings
-/// - None provided; use default (equalise channels)
-pub fn provided_or_default_panning(
-    message_provided_panning: Option<SimplePanning>,
-    clip_default_panning: Option<SimplePanning>,
-    output_channel_count: u32,
-) -> Vec<f32> {
-    debug!("Message provided panning: {:?}", message_provided_panning);
-    debug!("Clip default panning: {:?}", clip_default_panning);
-    match message_provided_panning {
-        Some((position, spread)) => {
-            debug!("Use message provided panning");
-            simple_panning_channel_volumes(position, spread, output_channel_count)
-        }
-        None => match clip_default_panning {
-            Some((position, spread)) => {
-                debug!("Use clip default panning");
-                simple_panning_channel_volumes(position, spread, output_channel_count)
-            }
-            None => {
-                debug!("No overrides; use equalised channels");
-                default_panning_channel_volumes(output_channel_count)
-            }
-        },
-    }
 }
 
 pub fn pick_random_clip(clip_names: Vec<String>) -> String {
@@ -202,3 +50,64 @@ pub fn pick_random_clip(clip_names: Vec<String>) -> String {
     let index: usize = rng.gen_range(0..clip_names.len());
     clip_names[index].clone()
 }
+
+pub fn optional_ms_to_duration(ms: Option<u64>) -> Option<Duration> {
+    match ms {
+        None => None,
+        Some(ms) => Some(Duration::from_millis(ms)),
+    }
+}
+
+// pub fn get_duration_range(clips: &[AudioClipOnDisk]) -> [u32; 2] {
+//     let mut longest: u32 = 0;
+//     let mut shortest: Option<u32> = None;
+
+//     for c in clips {
+//         if c.frames_count() > longest {
+//             longest = c.frames_count()
+//         }
+//         match shortest {
+//             Some(shortest_sofar) => {
+//                 if c.frames_count() < shortest_sofar {
+//                     shortest = Some(c.frames_count())
+//                 }
+//             }
+//             None => shortest = Some(c.frames_count()),
+//         }
+//     }
+//     [shortest.unwrap_or(0), longest]
+// }
+
+// /// Given a list of currently playing clips and a list of clips we *want* to play,
+// /// filter the list to return only the names which need to be *added* (i.e. are
+// /// in the latter list, but not the former)
+// pub fn clips_to_add(
+//     currently_playing: &[ClipWithSink],
+//     to_play: &[String],
+// ) -> impl Iterator<Item = &String> {
+//     to_play.iter().filter(|candidate| {
+//         currently_playing
+//             .iter()
+//             .find(|playing| playing.name().eq_ignore_ascii_case(&candidate))
+//             .is_none()
+//     })
+// }
+
+// /// Given a list of currently playing clips and a list of clips we *want* to play/continue,
+// /// filter the list to return only the IDs for the clips which need to be *removed*
+// /// (i.e. are in the former list, but not the latter)
+// pub fn clips_to_remove(
+//     currently_playing: &[ClipWithSink],
+//     should_be_playing: &[String],
+// ) -> Vec<usize> {
+//     let mut ids: Vec<usize> = Vec::new();
+//     for c in currently_playing {
+//         if !should_be_playing
+//             .iter()
+//             .any(|name| name.eq_ignore_ascii_case(&c.name()))
+//         {
+//             ids.push(c.id());
+//         }
+//     }
+//     ids
+// }

@@ -65,6 +65,116 @@
         },
         "value": "{\"command\":\"remove\",  \"clipName\":\"squirrel\",\"fadeDuration\":2000}"
       }
+    },
+    {
+      "generic": {
+        "common": {
+          "name": "scenes",
+          "description": "demo scene with 2 clips once off",
+          "plug": {
+            "OutputPlugDefinition": {
+              "common": {
+                "name": "scenes",
+                "topic": "gui/any/scenes",
+                "qos": 0
+              },
+              "retain": false
+            }
+          },
+          "midiMapping": null,
+          "qos": "AtMostOnce",
+          "retain": false
+        },
+        "value": "{\"mode\":\"onceAll\",\"clipNames\":[\"frog\",\"mice\"]}"
+      }
+    },
+    {
+      "generic": {
+        "common": {
+          "name": "scenes",
+          "description": "demo scene1 looping",
+          "plug": {
+            "OutputPlugDefinition": {
+              "common": {
+                "name": "scenes",
+                "topic": "gui/any/scenes",
+                "qos": 0
+              },
+              "retain": false
+            }
+          },
+          "midiMapping": null,
+          "qos": "AtMostOnce",
+          "retain": false
+        },
+        "value": "{\"mode\":\"loopAll\",\"clipNames\":[\"frog\",\"mice\"],\"fadeDuration\":2000}"
+      }
+    },
+    {
+      "generic": {
+        "common": {
+          "name": "scenes",
+          "description": "demo scene2 looping",
+          "plug": {
+            "OutputPlugDefinition": {
+              "common": {
+                "name": "scenes",
+                "topic": "gui/any/scenes",
+                "qos": 0
+              },
+              "retain": false
+            }
+          },
+          "midiMapping": null,
+          "qos": "AtMostOnce",
+          "retain": false
+        },
+        "value": "{\"mode\":\"loopAll\",\"clipNames\":[\"frog\",\"squirrel\"],\"fadeDuration\": 3000}"
+      }
+    },
+    {
+      "generic": {
+        "common": {
+          "name": "scenes",
+          "description": "Empty scene (fade out all)",
+          "plug": {
+            "OutputPlugDefinition": {
+              "common": {
+                "name": "scenes",
+                "topic": "gui/any/scenes",
+                "qos": 0
+              },
+              "retain": false
+            }
+          },
+          "midiMapping": null,
+          "qos": "AtMostOnce",
+          "retain": false
+        },
+        "value": "{\"mode\":\"loopAll\",\"clipNames\":[],\"fadeDuration\":3000}"
+      }
+    },
+    {
+      "generic": {
+        "common": {
+          "name": "scenes",
+          "description": "random pick from scene list",
+          "plug": {
+            "OutputPlugDefinition": {
+              "common": {
+                "name": "scenes",
+                "topic": "gui/any/scenes",
+                "qos": 0
+              },
+              "retain": false
+            }
+          },
+          "midiMapping": null,
+          "qos": "AtMostOnce",
+          "retain": false
+        },
+        "value": "{\"mode\":\"onceRandom\",\"clipNames\":[\"frog\",\"mice\"],\"fadeDuration\":2000}"
+      }
     }
   ],
   "tetherSettings": null

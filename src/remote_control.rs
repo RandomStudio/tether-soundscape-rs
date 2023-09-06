@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use log::{error, info, warn};
-use rmp_serde::to_vec_named;
+// use rmp_serde::to_vec_named;
 use serde::{Deserialize, Serialize};
 use tether_agent::{mqtt::Message, PlugDefinition, TetherAgent};
 
@@ -16,7 +16,7 @@ pub type PanWithRange = (f32, f32);
 pub enum ScenePickMode {
     LoopAll,
     OnceAll,
-    Random,
+    OnceRandomSinglePick,
 }
 
 type FadeDurationMS = u64;
@@ -172,8 +172,8 @@ impl RemoteControl {
                                 parsed.clip_names,
                                 parsed.fade_duration,
                             )),
-                            "random" => Ok(Instruction::Scene(
-                                ScenePickMode::Random,
+                            "onceRandom" => Ok(Instruction::Scene(
+                                ScenePickMode::OnceRandomSinglePick,
                                 parsed.clip_names,
                                 parsed.fade_duration,
                             )),

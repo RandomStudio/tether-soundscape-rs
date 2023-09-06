@@ -13,6 +13,7 @@ use std::{
 };
 use tether_agent::TetherAgent;
 use ui::{render_local_controls, render_vis};
+use utils::{optional_ms_to_duration, pick_random_clip};
 
 use loader::{get_sound_asset_path, SoundBank};
 // use playback::{
@@ -37,7 +38,7 @@ mod playback;
 mod remote_control;
 mod settings;
 mod ui;
-// mod utils;
+mod utils;
 
 // pub struct CurrentlyPlayingClip {
 //     id: usize,
@@ -146,10 +147,7 @@ impl eframe::App for Model {
                                     for clip in &self.clips_playing {
                                         self.action_queue.push(ActionQueueItem::Stop(
                                             clip.id(),
-                                            match fade_ms {
-                                                None => None,
-                                                Some(ms) => Some(Duration::from_millis(ms)),
-                                            },
+                                            optional_ms_to_duration(fade_ms),
                                         ))
                                     }
                                 } else {
@@ -175,10 +173,7 @@ impl eframe::App for Model {
                                     for clip in &self.clips_playing {
                                         self.action_queue.push(ActionQueueItem::Stop(
                                             clip.id(),
-                                            match fade_ms {
-                                                None => None,
-                                                Some(ms) => Some(Duration::from_millis(ms)),
-                                            },
+                                            optional_ms_to_duration(fade_ms),
                                         ))
                                     }
                                 } else {
@@ -201,10 +196,7 @@ impl eframe::App for Model {
                                     for name in to_add {
                                         self.action_queue.push(ActionQueueItem::Play(
                                             name.into(),
-                                            match fade_ms {
-                                                None => None,
-                                                Some(ms) => Some(Duration::from_millis(ms)),
-                                            },
+                                            optional_ms_to_duration(fade_ms),
                                             true,
                                             None,
                                         ));
@@ -212,15 +204,20 @@ impl eframe::App for Model {
                                     for clip in to_remove {
                                         self.action_queue.push(ActionQueueItem::Stop(
                                             clip.id(),
-                                            match fade_ms {
-                                                None => None,
-                                                Some(ms) => Some(Duration::from_millis(ms)),
-                                            },
+                                            optional_ms_to_duration(fade_ms),
                                         ));
                                     }
                                 }
                             }
-                            ScenePickMode::Random => todo!(),
+                            ScenePickMode::OnceRandomSinglePick => {
+                                let pick_name = pick_random_clip(clip_names);
+                                self.action_queue.push(ActionQueueItem::Play(
+                                    pick_name,
+                                    optional_ms_to_duration(fade_ms),
+                                    false,
+                                    None,
+                                ));
+                            }
                         }
                     }
                     Err(_) => {
