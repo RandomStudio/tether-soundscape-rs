@@ -1,5 +1,11 @@
 use rand::Rng;
-use std::time::Duration;
+use std::{ops::Range, time::Duration};
+
+pub fn map_range(value: f32, in_range: Range<f32>, out_range: Range<f32>) -> f32 {
+    // NumCast::from((val_f - in_min_f) / (in_max_f - in_min_f) * (out_max_f - out_min_f) + out_min_f)
+    (value - in_range.start) / (in_range.end - in_range.start) * (out_range.end - out_range.start)
+        + out_range.start
+}
 
 // pub fn get_clip_index_with_name<'a>(
 //     clips: &'a [ClipWithSink],

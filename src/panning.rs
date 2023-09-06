@@ -1,10 +1,14 @@
+use log::debug;
+
+use crate::{remote_control::PanWithRange, utils::map_range};
+
 pub fn equalise_channel_volumes(output_channel_count: u32) -> Vec<f32> {
     let mut result: Vec<f32> = Vec::new();
-    let max_volume = 1.0 / output_channel_count.to_f32().unwrap();
+    let max_volume = 1.0 / (output_channel_count as f32);
     for _i in 0..output_channel_count {
         result.push(max_volume);
     }
-    if result.len() != output_channel_count.to_usize().unwrap() {
+    if result.len() != output_channel_count as usize {
         panic!(
             "Per-channel vector should have {} values, got {}",
             output_channel_count,
@@ -23,8 +27,8 @@ pub fn simple_panning_channel_volumes(
 ) -> Vec<f32> {
     let mut result: Vec<f32> = Vec::new();
     for i in 0..output_channel_count {
-        let distance = (position - i.to_f32().unwrap()).abs();
-        let this_channel_volume = f32::max(map_range(distance, 0., spread, 1.0, 0.), 0.);
+        let distance = (position - (i as f32)).abs();
+        let this_channel_volume = f32::max(map_range(distance, 0. ..spread, 1.0..0.), 0.);
         result.push(this_channel_volume);
     }
     result
@@ -33,7 +37,7 @@ pub fn simple_panning_channel_volumes(
 /// Calculate a final set of per-channel volume levels in a "default case", suitable for a given
 /// channel count
 pub fn default_panning_channel_volumes(output_channel_count: u32) -> Vec<f32> {
-    let position = (output_channel_count.to_f32().unwrap() - 1.0) / 2.;
+    let position = ((output_channel_count as f32) - 1.0) / 2.;
     simple_panning_channel_volumes(position, 1.0, output_channel_count)
 }
 

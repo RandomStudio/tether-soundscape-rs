@@ -13,6 +13,7 @@ use crate::model::Model;
 
 mod loader;
 mod model;
+mod panning;
 mod playback;
 mod remote_control;
 mod settings;
