@@ -21,6 +21,7 @@ pub enum PlaybackPhase {
 }
 
 pub struct ClipWithSink {
+    id: usize,
     sink: Sink,
     duration: Option<Duration>,
     started: SystemTime,
@@ -33,6 +34,7 @@ pub struct ClipWithSink {
 
 impl ClipWithSink {
     pub fn new(
+        id: usize,
         sample: &AudioClipOnDisk,
         should_loop: bool,
         fade_in: Option<Duration>,
@@ -60,6 +62,7 @@ impl ClipWithSink {
         );
 
         ClipWithSink {
+            id,
             sink,
             duration,
             started: SystemTime::now(),
@@ -136,6 +139,10 @@ impl ClipWithSink {
 
     pub fn is_looping(&self) -> bool {
         self.is_looping
+    }
+
+    pub fn id(&self) -> usize {
+        self.id
     }
 }
 

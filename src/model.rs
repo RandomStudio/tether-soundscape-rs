@@ -1,4 +1,4 @@
-use log::{debug, info, warn};
+use log::{debug, error, info, warn};
 use std::{
     path::Path,
     sync::mpsc::{self, Receiver},
@@ -22,10 +22,8 @@ pub enum ActionQueueItem {
     /// Start playback: name, optional fade duration, should_loop,
     /// optional per-channel-volume
     Play(String, Option<Duration>, bool, Option<Vec<PanWithRange>>),
-    /// Stop/fade out: id in currently_playing Vec, optional fade duration in ms
-    Stop(usize, Option<u32>),
-    /// Remove clip: id in currently_playing Vec
-    Remove(usize),
+    /// Stop/fade out: id in currently_playing Vec, optional fade duration
+    Stop(usize, Option<Duration>),
 }
 
 pub struct Model {
@@ -111,6 +109,27 @@ impl Model {
         if let Some(i) = completed {
             debug!("Removing clip index {}", i);
             self.clips_playing.remove(i);
+        }
+    }
+
+    pub fn play_one_clip(&mut self, clip_name: String, should_loop: bool, fade: Option<Duration>) {
+        if let Some(sample) = self
+            .sound_bank
+            .clips()
+            .iter()
+            .find(|x| x.name() == clip_name)
+        {
+            let clip_with_sink = ClipWithSink::new(
+                self.clips_playing.len(),
+                &sample,
+                should_loop,
+                fade,
+                &self.output_stream_handle,
+                String::from(sample.name()),
+            );
+            self.clips_playing.push(clip_with_sink);
+        } else {
+            error!("Failed to find clip in bank with name, {}", clip_name);
         }
     }
 }

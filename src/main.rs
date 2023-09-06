@@ -2,6 +2,7 @@ use clap::Parser;
 
 use env_logger::{Builder, Env};
 use log::{debug, error, info, trace, warn};
+use model::ActionQueueItem;
 use playback::ClipWithSink;
 use remote_control::{Instruction, ScenePickMode};
 // use remote_control::{Instruction, RemoteControl};
@@ -111,7 +112,7 @@ impl eframe::App for Model {
             while let Some((plug_name, message)) = self.tether.check_messages() {
                 match remote_control.parse_instructions(&plug_name, &message) {
                     Ok(Instruction::Add(clip_name, should_loop, fade_ms, panning)) => {
-                        self.action_queue.push(model::ActionQueueItem::Play(
+                        self.action_queue.push(ActionQueueItem::Play(
                             clip_name,
                             match fade_ms {
                                 Some(ms) => Some(Duration::from_millis(ms)),
@@ -140,21 +141,84 @@ impl eframe::App for Model {
                             ScenePickMode::OnceAll => {
                                 // TODO: check for
                                 // - empty list (stop all)
-                                for name in clip_names {
-                                    self.action_queue.push(model::ActionQueueItem::Play(
-                                        name,
-                                        match fade_ms {
-                                            Some(ms) => Some(Duration::from_millis(ms)),
-                                            None => None,
-                                        },
-                                        false,
-                                        None,
-                                    ));
+                                if clip_names.len() == 0 {
+                                    debug!("Empty scene list; stop all currently playing");
+                                    for clip in &self.clips_playing {
+                                        self.action_queue.push(ActionQueueItem::Stop(
+                                            clip.id(),
+                                            match fade_ms {
+                                                None => None,
+                                                Some(ms) => Some(Duration::from_millis(ms)),
+                                            },
+                                        ))
+                                    }
+                                } else {
+                                    for name in clip_names {
+                                        self.action_queue.push(ActionQueueItem::Play(
+                                            name,
+                                            match fade_ms {
+                                                Some(ms) => Some(Duration::from_millis(ms)),
+                                                None => None,
+                                            },
+                                            false,
+                                            None,
+                                        ));
+                                    }
                                 }
                             }
                             ScenePickMode::LoopAll => {
                                 // TODO: check for
+                                // - empty list (stop all)
                                 // - clips already playing (and LOOPING) (do not add)
+                                if clip_names.len() == 0 {
+                                    debug!("Empty scene list; stop all currently playing that are looping");
+                                    for clip in &self.clips_playing {
+                                        self.action_queue.push(ActionQueueItem::Stop(
+                                            clip.id(),
+                                            match fade_ms {
+                                                None => None,
+                                                Some(ms) => Some(Duration::from_millis(ms)),
+                                            },
+                                        ))
+                                    }
+                                } else {
+                                    let to_add = clip_names.iter().filter(|candidate| {
+                                        self.clips_playing
+                                            .iter()
+                                            .find(|playing| {
+                                                playing.name().eq_ignore_ascii_case(&candidate)
+                                            })
+                                            .is_none()
+                                    });
+                                    let to_remove = self.clips_playing.iter().filter(|playing| {
+                                        clip_names
+                                            .iter()
+                                            .find(|requested| {
+                                                requested.eq_ignore_ascii_case(&playing.name())
+                                            })
+                                            .is_none()
+                                    });
+                                    for name in to_add {
+                                        self.action_queue.push(ActionQueueItem::Play(
+                                            name.into(),
+                                            match fade_ms {
+                                                None => None,
+                                                Some(ms) => Some(Duration::from_millis(ms)),
+                                            },
+                                            true,
+                                            None,
+                                        ));
+                                    }
+                                    for clip in to_remove {
+                                        self.action_queue.push(ActionQueueItem::Stop(
+                                            clip.id(),
+                                            match fade_ms {
+                                                None => None,
+                                                Some(ms) => Some(Duration::from_millis(ms)),
+                                            },
+                                        ));
+                                    }
+                                }
                             }
                             ScenePickMode::Random => todo!(),
                         }
@@ -167,34 +231,18 @@ impl eframe::App for Model {
         }
         while let Some(command) = self.action_queue.pop() {
             match command {
-                model::ActionQueueItem::Play(clip_name, fade, should_loop, panning) => {
+                ActionQueueItem::Play(clip_name, fade, should_loop, panning) => {
                     self.play_one_clip(clip_name, should_loop, fade);
                 }
-                model::ActionQueueItem::Stop(_, _) => todo!(),
-                model::ActionQueueItem::Remove(_) => todo!(),
+                ActionQueueItem::Stop(id, fade) => {
+                    if let Some(clip) = self.clips_playing.iter_mut().find(|x| x.id() == id) {
+                        match fade {
+                            Some(duration) => clip.fade_out(duration),
+                            None => clip.stop(),
+                        };
+                    }
+                }
             };
-        }
-    }
-}
-
-impl Model {
-    fn play_one_clip(&mut self, clip_name: String, should_loop: bool, fade: Option<Duration>) {
-        if let Some(sample) = self
-            .sound_bank
-            .clips()
-            .iter()
-            .find(|x| x.name() == clip_name)
-        {
-            let clip_with_sink = ClipWithSink::new(
-                &sample,
-                should_loop,
-                fade,
-                &self.output_stream_handle,
-                String::from(sample.name()),
-            );
-            self.clips_playing.push(clip_with_sink);
-        } else {
-            error!("Failed to find clip in bank with name, {}", clip_name);
         }
     }
 }

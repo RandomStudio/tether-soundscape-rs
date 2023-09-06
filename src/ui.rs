@@ -17,6 +17,7 @@ pub fn render_local_controls(ui: &mut Ui, model: &mut Model) {
             ui.label(sample.name());
             if ui.button("once").clicked() {
                 let clip_with_sink = ClipWithSink::new(
+                    model.clips_playing.len(),
                     &sample,
                     false,
                     None,
@@ -27,6 +28,7 @@ pub fn render_local_controls(ui: &mut Ui, model: &mut Model) {
             }
             if ui.button("once (fade 2s)").clicked() {
                 let clip_with_sink = ClipWithSink::new(
+                    model.clips_playing.len(),
                     &sample,
                     false,
                     Some(Duration::from_millis(2000)),
@@ -37,6 +39,7 @@ pub fn render_local_controls(ui: &mut Ui, model: &mut Model) {
             }
             if ui.button("loop").clicked() {
                 let clip_with_sink = ClipWithSink::new(
+                    model.clips_playing.len(),
                     &sample,
                     true,
                     None,
@@ -47,6 +50,7 @@ pub fn render_local_controls(ui: &mut Ui, model: &mut Model) {
             }
             if ui.button("loop (fade 5s)").clicked() {
                 let clip_with_sink = ClipWithSink::new(
+                    model.clips_playing.len(),
                     &sample,
                     true,
                     Some(Duration::from_secs(5)),
@@ -80,7 +84,7 @@ pub fn render_vis(ui: &mut Ui, model: &mut Model) {
     ));
     for clip in model.clips_playing.iter() {
         ui.horizontal(|ui| {
-            ui.label(format!("{}", clip.name()));
+            ui.label(format!("#{}: {}", clip.id(), clip.name()));
             if clip.is_looping() {
                 ui.label("🔁");
             }
