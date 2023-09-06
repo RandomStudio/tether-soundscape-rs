@@ -1,58 +1,27 @@
-[
-  {
-    "generic": {
-      "common": {
-        "name": "clipCommands",
-        "description": "demo single hit",
-        "plug": {
+{
+  "widgets": [
+    {
+      "generic": {
+        "common": {
           "name": "clipCommands",
-          "topic": "gui/any/clipCommands",
-          "qos": 1
-        }
-      },
-      "value": "{\"command\":\"hit\", \"clipName\":\"frog\"}"
+          "description": "demo single hit",
+          "plug": {
+            "OutputPlugDefinition": {
+              "common": {
+                "name": "clipCommands",
+                "topic": "gui/any/clipCommands",
+                "qos": 0
+              },
+              "retain": false
+            }
+          },
+          "midiMapping": null,
+          "qos": "AtMostOnce",
+          "retain": false
+        },
+        "value": "{\"command\":\"hit\", \"clipName\":\"frog\"}"
+      }
     }
-  },
-  {
-    "generic": {
-      "common": {
-        "name": "scenes",
-        "description": "demo two clips in scene",
-        "plug": {
-          "name": "scenes",
-          "topic": "gui/any/scenes",
-          "qos": 1
-        }
-      },
-      "value": "{\"clipNames\":[\"frog\",\"squirrel\"]}"
-    }
-  },
-  {
-    "generic": {
-      "common": {
-        "name": "scenes",
-        "description": "silence, immediate",
-        "plug": {
-          "name": "scenes",
-          "topic": "gui/any/scenes",
-          "qos": 1
-        }
-      },
-      "value": "{\"clipNames\":[]}"
-    }
-  },
-  {
-    "generic": {
-      "common": {
-        "name": "scenes",
-        "description": "pick random",
-        "plug": {
-          "name": "scenes",
-          "topic": "gui/any/scenes",
-          "qos": 1
-        }
-      },
-      "value": "{\"clipNames\":[\"frog\",\"squirrel\"],\"mode\":\"random\"}"
-    }
-  }
-]
+  ],
+  "tetherSettings": null
+}

@@ -2,14 +2,16 @@ use clap::Parser;
 
 use env_logger::{Builder, Env};
 use log::{debug, error, info, trace, warn};
-use model::FadeDuration;
+use playback::ClipWithSink;
+use remote_control::Instruction;
 // use remote_control::{Instruction, RemoteControl};
 use rodio::{OutputStream, OutputStreamHandle};
 use std::{
     path::{Path, PathBuf},
-    time::SystemTime,
+    time::{Duration, SystemTime},
 };
 use tether_agent::TetherAgent;
+use ui::{render_local_controls, render_vis};
 
 use loader::{get_sound_asset_path, SoundBank};
 // use playback::{
@@ -31,17 +33,17 @@ use crate::model::Model;
 mod loader;
 mod model;
 mod playback;
+mod remote_control;
 mod settings;
 mod ui;
-// mod remote_control;
 // mod utils;
 
 pub enum QueueItem {
     /// Start playback: name, optional fade duration in ms, should_loop,
     /// finalised per-channel-volume
-    Play(String, Option<FadeDuration>, bool, Vec<f32>),
+    Play(String, Option<u32>, bool, Vec<f32>),
     /// Stop/fade out: id in currently_playing Vec, optional fade duration in ms
-    Stop(usize, Option<FadeDuration>),
+    Stop(usize, Option<u32>),
     /// Remove clip: id in currently_playing Vec
     Remove(usize),
 }
@@ -91,6 +93,77 @@ fn main() {
     .expect("Failed to launch GUI");
     info!("GUI ended; exit now...");
     std::process::exit(0);
+}
+
+impl eframe::App for Model {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        // TODO: continuous mode essential?
+        ctx.request_repaint();
+        egui::CentralPanel::default().show(ctx, |ui| {
+            let rect = ctx.screen_rect();
+            egui::Window::new("Local Control")
+                .default_pos([rect.width() * 0.75, rect.height() / 2.])
+                .min_width(320.0)
+                .show(ctx, |ui| {
+                    render_local_controls(ui, self);
+                });
+            render_vis(ui, self);
+        });
+
+        // TODO: this call can be made in a loop manually, when in text-mode
+        if let Ok(_) = self.request_rx.try_recv() {
+            // debug!("Received request rx");
+            self.check_progress();
+        }
+
+        if let Some(remote_control) = &mut self.remote_control {
+            while let Some((plug_name, message)) = self.tether.check_messages() {
+                match remote_control.parse_instructions(&plug_name, &message) {
+                    Ok(Instruction::Add(clip_name, should_loop, fade_ms, panning)) => {
+                        if let Some(sample) = self
+                            .sound_bank
+                            .clips()
+                            .iter()
+                            .find(|x| x.name() == clip_name)
+                        {
+                            let clip_with_sink = ClipWithSink::new(
+                                &sample,
+                                should_loop,
+                                match fade_ms {
+                                    None => None,
+                                    Some(ms) => Some(Duration::from_millis(ms)),
+                                },
+                                &self.output_stream_handle,
+                                String::from(sample.name()),
+                            );
+                            self.clips_playing.push(clip_with_sink);
+                        } else {
+                            error!("Failed to find clip in bank with name, {}", clip_name);
+                        }
+                    }
+                    Ok(Instruction::Remove(clip_name, fade_ms)) => {
+                        for clip in self
+                            .clips_playing
+                            .iter_mut()
+                            .filter(|x| x.name() == clip_name)
+                        {
+                            if let Some(ms) = fade_ms {
+                                clip.fade_out(Duration::from_millis(ms));
+                            } else {
+                                clip.stop();
+                            }
+                        }
+                    }
+                    Ok(Instruction::Scene(scene_pick_mode, clip_names, fade_ms)) => {
+                        todo!();
+                    }
+                    Err(_) => {
+                        error!("Failed to parse remote Instruction");
+                    }
+                }
+            }
+        }
+    }
 }
 
 // pub fn queue_stop_all(

@@ -1,29 +1,22 @@
-use clap::Parser;
-use egui::Align2;
 use log::{debug, info, warn};
 use std::{
-    fs::File,
-    io::BufReader,
     path::Path,
-    sync::mpsc::{self, Receiver, Sender},
+    sync::mpsc::{self, Receiver},
     thread::{self, JoinHandle},
     time::{Duration, SystemTime},
 };
 
-use env_logger::{Builder, Env};
-use rodio::{Decoder, OutputStreamHandle, Sink, Source};
+use rodio::OutputStreamHandle;
 use tether_agent::TetherAgent;
 
 use crate::{
     loader::SoundBank,
     playback::ClipWithSink,
+    remote_control::RemoteControl,
     // CurrentlyPlayingClip, QueueItem,
     // remote_control::RemoteControl,
-    settings::{Cli, ManualSettings, RING_BUFFER_SIZE},
-    ui::{render_local_controls, render_vis},
+    settings::{Cli, ManualSettings},
 };
-
-pub type FadeDuration = u32;
 
 pub struct Model {
     request_loop_handle: JoinHandle<()>,
@@ -39,7 +32,7 @@ pub struct Model {
     pub settings: ManualSettings,
     // multi_channel_mode: bool,
     pub tether: TetherAgent,
-    // remote_control: Option<RemoteControl>,
+    pub remote_control: Option<RemoteControl>,
 }
 
 impl Model {
@@ -68,11 +61,11 @@ impl Model {
             warn!("Tether connection disabled")
         }
 
-        // let remote_control = if cli.tether_disable {
-        //     None
-        // } else {
-        //     Some(RemoteControl::new(&tether))
-        // };
+        let remote_control = if cli.tether_disable {
+            None
+        } else {
+            Some(RemoteControl::new(&tether))
+        };
 
         let (tx, rx) = mpsc::channel();
 
@@ -96,7 +89,7 @@ impl Model {
             last_state_publish: std::time::SystemTime::now(),
             settings,
             tether,
-            // remote_control,
+            remote_control,
         }
     }
 
@@ -108,29 +101,6 @@ impl Model {
         if let Some(i) = completed {
             debug!("Removing clip index {}", i);
             self.clips_playing.remove(i);
-        }
-    }
-}
-
-impl eframe::App for Model {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        // TODO: continuous mode essential?
-        ctx.request_repaint();
-        egui::CentralPanel::default().show(ctx, |ui| {
-            let rect = ctx.screen_rect();
-            egui::Window::new("Local Control")
-                .default_pos([rect.width() * 0.75, rect.height() / 2.])
-                .min_width(320.0)
-                .show(ctx, |ui| {
-                    render_local_controls(ui, self);
-                });
-            render_vis(ui, self);
-        });
-
-        // TODO: this call can be made in a loop manually, when in text-mode
-        if let Ok(_) = self.request_rx.try_recv() {
-            // debug!("Received request rx");
-            self.check_progress();
         }
     }
 }

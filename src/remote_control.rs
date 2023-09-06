@@ -1,12 +1,11 @@
 use std::collections::HashMap;
 
 use log::{error, info, warn};
-use nannou::prelude::ToPrimitive;
 use rmp_serde::to_vec_named;
 use serde::{Deserialize, Serialize};
 use tether_agent::{mqtt::Message, PlugDefinition, TetherAgent};
 
-use crate::{playback::PlaybackState, CurrentlyPlayingClip, FadeDuration};
+use crate::model::Model;
 
 // const INPUT_TOPICS: &[&str] = &["+/+/clipCommands", "+/+/scenes", "+/+/globalControls"];
 // const INPUT_QOS: &[i32; INPUT_TOPICS.len()] = &[2, 2, 2];
@@ -21,12 +20,19 @@ pub enum ScenePickMode {
     OnceAll,
     Random,
 }
+
+type FadeDurationMS = u64;
 pub enum Instruction {
     // Clip name, should_loop, optional fade duration, optional panning
-    Add(ClipName, bool, Option<FadeDuration>, Option<SimplePanning>),
+    Add(
+        ClipName,
+        bool,
+        Option<FadeDurationMS>,
+        Option<SimplePanning>,
+    ),
     // Clip name, option fade duration
-    Remove(ClipName, Option<FadeDuration>),
-    Scene(ScenePickMode, Vec<ClipName>, Option<FadeDuration>),
+    Remove(ClipName, Option<FadeDurationMS>),
+    Scene(ScenePickMode, Vec<ClipName>, Option<FadeDurationMS>),
 }
 
 #[derive(Serialize, Debug)]
@@ -50,7 +56,7 @@ pub struct SoundscapeStateMessage {
 pub struct SingleClipMessage {
     pub command: String,
     pub clip_name: ClipName,
-    pub fade_duration: Option<FadeDuration>,
+    pub fade_duration: Option<FadeDurationMS>,
     pub pan_position: Option<f32>,
     pub pan_spread: Option<f32>,
 }
@@ -60,7 +66,7 @@ pub struct SingleClipMessage {
 pub struct SceneMessage {
     pub mode: Option<String>,
     pub clip_names: Vec<ClipName>,
-    pub fade_duration: Option<FadeDuration>,
+    pub fade_duration: Option<FadeDurationMS>,
 }
 
 /// If at least a pan position is provided, then return a valid "SimplePanning" tuple,
@@ -207,47 +213,47 @@ impl RemoteControl {
         }
     }
 
-    pub fn publish_state(
-        &mut self,
-        is_stream_playing: bool,
-        clips: &[CurrentlyPlayingClip],
-        agent: &TetherAgent,
-    ) {
-        let should_publish = {
-            match self.last_clip_count_sent {
-                None => true,
-                Some(last_count) => !clips.is_empty() || clips.len() != last_count,
-            }
-        };
-        if should_publish {
-            self.last_clip_count_sent = Some(clips.len());
-            let clip_states = clips
-                .iter()
-                .map(|c| {
-                    let progress = match c.state {
-                        PlaybackState::Playing(frames_played) => {
-                            frames_played.to_f32().unwrap() / c.frames_count.to_f32().unwrap()
-                        }
-                        _ => 0.,
-                    };
+    // pub fn publish_state(
+    //     &mut self,
+    //     is_stream_playing: bool,
+    //     clips: &[CurrentlyPlayingClip],
+    //     agent: &TetherAgent,
+    // ) {
+    //     let should_publish = {
+    //         match self.last_clip_count_sent {
+    //             None => true,
+    //             Some(last_count) => !clips.is_empty() || clips.len() != last_count,
+    //         }
+    //     };
+    //     if should_publish {
+    //         self.last_clip_count_sent = Some(clips.len());
+    //         let clip_states = clips
+    //             .iter()
+    //             .map(|c| {
+    //                 let progress = match c.state {
+    //                     PlaybackState::Playing(frames_played) => {
+    //                         frames_played.to_f32().unwrap() / c.frames_count.to_f32().unwrap()
+    //                     }
+    //                     _ => 0.,
+    //                 };
 
-                    ClipPlayingEssentialState {
-                        id: c.id,
-                        name: c.name.clone(),
-                        progress,
-                        looping: c.should_loop,
-                        current_volume: c.current_volume,
-                    }
-                })
-                .collect();
-            let state = SoundscapeStateMessage {
-                clips: clip_states,
-                is_playing: is_stream_playing,
-            };
-            let payload: Vec<u8> = to_vec_named(&state).unwrap();
-            agent
-                .publish(&self.output_plug, Some(&payload))
-                .expect("Failed to publish state/progress");
-        }
-    }
+    //                 ClipPlayingEssentialState {
+    //                     id: c.id,
+    //                     name: c.name.clone(),
+    //                     progress,
+    //                     looping: c.should_loop,
+    //                     current_volume: c.current_volume,
+    //                 }
+    //             })
+    //             .collect();
+    //         let state = SoundscapeStateMessage {
+    //             clips: clip_states,
+    //             is_playing: is_stream_playing,
+    //         };
+    //         let payload: Vec<u8> = to_vec_named(&state).unwrap();
+    //         agent
+    //             .publish(&self.output_plug, Some(&payload))
+    //             .expect("Failed to publish state/progress");
+    //     }
+    // }
 }
