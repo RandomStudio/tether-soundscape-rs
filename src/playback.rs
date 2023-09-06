@@ -29,7 +29,6 @@ pub struct ClipWithSink {
     is_looping: bool,
     name: String,
     current_phase: PlaybackPhase,
-    clip_volume: f32,
     current_volume: f32,
 }
 
@@ -71,7 +70,6 @@ impl ClipWithSink {
             current_phase: PlaybackPhase::Attack(stored_tweener),
             current_volume: 0.,
             is_looping: should_loop,
-            clip_volume: sample.volume().unwrap_or(1.0),
         }
     }
 
