@@ -25,6 +25,7 @@ pub struct ClipWithSink {
     duration: Option<Duration>,
     started: SystemTime,
     last_known_progress: Option<f32>,
+    is_looping: bool,
     name: String,
     current_phase: PlaybackPhase,
     current_volume: f32,
@@ -66,6 +67,7 @@ impl ClipWithSink {
             name,
             current_phase: PlaybackPhase::Attack(stored_tweener),
             current_volume: 0.,
+            is_looping: should_loop,
         }
     }
 
@@ -130,6 +132,10 @@ impl ClipWithSink {
 
     pub fn current_volume(&self) -> f32 {
         self.current_volume
+    }
+
+    pub fn is_looping(&self) -> bool {
+        self.is_looping
     }
 }
 

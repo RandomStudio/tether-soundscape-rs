@@ -3,7 +3,7 @@ use clap::Parser;
 use env_logger::{Builder, Env};
 use log::{debug, error, info, trace, warn};
 use playback::ClipWithSink;
-use remote_control::Instruction;
+use remote_control::{Instruction, ScenePickMode};
 // use remote_control::{Instruction, RemoteControl};
 use rodio::{OutputStream, OutputStreamHandle};
 use std::{
@@ -37,16 +37,6 @@ mod remote_control;
 mod settings;
 mod ui;
 // mod utils;
-
-pub enum QueueItem {
-    /// Start playback: name, optional fade duration in ms, should_loop,
-    /// finalised per-channel-volume
-    Play(String, Option<u32>, bool, Vec<f32>),
-    /// Stop/fade out: id in currently_playing Vec, optional fade duration in ms
-    Stop(usize, Option<u32>),
-    /// Remove clip: id in currently_playing Vec
-    Remove(usize),
-}
 
 // pub struct CurrentlyPlayingClip {
 //     id: usize,
@@ -110,36 +100,27 @@ impl eframe::App for Model {
             render_vis(ui, self);
         });
 
-        // TODO: this call can be made in a loop manually, when in text-mode
+        // TODO: some (all?) of the logic/calls below can be made in a loop manually, when in text-mode
         if let Ok(_) = self.request_rx.try_recv() {
             // debug!("Received request rx");
             self.check_progress();
         }
 
+        // Parse any remote control messages, which may generate CommandQueue items
         if let Some(remote_control) = &mut self.remote_control {
             while let Some((plug_name, message)) = self.tether.check_messages() {
                 match remote_control.parse_instructions(&plug_name, &message) {
                     Ok(Instruction::Add(clip_name, should_loop, fade_ms, panning)) => {
-                        if let Some(sample) = self
-                            .sound_bank
-                            .clips()
-                            .iter()
-                            .find(|x| x.name() == clip_name)
-                        {
-                            let clip_with_sink = ClipWithSink::new(
-                                &sample,
-                                should_loop,
-                                match fade_ms {
-                                    None => None,
-                                    Some(ms) => Some(Duration::from_millis(ms)),
-                                },
-                                &self.output_stream_handle,
-                                String::from(sample.name()),
-                            );
-                            self.clips_playing.push(clip_with_sink);
-                        } else {
-                            error!("Failed to find clip in bank with name, {}", clip_name);
-                        }
+                        self.action_queue.push(model::ActionQueueItem::Play(
+                            clip_name,
+                            match fade_ms {
+                                Some(ms) => Some(Duration::from_millis(ms)),
+                                None => None,
+                            },
+                            should_loop,
+                            None,
+                        ));
+                        // self.play_one_clip(clip_name, should_loop, fade_ms);
                     }
                     Ok(Instruction::Remove(clip_name, fade_ms)) => {
                         for clip in self
@@ -155,13 +136,65 @@ impl eframe::App for Model {
                         }
                     }
                     Ok(Instruction::Scene(scene_pick_mode, clip_names, fade_ms)) => {
-                        todo!();
+                        match scene_pick_mode {
+                            ScenePickMode::OnceAll => {
+                                // TODO: check for
+                                // - empty list (stop all)
+                                for name in clip_names {
+                                    self.action_queue.push(model::ActionQueueItem::Play(
+                                        name,
+                                        match fade_ms {
+                                            Some(ms) => Some(Duration::from_millis(ms)),
+                                            None => None,
+                                        },
+                                        false,
+                                        None,
+                                    ));
+                                }
+                            }
+                            ScenePickMode::LoopAll => {
+                                // TODO: check for
+                                // - clips already playing (and LOOPING) (do not add)
+                            }
+                            ScenePickMode::Random => todo!(),
+                        }
                     }
                     Err(_) => {
                         error!("Failed to parse remote Instruction");
                     }
                 }
             }
+        }
+        while let Some(command) = self.action_queue.pop() {
+            match command {
+                model::ActionQueueItem::Play(clip_name, fade, should_loop, panning) => {
+                    self.play_one_clip(clip_name, should_loop, fade);
+                }
+                model::ActionQueueItem::Stop(_, _) => todo!(),
+                model::ActionQueueItem::Remove(_) => todo!(),
+            };
+        }
+    }
+}
+
+impl Model {
+    fn play_one_clip(&mut self, clip_name: String, should_loop: bool, fade: Option<Duration>) {
+        if let Some(sample) = self
+            .sound_bank
+            .clips()
+            .iter()
+            .find(|x| x.name() == clip_name)
+        {
+            let clip_with_sink = ClipWithSink::new(
+                &sample,
+                should_loop,
+                fade,
+                &self.output_stream_handle,
+                String::from(sample.name()),
+            );
+            self.clips_playing.push(clip_with_sink);
+        } else {
+            error!("Failed to find clip in bank with name, {}", clip_name);
         }
     }
 }

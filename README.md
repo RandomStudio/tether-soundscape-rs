@@ -100,8 +100,10 @@ ___
 ___ 
 
 ## TODO - rodio/egui version:
-- [ ] Re-implement Phases
-- [ ] Fade in/out should use Phase/Tweens
+- [x] Re-implement Phases
+- [x] Fade in/out should use Phase/Tweens
+- [ ] Volume respected from sample bank?
+- [ ] Panning reimplemented
 - [ ] Allow MIDI to trigger clips (MIDI Mediator and/or directly)
 - [ ] Allow bank to be created, edited, saved directly from GUI, start from "blank" or load demo if nothing
 - [ ] Drag and drop samples into bank

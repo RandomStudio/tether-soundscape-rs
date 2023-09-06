@@ -81,7 +81,10 @@ pub fn render_vis(ui: &mut Ui, model: &mut Model) {
     for clip in model.clips_playing.iter() {
         ui.horizontal(|ui| {
             ui.label(format!("{}", clip.name()));
-            if ui.button("X").clicked() {
+            if clip.is_looping() {
+                ui.label("🔁");
+            }
+            if ui.button("🗑").clicked() {
                 clip.stop();
             }
             let brightness: u8 = (clip.current_volume() * 255.) as u8;

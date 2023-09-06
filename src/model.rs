@@ -12,11 +12,21 @@ use tether_agent::TetherAgent;
 use crate::{
     loader::SoundBank,
     playback::ClipWithSink,
-    remote_control::RemoteControl,
+    remote_control::{PanWithRange, RemoteControl},
     // CurrentlyPlayingClip, QueueItem,
     // remote_control::RemoteControl,
     settings::{Cli, ManualSettings},
 };
+
+pub enum ActionQueueItem {
+    /// Start playback: name, optional fade duration, should_loop,
+    /// optional per-channel-volume
+    Play(String, Option<Duration>, bool, Option<Vec<PanWithRange>>),
+    /// Stop/fade out: id in currently_playing Vec, optional fade duration in ms
+    Stop(usize, Option<u32>),
+    /// Remove clip: id in currently_playing Vec
+    Remove(usize),
+}
 
 pub struct Model {
     request_loop_handle: JoinHandle<()>,
@@ -27,7 +37,7 @@ pub struct Model {
     pub clips_playing: Vec<ClipWithSink>,
     // clips_playing: Vec<CurrentlyPlayingClip>,
     // duration_range: [FadeDuration; 2],
-    // action_queue: Vec<QueueItem>,
+    pub action_queue: Vec<ActionQueueItem>,
     pub last_state_publish: SystemTime,
     pub settings: ManualSettings,
     // multi_channel_mode: bool,
@@ -85,7 +95,7 @@ impl Model {
             output_stream_handle,
             sound_bank,
             clips_playing: Vec::new(),
-            // action_queue: Vec::new(),
+            action_queue: Vec::new(),
             last_state_publish: std::time::SystemTime::now(),
             settings,
             tether,

@@ -5,15 +5,13 @@ use rmp_serde::to_vec_named;
 use serde::{Deserialize, Serialize};
 use tether_agent::{mqtt::Message, PlugDefinition, TetherAgent};
 
-use crate::model::Model;
-
 // const INPUT_TOPICS: &[&str] = &["+/+/clipCommands", "+/+/scenes", "+/+/globalControls"];
 // const INPUT_QOS: &[i32; INPUT_TOPICS.len()] = &[2, 2, 2];
 
 type ClipName = String;
 
 /// Position (in range 0>numChannels-1) and spread (in range 1>numChannels)
-pub type SimplePanning = (f32, f32);
+pub type PanWithRange = (f32, f32);
 
 pub enum ScenePickMode {
     LoopAll,
@@ -24,12 +22,7 @@ pub enum ScenePickMode {
 type FadeDurationMS = u64;
 pub enum Instruction {
     // Clip name, should_loop, optional fade duration, optional panning
-    Add(
-        ClipName,
-        bool,
-        Option<FadeDurationMS>,
-        Option<SimplePanning>,
-    ),
+    Add(ClipName, bool, Option<FadeDurationMS>, Option<PanWithRange>),
     // Clip name, option fade duration
     Remove(ClipName, Option<FadeDurationMS>),
     Scene(ScenePickMode, Vec<ClipName>, Option<FadeDurationMS>),
@@ -72,7 +65,7 @@ pub struct SceneMessage {
 /// If at least a pan position is provided, then return a valid "SimplePanning" tuple,
 /// and use a default "pan spread" unless provided with one as well;
 /// otherwise, return None
-fn parse_optional_panning(parsed: &SingleClipMessage) -> Option<SimplePanning> {
+fn parse_optional_panning(parsed: &SingleClipMessage) -> Option<PanWithRange> {
     match parsed.pan_position {
         None => None,
         Some(pan_position) => Some((pan_position, parsed.pan_spread.unwrap_or(1.0))),
@@ -131,7 +124,7 @@ impl RemoteControl {
                     if let Ok(parsed) = clip_message {
                         info!("Parsed Single Clip Message: {parsed:?}");
 
-                        let panning: Option<SimplePanning> = parse_optional_panning(&parsed);
+                        let panning: Option<PanWithRange> = parse_optional_panning(&parsed);
 
                         match parsed.command.as_str() {
                             "hit" => Ok(Instruction::Add(
