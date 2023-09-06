@@ -4,7 +4,7 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-use rodio::{Decoder, OutputStreamHandle, Sink, Source};
+use rodio::{source::ChannelVolume, Decoder, OutputStreamHandle, Sink, Source};
 use tween::{Linear, Tween, Tweener};
 
 use crate::{loader::AudioClipOnDisk, remote_control::PanWithRange};
@@ -41,16 +41,27 @@ impl ClipWithSink {
         fade_in: Option<Duration>,
         output_stream_handle: &OutputStreamHandle,
     ) -> Self {
+        let sink = Sink::try_new(output_stream_handle).expect("failed to create sink");
+
         let file = BufReader::new(File::open(sample.path()).unwrap());
         let source = Decoder::new(file).unwrap();
-
         let duration = source.total_duration();
 
-        let sink = Sink::try_new(output_stream_handle).expect("failed to create sink");
-        if should_loop {
-            sink.append(source.repeat_infinite());
+        if let Some(panning) = sample.panning() {
+            let (position, spread) = panning;
+            let file = BufReader::new(File::open(sample.path()).unwrap());
+            let source = ChannelVolume::new(Decoder::new(file).unwrap(), vec![1.0, 0.]);
+            if should_loop {
+                sink.append(source.repeat_infinite());
+            } else {
+                sink.append(source);
+            }
         } else {
-            sink.append(source);
+            if should_loop {
+                sink.append(source.repeat_infinite());
+            } else {
+                sink.append(source);
+            }
         }
 
         let tween: Box<dyn Tween<f32> + Send + Sync> = Box::new(Linear);
