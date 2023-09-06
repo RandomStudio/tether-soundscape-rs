@@ -7,7 +7,7 @@ use std::{
 use rodio::{Decoder, OutputStreamHandle, Sink, Source};
 use tween::{Linear, Tween, Tweener};
 
-use crate::loader::AudioClipOnDisk;
+use crate::{loader::AudioClipOnDisk, remote_control::PanWithRange};
 
 // use crate::utils::millis_to_frames;
 
@@ -30,6 +30,7 @@ pub struct ClipWithSink {
     name: String,
     current_phase: PlaybackPhase,
     current_volume: f32,
+    panning: Option<PanWithRange>,
 }
 
 impl ClipWithSink {
@@ -70,6 +71,7 @@ impl ClipWithSink {
             current_phase: PlaybackPhase::Attack(stored_tweener),
             current_volume: 0.,
             is_looping: should_loop,
+            panning: sample.panning(),
         }
     }
 

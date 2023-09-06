@@ -16,6 +16,18 @@
       "volume": 0.2
     },
     {
+      "name": "frogLeft",
+      "path": "demo/frog.wav",
+      "volume": 1.0,
+      "panning": [0, 0]
+    },
+    {
+      "name": "frogRight",
+      "path": "demo/frog.wav",
+      "volume": 1.0,
+      "panning": [1, 0]
+    },
+    {
       "name": "mice",
       "path": "demo/mice.wav",
       "volume": 0.2
