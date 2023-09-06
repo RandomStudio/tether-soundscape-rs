@@ -75,7 +75,7 @@ fn parse_optional_panning(parsed: &SingleClipMessage) -> Option<PanWithRange> {
 pub struct RemoteControl {
     output_plug: PlugDefinition,
     input_plugs: HashMap<String, PlugDefinition>,
-    last_clip_count_sent: Option<usize>,
+    // last_clip_count_sent: Option<usize>,
 }
 
 impl RemoteControl {
@@ -104,7 +104,7 @@ impl RemoteControl {
                 .create_output_plug("state", Some(0), None)
                 .expect("failed to create state Output Plug"),
             input_plugs,
-            last_clip_count_sent: None,
+            // last_clip_count_sent: None,
         }
     }
 

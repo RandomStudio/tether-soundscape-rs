@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "camelCase")]
 pub struct SoundBank {
     clips: Vec<AudioClipOnDisk>,
-    scenes: Vec<Scene>,
+    // scenes: Vec<Scene>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -25,11 +25,11 @@ pub struct AudioClipOnDisk {
     // panning: Option<SimplePanning>,
 }
 
-#[derive(Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Scene {
-    pub clips: Vec<String>,
-}
+// #[derive(Serialize, Deserialize)]
+// #[serde(rename_all = "camelCase")]
+// pub struct Scene {
+//     pub clips: Vec<String>,
+// }
 
 impl AudioClipOnDisk {
     pub fn name(&self) -> &str {
@@ -57,26 +57,8 @@ pub fn get_sound_asset_path(assets_path: PathBuf, base_path: &str) -> String {
     path.to_str().unwrap().into()
 }
 
-// fn read_length_and_rate(path: &std::path::Path, mono_only: bool) -> (u32, u32) {
-//     let mut reader =
-//         audrey::open(path).expect(&format!("Failed to load sound file with path {:?}", &path));
-//     let mut count = 0;
-//     if reader.description().channel_count() == 2 {
-//         if mono_only {
-//             error!("Clip {:?} has 2 channels", path);
-//             panic!("In multichannel mode, you may only load mono clips!");
-//         }
-//         reader.frames::<[f32; 2]>().for_each(|_f| count += 1);
-//     } else {
-//         reader.frames::<[f32; 1]>().for_each(|_f| count += 1);
-//     }
-//     let description = reader.description();
-//     let sample_rate = description.sample_rate();
-//     (count, sample_rate)
-// }
-
 impl SoundBank {
-    pub fn new(json_path: &Path, mono_only: bool) -> Self {
+    pub fn new(json_path: &Path) -> Self {
         info!("Loading sample bank from {:?} ...", &json_path);
         match std::fs::read_to_string(json_path) {
             Ok(text) => match serde_json::from_str::<SoundBank>(&text) {
@@ -106,8 +88,9 @@ impl SoundBank {
                             entry
                         })
                         .collect();
-                    let scenes = bank.scenes;
-                    SoundBank { clips, scenes }
+                    // let scenes = bank.scenes;
+                    // SoundBank { clips, scenes }
+                    SoundBank { clips }
                 }
                 Err(e) => {
                     panic!("Failed to parse sample bank JSON: {}", e);
@@ -123,7 +106,7 @@ impl SoundBank {
         &self.clips
     }
 
-    pub fn scenes(&self) -> &Vec<Scene> {
-        &self.scenes
-    }
+    // pub fn scenes(&self) -> &Vec<Scene> {
+    //     &self.scenes
+    // }
 }

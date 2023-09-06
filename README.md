@@ -108,6 +108,7 @@ ___
 - [ ] Allow bank to be created, edited, saved directly from GUI, start from "blank" or load demo if nothing
 - [ ] Drag and drop samples into bank
 - [ ] Visualise clip playback in circles, not just progress bars
+- [ ] Publish state regularly / events on events
 
 ## TODO - original:
 - [x] Apply "loop" as well as trigger/hit/once-off functions

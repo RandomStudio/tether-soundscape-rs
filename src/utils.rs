@@ -1,49 +1,45 @@
+use rand::Rng;
 use std::time::Duration;
 
-use log::debug;
-use rand::Rng;
+// pub fn get_clip_index_with_name<'a>(
+//     clips: &'a [ClipWithSink],
+//     name: &str,
+// ) -> Option<(usize, &'a ClipWithSink)> {
+//     clips
+//         .iter()
+//         .enumerate()
+//         .find(|(_index, c)| c.name() == name)
+//         .map(|(index, c)| (index, c))
+// }
 
-use crate::{loader::AudioClipOnDisk, playback::ClipWithSink, remote_control::PanWithRange};
+// pub fn get_clip_index_with_id(clips: &[ClipWithSink], id: usize) -> Option<(usize, &ClipWithSink)> {
+//     clips
+//         .iter()
+//         .enumerate()
+//         .find(|(_index, c)| c.id() == id)
+//         .map(|(index, c)| (index, c))
+// }
 
-pub fn get_clip_index_with_name<'a>(
-    clips: &'a [ClipWithSink],
-    name: &str,
-) -> Option<(usize, &'a ClipWithSink)> {
-    clips
-        .iter()
-        .enumerate()
-        .find(|(_index, c)| c.name() == name)
-        .map(|(index, c)| (index, c))
-}
+// pub fn get_clip_index_with_id_mut(
+//     clips: &mut [ClipWithSink],
+//     id: usize,
+// ) -> Option<(usize, &mut ClipWithSink)> {
+//     clips
+//         .iter_mut()
+//         .enumerate()
+//         .find(|(_index, c)| c.id() == id)
+//         .map(|(index, c)| (index, c))
+// }
 
-pub fn get_clip_index_with_id(clips: &[ClipWithSink], id: usize) -> Option<(usize, &ClipWithSink)> {
-    clips
-        .iter()
-        .enumerate()
-        .find(|(_index, c)| c.id() == id)
-        .map(|(index, c)| (index, c))
-}
-
-pub fn get_clip_index_with_id_mut(
-    clips: &mut [ClipWithSink],
-    id: usize,
-) -> Option<(usize, &mut ClipWithSink)> {
-    clips
-        .iter_mut()
-        .enumerate()
-        .find(|(_index, c)| c.id() == id)
-        .map(|(index, c)| (index, c))
-}
-
-pub fn get_highest_id(clips: &[ClipWithSink]) -> usize {
-    let mut highest_so_far = 0;
-    for el in clips {
-        if el.id() >= highest_so_far {
-            highest_so_far = el.id() + 1;
-        }
-    }
-    highest_so_far
-}
+// pub fn get_highest_id(clips: &[ClipWithSink]) -> usize {
+//     let mut highest_so_far = 0;
+//     for el in clips {
+//         if el.id() >= highest_so_far {
+//             highest_so_far = el.id() + 1;
+//         }
+//     }
+//     highest_so_far
+// }
 
 pub fn pick_random_clip(clip_names: Vec<String>) -> String {
     let mut rng = rand::thread_rng();
@@ -77,6 +73,9 @@ pub fn optional_ms_to_duration(ms: Option<u64>) -> Option<Duration> {
 //     }
 //     [shortest.unwrap_or(0), longest]
 // }
+
+// NOTE: the functions below are not as efficient as the new ones, since the latter
+// make use of iterators whereas these have to allocate new Vectors
 
 // /// Given a list of currently playing clips and a list of clips we *want* to play,
 // /// filter the list to return only the names which need to be *added* (i.e. are

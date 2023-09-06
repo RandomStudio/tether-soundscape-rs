@@ -3,10 +3,9 @@
 // use nannou_egui::egui::{self, Slider};
 // use std::time::Duration;
 
-use std::{fs::File, io::BufReader, time::Duration};
+use std::time::Duration;
 
 use egui::{Color32, ProgressBar, Ui};
-use rodio::{Decoder, Sink};
 
 use crate::{model::Model, playback::ClipWithSink};
 

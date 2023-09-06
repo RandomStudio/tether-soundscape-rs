@@ -15,7 +15,7 @@ use crate::loader::AudioClipOnDisk;
 type StoredTweener = Tweener<f32, u128, Box<dyn Tween<f32> + Send + Sync>>;
 
 pub enum PlaybackPhase {
-    Attack(StoredTweener), // TODO: also use tweener for better control?
+    Attack(StoredTweener),
     Sustain(),
     Release(SystemTime, StoredTweener),
 }

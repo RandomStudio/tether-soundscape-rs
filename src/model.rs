@@ -27,7 +27,7 @@ pub enum ActionQueueItem {
 }
 
 pub struct Model {
-    request_loop_handle: JoinHandle<()>,
+    _request_loop_handle: JoinHandle<()>,
     // pub request_channel: (Sender<()>, Receiver<()>),
     pub request_rx: Receiver<()>,
     pub output_stream_handle: OutputStreamHandle,
@@ -59,7 +59,7 @@ impl Model {
         //     "STEREO"
         // };
 
-        let sound_bank = SoundBank::new(Path::new("test_stereo.json"), false);
+        let sound_bank = SoundBank::new(Path::new("test.json"));
         // let duration_range = get_duration_range(sound_bank.clips());
 
         let tether = TetherAgent::new("soundscape", None, None);
@@ -77,19 +77,17 @@ impl Model {
 
         let (tx, rx) = mpsc::channel();
 
-        // let request_tx = tx.clone();
+        let update_interval = cli.update_interval; // clone for move
 
         let request_loop_handle = thread::spawn(move || loop {
             tx.send(()).expect("failed to send via channel");
-            // debug!("tx request");
-            // TODO: the interval below should be configured
-            thread::sleep(Duration::from_millis(16));
+            thread::sleep(Duration::from_millis(update_interval));
         });
 
         Model {
             // request_channel: (tx, rx),
             request_rx: rx,
-            request_loop_handle,
+            _request_loop_handle: request_loop_handle,
             output_stream_handle,
             sound_bank,
             clips_playing: Vec::new(),

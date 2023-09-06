@@ -28,16 +28,5 @@
       "name": "squirrel2",
       "path": "demo/squirrel2.wav"
     }
-  ],
-  "scenes": [
-    {
-      "clips": ["frog", "mice"]
-    },
-    {
-      "clips": ["squirrel", "squirrel2"]
-    },
-    {
-      "clips": ["squirrel", "mice", "frog"]
-    }
   ]
 }

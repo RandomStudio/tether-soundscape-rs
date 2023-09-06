@@ -1,29 +1,9 @@
 use clap::Parser;
-use std::{
-    net::{IpAddr, Ipv4Addr},
-    time::Duration,
-};
+use std::net::{IpAddr, Ipv4Addr};
 
-pub const UPDATE_INTERVAL: Duration = Duration::from_millis(16);
-pub const MIN_RADIUS: f32 = 100.;
-pub const LINE_THICKNESS: f32 = 2.;
 pub const DEFAULT_FADEIN: u32 = 2000;
 pub const DEFAULT_FADEOUT: u32 = 2000;
-pub const RING_BUFFER_SIZE: usize = 32;
 const TETHER_HOST: std::net::IpAddr = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
-
-pub const SAMPLE_RATE: u32 = 48000;
-
-pub const TEST_BANK_STEREO: &str = "./test_stereo.json";
-pub const TEST_BANK_MONO: &str = "./test_mono.json";
-
-pub fn pick_default_sample_bank(multi_channel_mode: bool) -> String {
-    if multi_channel_mode {
-        String::from(TEST_BANK_MONO)
-    } else {
-        String::from(TEST_BANK_STEREO)
-    }
-}
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -33,9 +13,9 @@ pub struct Cli {
     #[arg(long = "sampleBank")]
     pub sample_bank_path: Option<String>,
 
-    /// Expected sample rate of input clips in Hz; all clips should match
-    #[arg(long = "sampleRate",default_value_t=SAMPLE_RATE)]
-    pub sample_rate: u32,
+    /// How often to update and progress and volume (if fading in/out)
+    #[arg(long = "updateInterval", default_value_t = 16)]
+    pub update_interval: u64,
 
     /// Flag to disable Tether connection
     #[arg(long = "tether.disable")]
