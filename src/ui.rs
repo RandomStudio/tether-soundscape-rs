@@ -49,7 +49,7 @@ pub fn render_local_controls(ui: &mut Ui, model: &mut Model) {
                 let clip_with_sink = ClipWithSink::new(
                     &sample,
                     true,
-                    Some(Duration::from_millis(5000)),
+                    Some(Duration::from_secs(5)),
                     &model.output_stream_handle,
                     String::from(sample.name()),
                 );
@@ -59,6 +59,13 @@ pub fn render_local_controls(ui: &mut Ui, model: &mut Model) {
                 for clip in &model.clips_playing {
                     if clip.name() == sample.name() {
                         clip.stop();
+                    }
+                }
+            }
+            if ui.button("fade out(2s)").clicked() {
+                for clip in &mut model.clips_playing {
+                    if clip.name() == sample.name() {
+                        clip.fade_out(Duration::from_secs(2));
                     }
                 }
             }
@@ -73,7 +80,7 @@ pub fn render_vis(ui: &mut Ui, model: &mut Model) {
     ));
     for clip in model.clips_playing.iter() {
         ui.horizontal(|ui| {
-            ui.label(format!("{}:", clip.name()));
+            ui.label(format!("{} @{}:", clip.name(), clip.current_volume()));
             if ui.button("X").clicked() {
                 clip.stop();
             }
