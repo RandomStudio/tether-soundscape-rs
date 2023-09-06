@@ -13,6 +13,10 @@ pub struct Cli {
     #[arg(long = "sampleBank")]
     pub sample_bank_path: Option<String>,
 
+    /// Flag to disable GUI and run in text-only mode
+    #[arg(long = "headless")]
+    pub headless_mode: bool,
+
     /// How often to update and progress and volume (if fading in/out)
     #[arg(long = "updateInterval", default_value_t = 16)]
     pub update_interval: u64,

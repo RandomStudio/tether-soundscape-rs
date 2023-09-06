@@ -103,6 +103,7 @@ ___
 - [x] Re-implement Phases
 - [x] Fade in/out should use Phase/Tweens
 - [x] Volume respected from sample bank?
+- [x] Text-only mode
 - [ ] Publish state regularly / events on events
 - [ ] Panning reimplemented: use https://docs.rs/rodio/latest/rodio/source/struct.ChannelVolume.html ?
 - [ ] Allow MIDI to trigger clips (MIDI Mediator and/or directly)

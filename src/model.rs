@@ -12,10 +12,11 @@ use tether_agent::TetherAgent;
 use crate::{
     loader::SoundBank,
     playback::ClipWithSink,
-    remote_control::{PanWithRange, RemoteControl},
+    remote_control::{Instruction, PanWithRange, RemoteControl, ScenePickMode},
     // CurrentlyPlayingClip, QueueItem,
     // remote_control::RemoteControl,
     settings::{Cli, ManualSettings},
+    utils::{optional_ms_to_duration, pick_random_clip},
 };
 
 pub enum ActionQueueItem {
@@ -127,6 +128,146 @@ impl Model {
             self.clips_playing.push(clip_with_sink);
         } else {
             error!("Failed to find clip in bank with name, {}", clip_name);
+        }
+    }
+
+    pub fn internal_update(&mut self) {
+        // TODO: some (all?) of the logic/calls below can be made in a loop manually, when in text-mode
+        if let Ok(_) = self.request_rx.try_recv() {
+            // debug!("Received request rx");
+            self.check_progress();
+        }
+
+        // Parse any remote control messages, which may generate CommandQueue items
+        if let Some(remote_control) = &mut self.remote_control {
+            while let Some((plug_name, message)) = self.tether.check_messages() {
+                match remote_control.parse_instructions(&plug_name, &message) {
+                    Ok(Instruction::Add(clip_name, should_loop, fade_ms, _panning)) => {
+                        self.action_queue.push(ActionQueueItem::Play(
+                            clip_name,
+                            match fade_ms {
+                                Some(ms) => Some(Duration::from_millis(ms)),
+                                None => None,
+                            },
+                            should_loop,
+                            None,
+                        ));
+                        // self.play_one_clip(clip_name, should_loop, fade_ms);
+                    }
+                    Ok(Instruction::Remove(clip_name, fade_ms)) => {
+                        for clip in self
+                            .clips_playing
+                            .iter_mut()
+                            .filter(|x| x.name() == clip_name)
+                        {
+                            if let Some(ms) = fade_ms {
+                                clip.fade_out(Duration::from_millis(ms));
+                            } else {
+                                clip.stop();
+                            }
+                        }
+                    }
+                    Ok(Instruction::Scene(scene_pick_mode, clip_names, fade_ms)) => {
+                        match scene_pick_mode {
+                            ScenePickMode::OnceAll => {
+                                if clip_names.len() == 0 {
+                                    debug!("Empty scene list; stop all currently playing");
+                                    for clip in &self.clips_playing {
+                                        self.action_queue.push(ActionQueueItem::Stop(
+                                            clip.id(),
+                                            optional_ms_to_duration(fade_ms),
+                                        ))
+                                    }
+                                } else {
+                                    for name in clip_names {
+                                        self.action_queue.push(ActionQueueItem::Play(
+                                            name,
+                                            match fade_ms {
+                                                Some(ms) => Some(Duration::from_millis(ms)),
+                                                None => None,
+                                            },
+                                            false,
+                                            None,
+                                        ));
+                                    }
+                                }
+                            }
+                            ScenePickMode::LoopAll => {
+                                // TODO: check for
+                                // - empty list (stop all)
+                                // - clips already playing (and LOOPING) (do not add)
+                                if clip_names.len() == 0 {
+                                    debug!("Empty scene list; stop all currently playing that are looping");
+                                    for clip in &self.clips_playing {
+                                        self.action_queue.push(ActionQueueItem::Stop(
+                                            clip.id(),
+                                            optional_ms_to_duration(fade_ms),
+                                        ))
+                                    }
+                                } else {
+                                    let to_add = clip_names.iter().filter(|candidate| {
+                                        self.clips_playing
+                                            .iter()
+                                            .find(|playing| {
+                                                playing.name().eq_ignore_ascii_case(&candidate)
+                                            })
+                                            .is_none()
+                                    });
+                                    let to_remove = self.clips_playing.iter().filter(|playing| {
+                                        clip_names
+                                            .iter()
+                                            .find(|requested| {
+                                                requested.eq_ignore_ascii_case(&playing.name())
+                                            })
+                                            .is_none()
+                                    });
+                                    for name in to_add {
+                                        self.action_queue.push(ActionQueueItem::Play(
+                                            name.into(),
+                                            optional_ms_to_duration(fade_ms),
+                                            true,
+                                            None,
+                                        ));
+                                    }
+                                    for clip in to_remove {
+                                        self.action_queue.push(ActionQueueItem::Stop(
+                                            clip.id(),
+                                            optional_ms_to_duration(fade_ms),
+                                        ));
+                                    }
+                                }
+                            }
+                            ScenePickMode::OnceRandomSinglePick => {
+                                let pick_name = pick_random_clip(clip_names);
+                                self.action_queue.push(ActionQueueItem::Play(
+                                    pick_name,
+                                    optional_ms_to_duration(fade_ms),
+                                    false,
+                                    None,
+                                ));
+                            }
+                        }
+                    }
+                    Err(_) => {
+                        error!("Failed to parse remote Instruction");
+                    }
+                }
+            }
+        }
+        while let Some(command) = self.action_queue.pop() {
+            match command {
+                ActionQueueItem::Play(clip_name, fade, should_loop, _panning) => {
+                    self.play_one_clip(clip_name, should_loop, fade);
+                }
+                ActionQueueItem::Stop(id, fade) => {
+                    if let Some(clip) = self.clips_playing.iter_mut().find(|x| x.id() == id) {
+                        match fade {
+                            Some(duration) => clip.fade_out(duration),
+                            None => clip.stop(),
+                        };
+                    }
+                }
+            };
         }
     }
 }

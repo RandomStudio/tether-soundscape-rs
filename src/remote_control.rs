@@ -160,6 +160,8 @@ impl RemoteControl {
                         rmp_serde::from_slice(&payload);
 
                     if let Ok(parsed) = scene_message {
+                        info!("Parsed Scene Message: {parsed:?}");
+
                         let pick_mode = parsed.mode.unwrap_or(String::from("loopAll"));
                         match pick_mode.as_str() {
                             "loopAll" => Ok(Instruction::Scene(
