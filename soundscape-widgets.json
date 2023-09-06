@@ -10,16 +10,60 @@
               "common": {
                 "name": "clipCommands",
                 "topic": "gui/any/clipCommands",
-                "qos": 0
+                "qos": 2
               },
               "retain": false
             }
           },
           "midiMapping": null,
-          "qos": "AtMostOnce",
+          "qos": "ExactlyOnce",
           "retain": false
         },
         "value": "{\"command\":\"hit\", \"clipName\":\"frog\"}"
+      }
+    },
+    {
+      "generic": {
+        "common": {
+          "name": "clipCommands",
+          "description": "demo fade in",
+          "plug": {
+            "OutputPlugDefinition": {
+              "common": {
+                "name": "clipCommands",
+                "topic": "gui/any/clipCommands",
+                "qos": 2
+              },
+              "retain": false
+            }
+          },
+          "midiMapping": null,
+          "qos": "ExactlyOnce",
+          "retain": false
+        },
+        "value": "{\"command\":\"hit\", \"clipName\":\"squirrel\", \"fadeDuration\": 5000}"
+      }
+    },
+    {
+      "generic": {
+        "common": {
+          "name": "clipCommands",
+          "description": "demo fade out",
+          "plug": {
+            "OutputPlugDefinition": {
+              "common": {
+                "name": "clipCommands",
+                "topic": "gui/any/clipCommands",
+                "qos": 2
+              },
+              "retain": false
+            }
+          },
+          "midiMapping": null,
+          "qos": "ExactlyOnce",
+          "retain": false
+        },
+        "value": "{\"command\":\"remove\",  \"clipName\":\"squirrel\",\"fadeDuration\":2000}"
       }
     }
   ],

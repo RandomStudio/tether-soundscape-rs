@@ -5,7 +5,7 @@
 
 use std::{fs::File, io::BufReader, time::Duration};
 
-use egui::{ProgressBar, Ui};
+use egui::{Color32, ProgressBar, Ui};
 use rodio::{Decoder, Sink};
 
 use crate::{model::Model, playback::ClipWithSink};
@@ -80,11 +80,17 @@ pub fn render_vis(ui: &mut Ui, model: &mut Model) {
     ));
     for clip in model.clips_playing.iter() {
         ui.horizontal(|ui| {
-            ui.label(format!("{} @{}:", clip.name(), clip.current_volume()));
+            ui.label(format!("{}", clip.name()));
             if ui.button("X").clicked() {
                 clip.stop();
             }
-            ui.add(ProgressBar::new(clip.progress().unwrap_or(0.)).show_percentage());
+            let brightness: u8 = (clip.current_volume() * 255.) as u8;
+            let c = Color32::from_rgb(0, 0, brightness);
+            ui.add(
+                ProgressBar::new(clip.progress().unwrap_or(0.))
+                    .show_percentage()
+                    .fill(c),
+            );
         });
     }
 }
