@@ -79,8 +79,6 @@ impl SoundBank {
                             let entry = AudioClipOnDisk {
                                 name: String::from(&sample.name),
                                 path: String::from(path.to_str().unwrap()),
-                                // frames_count,
-                                // sample_rate,
                                 volume,
                                 // panning,
                             };

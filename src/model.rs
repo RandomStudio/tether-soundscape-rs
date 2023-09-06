@@ -123,7 +123,6 @@ impl Model {
                 should_loop,
                 fade,
                 &self.output_stream_handle,
-                String::from(sample.name()),
             );
             self.clips_playing.push(clip_with_sink);
         } else {

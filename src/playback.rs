@@ -29,6 +29,7 @@ pub struct ClipWithSink {
     is_looping: bool,
     name: String,
     current_phase: PlaybackPhase,
+    clip_volume: f32,
     current_volume: f32,
 }
 
@@ -39,7 +40,6 @@ impl ClipWithSink {
         should_loop: bool,
         fade_in: Option<Duration>,
         output_stream_handle: &OutputStreamHandle,
-        name: String,
     ) -> Self {
         let file = BufReader::new(File::open(sample.path()).unwrap());
         let source = Decoder::new(file).unwrap();
@@ -56,7 +56,7 @@ impl ClipWithSink {
         let tween: Box<dyn Tween<f32> + Send + Sync> = Box::new(Linear);
         let stored_tweener = Tweener::new(
             0.,
-            1.0,
+            sample.volume().unwrap_or(1.0),
             fade_in.unwrap_or(Duration::from_millis(8)).as_millis(),
             tween,
         );
@@ -67,10 +67,11 @@ impl ClipWithSink {
             duration,
             started: SystemTime::now(),
             last_known_progress: Some(0.),
-            name,
+            name: String::from(sample.name()),
             current_phase: PlaybackPhase::Attack(stored_tweener),
             current_volume: 0.,
             is_looping: should_loop,
+            clip_volume: sample.volume().unwrap_or(1.0),
         }
     }
 

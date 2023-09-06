@@ -21,7 +21,6 @@ pub fn render_local_controls(ui: &mut Ui, model: &mut Model) {
                     false,
                     None,
                     &model.output_stream_handle,
-                    String::from(sample.name()),
                 );
                 model.clips_playing.push(clip_with_sink);
             }
@@ -32,7 +31,6 @@ pub fn render_local_controls(ui: &mut Ui, model: &mut Model) {
                     false,
                     Some(Duration::from_millis(2000)),
                     &model.output_stream_handle,
-                    String::from(sample.name()),
                 );
                 model.clips_playing.push(clip_with_sink);
             }
@@ -43,7 +41,6 @@ pub fn render_local_controls(ui: &mut Ui, model: &mut Model) {
                     true,
                     None,
                     &model.output_stream_handle,
-                    String::from(sample.name()),
                 );
                 model.clips_playing.push(clip_with_sink);
             }
@@ -54,7 +51,6 @@ pub fn render_local_controls(ui: &mut Ui, model: &mut Model) {
                     true,
                     Some(Duration::from_secs(5)),
                     &model.output_stream_handle,
-                    String::from(sample.name()),
                 );
                 model.clips_playing.push(clip_with_sink);
             }
