@@ -11,8 +11,11 @@ use tether_agent::{TetherAgent, TetherAgentOptionsBuilder};
 
 use crate::{
     loader::SoundBank,
-    playback::ClipWithSink,
-    remote_control::{Instruction, PanWithRange, RemoteControl, ScenePickMode},
+    playback::{ClipWithSink, PanWithRange},
+    remote_control::{
+        receive::{Instruction, ScenePickMode},
+        RemoteControl,
+    },
     settings::Cli,
     utils::{optional_ms_to_duration, pick_random_clip},
 };

@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use log::{debug, info};
 use serde::{Deserialize, Serialize};
 
-use crate::remote_control::PanWithRange;
+use crate::playback::PanWithRange;
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

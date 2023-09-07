@@ -106,9 +106,9 @@ ___
 - [x] Text-only mode
 - [x] Panning reimplemented: use https://docs.rs/rodio/latest/rodio/source/struct.ChannelVolume.html ?
 - [x] GUI show Tether enabled/connected status
+- [ ] Publish state regularly / events on events
 - [ ] GUI show incoming messages and/or counts
 - [ ] GUI show output levels per channel somehow?
-- [ ] Publish state regularly / events on events
 - [ ] Allow MIDI to trigger clips (MIDI Mediator and/or directly)
 - [ ] Allow bank to be created, edited, saved directly from GUI, start from "blank" or load demo if nothing
 - [ ] Drag and drop samples into bank

@@ -7,14 +7,15 @@ use std::{
 use rodio::{source::ChannelVolume, Decoder, OutputStreamHandle, Sink, Source};
 use tween::{Linear, Tween, Tweener};
 
-use crate::{
-    loader::AudioClipOnDisk, panning::simple_panning_channel_volumes, remote_control::PanWithRange,
-};
+use crate::{loader::AudioClipOnDisk, panning::simple_panning_channel_volumes};
 
 // use crate::utils::millis_to_frames;
 
 /// Volume value, duration in milliseconds
 type StoredTweener = Tweener<f32, u128, Box<dyn Tween<f32> + Send + Sync>>;
+
+/// Position (in range 0>numChannels-1) and spread (in range 1>numChannels)
+pub type PanWithRange = (f32, f32);
 
 pub enum PlaybackPhase {
     Attack(StoredTweener),
