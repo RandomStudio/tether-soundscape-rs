@@ -82,15 +82,19 @@ pub fn render_local_controls(ui: &mut Ui, model: &mut Model) {
 
 pub fn render_vis(ui: &mut Ui, model: &mut Model) {
     ui.heading("Status");
-    if model.tether.is_connected() {
-        ui.label(RichText::new("Tether connected ✅").color(Color32::GREEN));
+    if model.tether_disabled {
+        ui.label(RichText::new("Tether disabled 🚫").color(Color32::YELLOW));
     } else {
-        ui.label(RichText::new("Tether not (yet) connected x").color(Color32::RED));
+        if model.tether.is_connected() {
+            ui.label(RichText::new("Tether connected ✔").color(Color32::GREEN));
+        } else {
+            ui.label(RichText::new("Tether not (yet) connected x").color(Color32::RED));
+        }
+        ui.horizontal(|ui| {
+            ui.label("Output channels in use:");
+            ui.label(RichText::new(format!("x{}", model.output_channels_used)).strong());
+        });
     }
-    ui.horizontal(|ui| {
-        ui.label("Output channels in use:");
-        ui.label(RichText::new(format!("x{}", model.output_channels_used)).strong());
-    });
     ui.separator();
     ui.heading(format!("Playing: x{} clips", model.clips_playing.len()));
     for clip in model.clips_playing.iter() {

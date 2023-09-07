@@ -1,4 +1,4 @@
-use log::{debug, error, info, warn};
+use log::{debug, error, warn};
 use std::{
     path::Path,
     sync::mpsc::{self, Receiver},
@@ -13,9 +13,7 @@ use crate::{
     loader::SoundBank,
     playback::ClipWithSink,
     remote_control::{Instruction, PanWithRange, RemoteControl, ScenePickMode},
-    // CurrentlyPlayingClip, QueueItem,
-    // remote_control::RemoteControl,
-    settings::{Cli, ManualSettings},
+    settings::Cli,
     utils::{optional_ms_to_duration, pick_random_clip},
 };
 
@@ -39,8 +37,8 @@ pub struct Model {
     // duration_range: [FadeDuration; 2],
     pub action_queue: Vec<ActionQueueItem>,
     pub last_state_publish: SystemTime,
-    pub settings: ManualSettings,
     pub tether: TetherAgent,
+    pub tether_disabled: bool,
     pub remote_control: Option<RemoteControl>,
 }
 
@@ -50,8 +48,6 @@ impl Model {
         output_stream_handle: OutputStreamHandle,
         output_channels_used: u16,
     ) -> Model {
-        let settings = ManualSettings::defaults();
-
         let sound_bank = SoundBank::new(Path::new("test.json"));
         // let duration_range = get_duration_range(sound_bank.clips());
 
@@ -87,9 +83,9 @@ impl Model {
             clips_playing: Vec::new(),
             action_queue: Vec::new(),
             last_state_publish: std::time::SystemTime::now(),
-            settings,
             tether,
             remote_control,
+            tether_disabled: cli.tether_disable,
         }
     }
 
