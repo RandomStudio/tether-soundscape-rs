@@ -160,6 +160,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fc7eb209b1518d6bb87b283c20095f5228ecda460da70b44f0802523dea6da04"
 
 [[package]]
+name = "anyhow"
+version = "1.0.75"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a4668cab20f66d8d020e1fbc0ebe47217433c1b6c8f2040faf858554e394ace6"
+
+[[package]]
 name = "arboard"
 version = "3.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2637,10 +2643,11 @@ dependencies = [
 
 [[package]]
 name = "tether-agent"
-version = "0.3.2"
+version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "66715b9d4ab32bdff07520f0922617843ce79be3306d675a1df6d1d677fe1132"
+checksum = "0716c6da7b21eef6cd83a3cf391f63700080d56f74ce9ec796972c535cddd06b"
 dependencies = [
+ "anyhow",
  "env_logger",
  "log",
  "paho-mqtt 0.12.1",

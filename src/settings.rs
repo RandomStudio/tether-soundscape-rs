@@ -37,6 +37,14 @@ pub struct Cli {
 
     #[arg(long = "loglevel",default_value_t=String::from("info"))]
     pub log_level: String,
+
+    /// How often to publish state via Tether (ignored if disabled)
+    #[arg(long = "statePublish.updateInterval", default_value_t = 40)]
+    pub state_interval: u64,
+
+    /// How often to publish state via Tether (ignored if disabled)
+    #[arg(long = "statePublish.disable")]
+    pub state_disable: bool,
 }
 // pub struct ManualSettings {
 //     pub fadein_duration: u32,

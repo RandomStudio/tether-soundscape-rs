@@ -7,7 +7,7 @@ use std::{
 };
 
 use rodio::OutputStreamHandle;
-use tether_agent::TetherAgent;
+use tether_agent::{TetherAgent, TetherAgentOptionsBuilder};
 
 use crate::{
     loader::SoundBank,
@@ -51,17 +51,27 @@ impl Model {
         let sound_bank = SoundBank::new(Path::new("test.json"));
         // let duration_range = get_duration_range(sound_bank.clips());
 
-        let tether = TetherAgent::new("soundscape", None, None);
-        if !cli.tether_disable {
-            tether.connect().expect("Failed to connect to Tether");
+        // let tether = TetherAgent::new("soundscape", None, None);
+        let tether_options = TetherAgentOptionsBuilder::new("soundscape").auto_connect(false);
+        let tether = if cli.tether_disable {
+            warn!("Tether connection disabled");
+            tether_options
+                .build()
+                .expect("failed to init (not connect) Tether")
         } else {
-            warn!("Tether connection disabled")
-        }
+            tether_options
+                .auto_connect(true)
+                .build()
+                .expect("failed to connect Tether")
+        };
 
         let remote_control = if cli.tether_disable {
             None
         } else {
-            Some(RemoteControl::new(&tether))
+            Some(RemoteControl::new(
+                &tether,
+                Duration::from_millis(cli.state_interval),
+            ))
         };
 
         let (tx, rx) = mpsc::channel();
@@ -129,9 +139,7 @@ impl Model {
     }
 
     pub fn internal_update(&mut self) {
-        // TODO: some (all?) of the logic/calls below can be made in a loop manually, when in text-mode
         if let Ok(_) = self.request_rx.try_recv() {
-            // debug!("Received request rx");
             self.check_progress();
         }
 
@@ -264,6 +272,10 @@ impl Model {
                     }
                 }
             };
+        }
+
+        if let Some(remote) = &mut self.remote_control {
+            remote.publish_state_if_ready(&self.tether, &self.clips_playing);
         }
     }
 }

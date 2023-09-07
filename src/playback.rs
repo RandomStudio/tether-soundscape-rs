@@ -172,6 +172,10 @@ impl ClipWithSink {
     pub fn id(&self) -> usize {
         self.id
     }
+
+    pub fn phase(&self) -> &PlaybackPhase {
+        &self.current_phase
+    }
 }
 
 // pub fn render_audio_multichannel(audio: &mut Audio, buffer: &mut Buffer) {

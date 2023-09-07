@@ -1,9 +1,15 @@
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    time::{Duration, SystemTime},
+};
 
-use log::{error, info, warn};
+use log::{debug, error, info, trace, warn};
+use rmp_serde::to_vec_named;
 // use rmp_serde::to_vec_named;
 use serde::{Deserialize, Serialize};
-use tether_agent::{mqtt::Message, PlugDefinition, TetherAgent};
+use tether_agent::{mqtt::Message, PlugDefinition, PlugOptionsBuilder, TetherAgent};
+
+use crate::playback::{ClipWithSink, PlaybackPhase};
 
 // const INPUT_TOPICS: &[&str] = &["+/+/clipCommands", "+/+/scenes", "+/+/globalControls"];
 // const INPUT_QOS: &[i32; INPUT_TOPICS.len()] = &[2, 2, 2];
@@ -36,11 +42,11 @@ pub struct ClipPlayingEssentialState {
     progress: f32,
     current_volume: f32,
     looping: bool,
+    phase: String,
 }
 #[derive(Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct SoundscapeStateMessage {
-    pub is_playing: bool,
     pub clips: Vec<ClipPlayingEssentialState>,
 }
 
@@ -75,36 +81,51 @@ fn parse_optional_panning(parsed: &SingleClipMessage) -> Option<PanWithRange> {
 pub struct RemoteControl {
     output_plug: PlugDefinition,
     input_plugs: HashMap<String, PlugDefinition>,
-    // last_clip_count_sent: Option<usize>,
+    state_send_interval: Duration,
+    last_update_sent: SystemTime, // last_clip_count_sent: Option<usize>,
 }
 
 impl RemoteControl {
-    pub fn new(tether_agent: &TetherAgent) -> Self {
+    pub fn new(tether_agent: &TetherAgent, state_send_interval: Duration) -> Self {
         let mut input_plugs: HashMap<String, PlugDefinition> = HashMap::new();
         input_plugs.insert(
             "clipCommands".into(),
-            tether_agent
-                .create_input_plug("clipCommands", Some(2), None)
-                .unwrap(),
+            PlugOptionsBuilder::create_input("clipCommands")
+                .qos(2)
+                .build(tether_agent)
+                .expect("failed to create clipCommands Input"), // tether_agent
+                                                                //     .create_input_plug("clipCommands", Some(2), None)
+                                                                //     .unwrap(),
         );
         input_plugs.insert(
             "scenes".into(),
-            tether_agent
-                .create_input_plug("scenes", Some(2), None)
-                .unwrap(),
+            PlugOptionsBuilder::create_input("scenes")
+                .qos(2)
+                .build(tether_agent)
+                .expect("failed to create scenes Input"), // tether_agent
+                                                          //     .create_input_plug("scenes", Some(2), None)
+                                                          //     .unwrap(),
         );
         input_plugs.insert(
             "globalControls".into(),
-            tether_agent
-                .create_input_plug("globalControls", Some(2), None)
-                .unwrap(),
+            PlugOptionsBuilder::create_input("globalControls")
+                .qos(2)
+                .build(tether_agent)
+                .expect("failed to create globalCommands Input"), // tether_agent
+                                                                  //     .create_input_plug("globalControls", Some(2), None)
+                                                                  //     .unwrap(),
         );
+
+        let output_plug = PlugOptionsBuilder::create_output("state")
+            .qos(0)
+            .build(tether_agent)
+            .expect("failed to create state Output");
+
         RemoteControl {
-            output_plug: tether_agent
-                .create_output_plug("state", Some(0), None)
-                .expect("failed to create state Output Plug"),
+            output_plug,
             input_plugs,
-            // last_clip_count_sent: None,
+            state_send_interval,
+            last_update_sent: SystemTime::now(), // last_clip_count_sent: None,
         }
     }
 
@@ -116,7 +137,7 @@ impl RemoteControl {
         let payload = message.payload();
 
         if let Some(matched_plug) = self.input_plugs.get(plug_name) {
-            match matched_plug.name.as_str() {
+            match matched_plug.name() {
                 "clipCommands" => {
                     let clip_message: Result<SingleClipMessage, rmp_serde::decode::Error> =
                         rmp_serde::from_slice(&payload);
@@ -208,47 +229,41 @@ impl RemoteControl {
         }
     }
 
-    // pub fn publish_state(
-    //     &mut self,
-    //     is_stream_playing: bool,
-    //     clips: &[CurrentlyPlayingClip],
-    //     agent: &TetherAgent,
-    // ) {
-    //     let should_publish = {
-    //         match self.last_clip_count_sent {
-    //             None => true,
-    //             Some(last_count) => !clips.is_empty() || clips.len() != last_count,
-    //         }
-    //     };
-    //     if should_publish {
-    //         self.last_clip_count_sent = Some(clips.len());
-    //         let clip_states = clips
-    //             .iter()
-    //             .map(|c| {
-    //                 let progress = match c.state {
-    //                     PlaybackState::Playing(frames_played) => {
-    //                         frames_played.to_f32().unwrap() / c.frames_count.to_f32().unwrap()
-    //                     }
-    //                     _ => 0.,
-    //                 };
+    pub fn publish_state_if_ready(&mut self, agent: &TetherAgent, clips: &[ClipWithSink]) {
+        let elapsed = self.last_update_sent.elapsed().unwrap();
 
-    //                 ClipPlayingEssentialState {
-    //                     id: c.id,
-    //                     name: c.name.clone(),
-    //                     progress,
-    //                     looping: c.should_loop,
-    //                     current_volume: c.current_volume,
-    //                 }
-    //             })
-    //             .collect();
-    //         let state = SoundscapeStateMessage {
-    //             clips: clip_states,
-    //             is_playing: is_stream_playing,
-    //         };
-    //         let payload: Vec<u8> = to_vec_named(&state).unwrap();
-    //         agent
-    //             .publish(&self.output_plug, Some(&payload))
-    //             .expect("Failed to publish state/progress");
-    //     }
-    // }
+        if elapsed <= self.state_send_interval {
+            trace!(
+                "Not ready: {} <= {}",
+                elapsed.as_millis(),
+                self.state_send_interval.as_millis()
+            );
+            return;
+        }
+
+        trace!("Ready to send state update");
+        self.last_update_sent = SystemTime::now();
+
+        let clip_states = clips
+            .iter()
+            .map(|c| ClipPlayingEssentialState {
+                id: c.id(),
+                name: c.name().into(),
+                progress: c.progress().unwrap_or(0.),
+                looping: c.is_looping(),
+                current_volume: c.current_volume(),
+                phase: match c.phase() {
+                    PlaybackPhase::Attack(_) => "attack",
+                    PlaybackPhase::Sustain() => "sustain",
+                    PlaybackPhase::Release(..) => "release",
+                }
+                .into(),
+            })
+            .collect();
+        let state = SoundscapeStateMessage { clips: clip_states };
+        let payload: Vec<u8> = to_vec_named(&state).unwrap();
+        agent
+            .publish(&self.output_plug, Some(&payload))
+            .expect("Failed to publish state/progress");
+    }
 }
