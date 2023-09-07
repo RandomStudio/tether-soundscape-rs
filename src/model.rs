@@ -29,6 +29,13 @@ pub enum ActionQueueItem {
     Stop(usize, Option<Duration>),
 }
 
+pub struct MessageStats {
+    pub last_clip_message: Option<SystemTime>,
+    pub last_scene_message: Option<SystemTime>,
+    pub last_state_message: Option<SystemTime>,
+    pub last_events_message: Option<SystemTime>,
+}
+
 pub struct Model {
     _request_loop_handle: JoinHandle<()>,
     // pub request_channel: (Sender<()>, Receiver<()>),
@@ -44,6 +51,7 @@ pub struct Model {
     pub tether: TetherAgent,
     pub tether_disabled: bool,
     pub remote_control: Option<RemoteControl>,
+    pub message_stats: MessageStats,
 }
 
 impl Model {
@@ -100,6 +108,12 @@ impl Model {
             tether,
             remote_control,
             tether_disabled: cli.tether_disable,
+            message_stats: MessageStats {
+                last_clip_message: None,
+                last_scene_message: None,
+                last_state_message: None,
+                last_events_message: None,
+            },
         }
     }
 
@@ -117,6 +131,7 @@ impl Model {
             let clip_name = x.name();
             if let Some(remote) = &self.remote_control {
                 remote.publish_event(SoundscapeEvent::ClipEnded(clip_name.into()), &self.tether);
+                self.message_stats.last_events_message = Some(SystemTime::now());
             }
             self.clips_playing.remove(i);
         }
@@ -160,6 +175,8 @@ impl Model {
             while let Some((plug_name, message)) = self.tether.check_messages() {
                 match remote_control.parse_instructions(&plug_name, &message) {
                     Ok(Instruction::Add(clip_name, should_loop, fade_ms, panning)) => {
+                        self.message_stats.last_clip_message = Some(SystemTime::now());
+
                         self.action_queue.push(ActionQueueItem::Play(
                             clip_name,
                             match fade_ms {
@@ -171,6 +188,8 @@ impl Model {
                         ));
                     }
                     Ok(Instruction::Remove(clip_name, fade_ms)) => {
+                        self.message_stats.last_clip_message = Some(SystemTime::now());
+
                         for clip in self
                             .clips_playing
                             .iter_mut()
@@ -188,6 +207,7 @@ impl Model {
                         }
                     }
                     Ok(Instruction::Scene(scene_pick_mode, clip_names, fade_ms)) => {
+                        self.message_stats.last_scene_message = Some(SystemTime::now());
                         match scene_pick_mode {
                             ScenePickMode::OnceAll => {
                                 if clip_names.len() == 0 {
@@ -294,7 +314,9 @@ impl Model {
         }
 
         if let Some(remote) = &mut self.remote_control {
-            remote.publish_state_if_ready(&self.tether, &self.clips_playing);
+            if remote.publish_state_if_ready(&self.tether, &self.clips_playing) {
+                self.message_stats.last_state_message = Some(SystemTime::now());
+            }
         }
     }
 }

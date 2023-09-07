@@ -106,7 +106,7 @@ ___
 - [x] Text-only mode
 - [x] Panning reimplemented: use https://docs.rs/rodio/latest/rodio/source/struct.ChannelVolume.html ?
 - [x] GUI show Tether enabled/connected status
-- [ ] Publish state regularly / events on events
+- [x] Publish state regularly / events on events
 - [ ] GUI show incoming messages and/or counts
 - [ ] GUI show output levels per channel somehow?
 - [ ] Allow MIDI to trigger clips (MIDI Mediator and/or directly)

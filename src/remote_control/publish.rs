@@ -33,7 +33,7 @@ pub enum SoundscapeEvent {
 }
 
 impl RemoteControl {
-    pub fn publish_state_if_ready(&mut self, agent: &TetherAgent, clips: &[ClipWithSink]) {
+    pub fn publish_state_if_ready(&mut self, agent: &TetherAgent, clips: &[ClipWithSink]) -> bool {
         let elapsed = self.last_update_sent.elapsed().unwrap();
 
         if elapsed <= self.state_send_interval {
@@ -42,7 +42,7 @@ impl RemoteControl {
                 elapsed.as_millis(),
                 self.state_send_interval.as_millis()
             );
-            return;
+            return false;
         }
 
         trace!("Ready to send state update");
@@ -69,6 +69,7 @@ impl RemoteControl {
         agent
             .publish(&self.state_output_plug, Some(&payload))
             .expect("failed to publish state/progress");
+        true
     }
 
     pub fn publish_event(&self, event: SoundscapeEvent, tether: &TetherAgent) {
