@@ -124,6 +124,7 @@ impl Model {
                 fade,
                 override_panning,
                 &self.output_stream_handle,
+                self.output_channels_used,
             );
             self.clips_playing.push(clip_with_sink);
         } else {

@@ -23,7 +23,7 @@ pub fn equalise_channel_volumes(output_channel_count: u32) -> Vec<f32> {
 pub fn simple_panning_channel_volumes(
     position: f32,
     spread: f32,
-    output_channel_count: u32,
+    output_channel_count: u16,
 ) -> Vec<f32> {
     let mut result: Vec<f32> = Vec::new();
     for i in 0..output_channel_count {
@@ -36,7 +36,7 @@ pub fn simple_panning_channel_volumes(
 
 /// Calculate a final set of per-channel volume levels in a "default case", suitable for a given
 /// channel count
-pub fn default_panning_channel_volumes(output_channel_count: u32) -> Vec<f32> {
+pub fn default_panning_channel_volumes(output_channel_count: u16) -> Vec<f32> {
     let position = ((output_channel_count as f32) - 1.0) / 2.;
     simple_panning_channel_volumes(position, 1.0, output_channel_count)
 }
@@ -48,7 +48,7 @@ pub fn default_panning_channel_volumes(output_channel_count: u32) -> Vec<f32> {
 pub fn provided_or_default_panning(
     message_provided_panning: Option<PanWithRange>,
     clip_default_panning: Option<PanWithRange>,
-    output_channel_count: u32,
+    output_channel_count: u16,
 ) -> Vec<f32> {
     debug!("Message provided panning: {:?}", message_provided_panning);
     debug!("Clip default panning: {:?}", clip_default_panning);

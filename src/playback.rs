@@ -43,6 +43,7 @@ impl ClipWithSink {
         fade_in: Option<Duration>,
         override_panning: Option<PanWithRange>,
         output_stream_handle: &OutputStreamHandle,
+        output_channels: u16,
     ) -> Self {
         let sink = Sink::try_new(output_stream_handle).expect("failed to create sink");
 
@@ -61,7 +62,7 @@ impl ClipWithSink {
             // let file = BufReader::new(File::open(sample.path()).unwrap());
             let source = ChannelVolume::new(
                 Decoder::new(file).unwrap(),
-                simple_panning_channel_volumes(position, spread, 2),
+                simple_panning_channel_volumes(position, spread, output_channels),
             );
             duration = source.total_duration();
 
