@@ -107,9 +107,17 @@ impl Model {
         for clip in &mut self.clips_playing {
             clip.update_progress();
         }
-        let completed = self.clips_playing.iter().position(|x| x.is_completed());
-        if let Some(i) = completed {
+        let completed = self
+            .clips_playing
+            .iter()
+            .enumerate()
+            .find(|(_i, x)| x.is_completed());
+        if let Some((i, x)) = completed {
             debug!("Removing clip index {}", i);
+            let clip_name = x.name();
+            if let Some(remote) = &self.remote_control {
+                remote.publish_event(SoundscapeEvent::ClipEnded(clip_name.into()), &self.tether);
+            }
             self.clips_playing.remove(i);
         }
     }
@@ -280,12 +288,6 @@ impl Model {
                             Some(duration) => clip.fade_out(duration),
                             None => clip.stop(),
                         };
-                        if let Some(remote) = &self.remote_control {
-                            remote.publish_event(
-                                SoundscapeEvent::ClipEnded(clip.name().into()),
-                                &self.tether,
-                            )
-                        }
                     }
                 }
             };
