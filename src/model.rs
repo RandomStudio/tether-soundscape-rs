@@ -13,6 +13,7 @@ use crate::{
     loader::SoundBank,
     playback::{ClipWithSink, PanWithRange},
     remote_control::{
+        publish::SoundscapeEvent,
         receive::{Instruction, ScenePickMode},
         RemoteControl,
     },
@@ -115,7 +116,7 @@ impl Model {
 
     pub fn play_one_clip(
         &mut self,
-        clip_name: String,
+        clip_name: &str,
         should_loop: bool,
         fade: Option<Duration>,
         override_panning: Option<PanWithRange>,
@@ -167,11 +168,15 @@ impl Model {
                             .iter_mut()
                             .filter(|x| x.name() == clip_name)
                         {
-                            if let Some(ms) = fade_ms {
-                                clip.fade_out(Duration::from_millis(ms));
-                            } else {
-                                clip.stop();
-                            }
+                            // if let Some(ms) = fade_ms {
+                            //     clip.fade_out(Duration::from_millis(ms));
+                            // } else {
+                            //     clip.stop();
+                            // }
+                            self.action_queue.push(ActionQueueItem::Stop(
+                                clip.id(),
+                                fade_ms.map(|fade| Duration::from_millis(fade)),
+                            ))
                         }
                     }
                     Ok(Instruction::Scene(scene_pick_mode, clip_names, fade_ms)) => {
@@ -264,7 +269,10 @@ impl Model {
         while let Some(command) = self.action_queue.pop() {
             match command {
                 ActionQueueItem::Play(clip_name, fade, should_loop, panning) => {
-                    self.play_one_clip(clip_name, should_loop, fade, panning);
+                    self.play_one_clip(&clip_name, should_loop, fade, panning);
+                    if let Some(remote) = &self.remote_control {
+                        remote.publish_event(SoundscapeEvent::ClipStarted(clip_name), &self.tether)
+                    }
                 }
                 ActionQueueItem::Stop(id, fade) => {
                     if let Some(clip) = self.clips_playing.iter_mut().find(|x| x.id() == id) {
@@ -272,6 +280,12 @@ impl Model {
                             Some(duration) => clip.fade_out(duration),
                             None => clip.stop(),
                         };
+                        if let Some(remote) = &self.remote_control {
+                            remote.publish_event(
+                                SoundscapeEvent::ClipEnded(clip.name().into()),
+                                &self.tether,
+                            )
+                        }
                     }
                 }
             };

@@ -7,7 +7,10 @@ use std::time::Duration;
 
 use egui::{Color32, ProgressBar, RichText, Ui};
 
-use crate::{model::Model, playback::ClipWithSink};
+use crate::{
+    model::{ActionQueueItem, Model},
+    playback::ClipWithSink,
+};
 
 pub fn render_local_controls(ui: &mut Ui, model: &mut Model) {
     ui.heading("Sample Bank");
@@ -15,64 +18,93 @@ pub fn render_local_controls(ui: &mut Ui, model: &mut Model) {
         ui.horizontal(|ui| {
             ui.label(sample.name());
             if ui.button("once").clicked() {
-                let clip_with_sink = ClipWithSink::new(
-                    model.clips_playing.len(),
-                    &sample,
+                // let clip_with_sink = ClipWithSink::new(
+                //     model.clips_playing.len(),
+                //     &sample,
+                //     false,
+                //     None,
+                //     None,
+                //     &model.output_stream_handle,
+                //     model.output_channels_used,
+                // );
+                // model.clips_playing.push(clip_with_sink);
+                model.action_queue.push(ActionQueueItem::Play(
+                    sample.name().into(),
+                    None,
                     false,
                     None,
-                    None,
-                    &model.output_stream_handle,
-                    model.output_channels_used,
-                );
-                model.clips_playing.push(clip_with_sink);
+                ));
             }
             if ui.button("once (fade 2s)").clicked() {
-                let clip_with_sink = ClipWithSink::new(
-                    model.clips_playing.len(),
-                    &sample,
+                // let clip_with_sink = ClipWithSink::new(
+                //     model.clips_playing.len(),
+                //     &sample,
+                //     false,
+                //     Some(Duration::from_millis(2000)),
+                //     None,
+                //     &model.output_stream_handle,
+                //     model.output_channels_used,
+                // );
+                // model.clips_playing.push(clip_with_sink);
+                model.action_queue.push(ActionQueueItem::Play(
+                    sample.name().into(),
+                    Some(Duration::from_secs(2)),
                     false,
-                    Some(Duration::from_millis(2000)),
                     None,
-                    &model.output_stream_handle,
-                    model.output_channels_used,
-                );
-                model.clips_playing.push(clip_with_sink);
+                ));
             }
             if ui.button("loop").clicked() {
-                let clip_with_sink = ClipWithSink::new(
-                    model.clips_playing.len(),
-                    &sample,
+                // let clip_with_sink = ClipWithSink::new(
+                //     model.clips_playing.len(),
+                //     &sample,
+                //     true,
+                //     None,
+                //     None,
+                //     &model.output_stream_handle,
+                //     model.output_channels_used,
+                // );
+                // model.clips_playing.push(clip_with_sink);
+                model.action_queue.push(ActionQueueItem::Play(
+                    sample.name().into(),
+                    None,
                     true,
                     None,
-                    None,
-                    &model.output_stream_handle,
-                    model.output_channels_used,
-                );
-                model.clips_playing.push(clip_with_sink);
+                ));
             }
             if ui.button("loop (fade 5s)").clicked() {
-                let clip_with_sink = ClipWithSink::new(
-                    model.clips_playing.len(),
-                    &sample,
-                    true,
+                // let clip_with_sink = ClipWithSink::new(
+                //     model.clips_playing.len(),
+                //     &sample,
+                //     true,
+                //     Some(Duration::from_secs(5)),
+                //     None,
+                //     &model.output_stream_handle,
+                //     model.output_channels_used,
+                // );
+                // model.clips_playing.push(clip_with_sink);
+                model.action_queue.push(ActionQueueItem::Play(
+                    sample.name().into(),
                     Some(Duration::from_secs(5)),
+                    true,
                     None,
-                    &model.output_stream_handle,
-                    model.output_channels_used,
-                );
-                model.clips_playing.push(clip_with_sink);
+                ));
             }
             if ui.button("stop").clicked() {
                 for clip in &model.clips_playing {
                     if clip.name() == sample.name() {
-                        clip.stop();
+                        model
+                            .action_queue
+                            .push(ActionQueueItem::Stop(clip.id(), None));
                     }
                 }
             }
             if ui.button("fade out(2s)").clicked() {
                 for clip in &mut model.clips_playing {
                     if clip.name() == sample.name() {
-                        clip.fade_out(Duration::from_secs(2));
+                        model.action_queue.push(ActionQueueItem::Stop(
+                            clip.id(),
+                            Some(Duration::from_secs(2)),
+                        ));
                     }
                 }
             }
@@ -104,7 +136,9 @@ pub fn render_vis(ui: &mut Ui, model: &mut Model) {
                 ui.label("🔁");
             }
             if ui.button("🗑").clicked() {
-                clip.stop();
+                model
+                    .action_queue
+                    .push(ActionQueueItem::Stop(clip.id(), None));
             }
             let brightness: u8 = (clip.current_volume() * 255.) as u8;
             let c = Color32::from_rgb(0, 0, brightness);

@@ -11,7 +11,7 @@ use super::RemoteControl;
 
 #[derive(Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct ClipPlayingEssentialState {
+struct ClipPlayingEssentialState {
     id: usize,
     name: String,
     progress: f32,
@@ -21,8 +21,15 @@ pub struct ClipPlayingEssentialState {
 }
 #[derive(Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct SoundscapeStateMessage {
+struct SoundscapeStateMessage {
     pub clips: Vec<ClipPlayingEssentialState>,
+}
+
+#[derive(Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub enum SoundscapeEvent {
+    ClipStarted(String),
+    ClipEnded(String),
 }
 
 impl RemoteControl {
@@ -61,8 +68,13 @@ impl RemoteControl {
         let payload: Vec<u8> = to_vec_named(&state).unwrap();
         agent
             .publish(&self.state_output_plug, Some(&payload))
-            .expect("Failed to publish state/progress");
+            .expect("failed to publish state/progress");
     }
 
-    pub fn publish_event() {}
+    pub fn publish_event(&self, event: SoundscapeEvent, tether: &TetherAgent) {
+        let payload = to_vec_named(&event).unwrap();
+        tether
+            .publish(&self.events_output_plug, Some(&payload))
+            .expect("failed to publish event");
+    }
 }
