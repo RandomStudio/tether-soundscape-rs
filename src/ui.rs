@@ -5,7 +5,7 @@
 
 use std::time::Duration;
 
-use egui::{Color32, ProgressBar, Ui};
+use egui::{Color32, ProgressBar, RichText, Ui};
 
 use crate::{model::Model, playback::ClipWithSink};
 
@@ -20,6 +20,7 @@ pub fn render_local_controls(ui: &mut Ui, model: &mut Model) {
                     &sample,
                     false,
                     None,
+                    None,
                     &model.output_stream_handle,
                 );
                 model.clips_playing.push(clip_with_sink);
@@ -30,6 +31,7 @@ pub fn render_local_controls(ui: &mut Ui, model: &mut Model) {
                     &sample,
                     false,
                     Some(Duration::from_millis(2000)),
+                    None,
                     &model.output_stream_handle,
                 );
                 model.clips_playing.push(clip_with_sink);
@@ -39,6 +41,7 @@ pub fn render_local_controls(ui: &mut Ui, model: &mut Model) {
                     model.clips_playing.len(),
                     &sample,
                     true,
+                    None,
                     None,
                     &model.output_stream_handle,
                 );
@@ -50,6 +53,7 @@ pub fn render_local_controls(ui: &mut Ui, model: &mut Model) {
                     &sample,
                     true,
                     Some(Duration::from_secs(5)),
+                    None,
                     &model.output_stream_handle,
                 );
                 model.clips_playing.push(clip_with_sink);
@@ -73,10 +77,18 @@ pub fn render_local_controls(ui: &mut Ui, model: &mut Model) {
 }
 
 pub fn render_vis(ui: &mut Ui, model: &mut Model) {
-    ui.heading(format!(
-        "currently playing: x{} clips",
-        model.clips_playing.len()
-    ));
+    ui.heading("Status");
+    if model.tether.is_connected() {
+        ui.label(RichText::new("Tether connected ✅").color(Color32::GREEN));
+    } else {
+        ui.label(RichText::new("Tether not (yet) connected x").color(Color32::RED));
+    }
+    ui.horizontal(|ui| {
+        ui.label("Output channels in use:");
+        ui.label(RichText::new(format!("x{}", model.output_channels_used)).strong());
+    });
+    ui.separator();
+    ui.heading(format!("Playing: x{} clips", model.clips_playing.len()));
     for clip in model.clips_playing.iter() {
         ui.horizontal(|ui| {
             ui.label(format!("#{}: {}", clip.id(), clip.name()));

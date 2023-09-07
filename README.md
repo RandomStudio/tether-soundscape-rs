@@ -104,8 +104,11 @@ ___
 - [x] Fade in/out should use Phase/Tweens
 - [x] Volume respected from sample bank?
 - [x] Text-only mode
-- [ ] Publish state regularly / events on events
 - [ ] Panning reimplemented: use https://docs.rs/rodio/latest/rodio/source/struct.ChannelVolume.html ?
+- [ ] GUI show Tether enabled/connected status
+- [ ] GUI show incoming messages and/or counts
+- [ ] GUI show output levels per channel somehow?
+- [ ] Publish state regularly / events on events
 - [ ] Allow MIDI to trigger clips (MIDI Mediator and/or directly)
 - [ ] Allow bank to be created, edited, saved directly from GUI, start from "blank" or load demo if nothing
 - [ ] Drag and drop samples into bank

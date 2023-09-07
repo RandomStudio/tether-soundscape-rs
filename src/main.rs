@@ -1,9 +1,9 @@
 use clap::Parser;
 
 use env_logger::Env;
-use log::info;
+use log::{info, warn};
 
-use rodio::OutputStream;
+use rodio::{cpal::traits::HostTrait, DeviceTrait, OutputStream};
 use std::time::Duration;
 use ui::{render_local_controls, render_vis};
 
@@ -27,9 +27,54 @@ fn main() {
         .filter_module("paho_mqtt", log::LevelFilter::Warn)
         .init();
 
-    let (_output_stream, stream_handle) = OutputStream::try_default().unwrap();
+    let host = rodio::cpal::default_host();
+    let devices = host
+        .output_devices()
+        .expect("failed to retrieve host audio devices");
 
-    let mut model = Model::new(&cli, stream_handle);
+    let device = match &cli.preferred_output_device {
+        None => host
+            .default_output_device()
+            .expect("failed to get default output device"),
+        Some(preferred_name) => devices
+            .enumerate()
+            .find(|(i, cpal_device)| {
+                let rodio_device: &rodio::Device = cpal_device.into();
+
+                let channels = rodio_device.default_output_config().unwrap().channels();
+
+                let name = rodio_device.name().unwrap_or(String::from("unknown"));
+
+                info!(
+                    "Device #{}: \"{}\" with x{} output channels",
+                    i, name, channels
+                );
+
+                return &name == preferred_name;
+            })
+            .map(|(_usize, device)| device)
+            .expect(&format!(
+                "failed to find device by preferred name \"{}\"",
+                preferred_name
+            )),
+    };
+
+    match device.name() {
+        Err(_) => warn!("Device was set, but failed to retrieve name"),
+        Ok(name) => info!("Device was set; name \"{}\"", name),
+    };
+
+    let (_output_stream, stream_handle) =
+        OutputStream::try_from_device(&device).expect("failed to open device");
+
+    let mut model = Model::new(
+        &cli,
+        stream_handle,
+        match cli.output_channels {
+            Some(c) => c,
+            None => device.default_output_config().unwrap().channels(),
+        },
+    );
 
     if cli.headless_mode {
         info!("Running headless mode; Ctrl+C to quit");

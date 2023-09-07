@@ -7,7 +7,9 @@ use std::{
 use rodio::{source::ChannelVolume, Decoder, OutputStreamHandle, Sink, Source};
 use tween::{Linear, Tween, Tweener};
 
-use crate::{loader::AudioClipOnDisk, remote_control::PanWithRange};
+use crate::{
+    loader::AudioClipOnDisk, panning::simple_panning_channel_volumes, remote_control::PanWithRange,
+};
 
 // use crate::utils::millis_to_frames;
 
@@ -39,24 +41,39 @@ impl ClipWithSink {
         sample: &AudioClipOnDisk,
         should_loop: bool,
         fade_in: Option<Duration>,
+        override_panning: Option<PanWithRange>,
         output_stream_handle: &OutputStreamHandle,
     ) -> Self {
         let sink = Sink::try_new(output_stream_handle).expect("failed to create sink");
 
         let file = BufReader::new(File::open(sample.path()).unwrap());
-        let source = Decoder::new(file).unwrap();
-        let duration = source.total_duration();
+        // let source = Decoder::new(file).unwrap();
+        // let duration = source.total_duration();
+        let mut duration = None;
 
-        if let Some(panning) = sample.panning() {
-            let (position, spread) = panning;
-            let file = BufReader::new(File::open(sample.path()).unwrap());
-            let source = ChannelVolume::new(Decoder::new(file).unwrap(), vec![1.0, 0.]);
+        let panning: Option<PanWithRange> = if override_panning.is_some() {
+            override_panning
+        } else {
+            sample.panning()
+        };
+
+        if let Some((position, spread)) = panning {
+            // let file = BufReader::new(File::open(sample.path()).unwrap());
+            let source = ChannelVolume::new(
+                Decoder::new(file).unwrap(),
+                simple_panning_channel_volumes(position, spread, 2),
+            );
+            duration = source.total_duration();
+
             if should_loop {
                 sink.append(source.repeat_infinite());
             } else {
                 sink.append(source);
             }
         } else {
+            let source = Decoder::new(file).unwrap();
+            duration = source.total_duration();
+
             if should_loop {
                 sink.append(source.repeat_infinite());
             } else {

@@ -30,13 +30,12 @@ pub struct Cli {
     pub tether_host: std::net::IpAddr,
 
     /// Preferred output device name; use host default device if not supplied
-    #[arg(long = "outputDevice")]
+    #[arg(long = "output.device")]
     pub preferred_output_device: Option<String>,
 
-    /// MultiChannel mode expects mono clips only; allows "panning"
-    /// within 2 or more channels
-    #[arg(long = "multiChannel")]
-    pub multichannel_mode: bool,
+    /// How many channels to use for output; use max available for the device if omitted
+    #[arg(long = "output.channels")]
+    pub output_channels: Option<u16>,
 
     #[arg(long = "loglevel",default_value_t=String::from("info"))]
     pub log_level: String,

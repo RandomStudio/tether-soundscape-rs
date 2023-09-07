@@ -21,8 +21,8 @@ use crate::{
 
 pub enum ActionQueueItem {
     /// Start playback: name, optional fade duration, should_loop,
-    /// optional per-channel-volume
-    Play(String, Option<Duration>, bool, Option<Vec<PanWithRange>>),
+    /// optional pan position with range
+    Play(String, Option<Duration>, bool, Option<PanWithRange>),
     /// Stop/fade out: id in currently_playing Vec, optional fade duration
     Stop(usize, Option<Duration>),
 }
@@ -32,6 +32,7 @@ pub struct Model {
     // pub request_channel: (Sender<()>, Receiver<()>),
     pub request_rx: Receiver<()>,
     pub output_stream_handle: OutputStreamHandle,
+    pub output_channels_used: u16,
     pub sound_bank: SoundBank,
     pub clips_playing: Vec<ClipWithSink>,
     // clips_playing: Vec<CurrentlyPlayingClip>,
@@ -39,26 +40,17 @@ pub struct Model {
     pub action_queue: Vec<ActionQueueItem>,
     pub last_state_publish: SystemTime,
     pub settings: ManualSettings,
-    // multi_channel_mode: bool,
     pub tether: TetherAgent,
     pub remote_control: Option<RemoteControl>,
 }
 
 impl Model {
-    pub fn new(cli: &Cli, output_stream_handle: OutputStreamHandle) -> Model {
+    pub fn new(
+        cli: &Cli,
+        output_stream_handle: OutputStreamHandle,
+        output_channels_used: u16,
+    ) -> Model {
         let settings = ManualSettings::defaults();
-
-        if cli.multichannel_mode {
-            info!("Multichannel mode; use mono clips only");
-        } else {
-            info!("Stereo playback mode enabled; will disable multi-channel panning features");
-        }
-
-        // let mode = if cli.multichannel_mode {
-        //     "MULTICHANNEL"
-        // } else {
-        //     "STEREO"
-        // };
 
         let sound_bank = SoundBank::new(Path::new("test.json"));
         // let duration_range = get_duration_range(sound_bank.clips());
@@ -90,6 +82,7 @@ impl Model {
             request_rx: rx,
             _request_loop_handle: request_loop_handle,
             output_stream_handle,
+            output_channels_used,
             sound_bank,
             clips_playing: Vec::new(),
             action_queue: Vec::new(),
@@ -111,7 +104,13 @@ impl Model {
         }
     }
 
-    pub fn play_one_clip(&mut self, clip_name: String, should_loop: bool, fade: Option<Duration>) {
+    pub fn play_one_clip(
+        &mut self,
+        clip_name: String,
+        should_loop: bool,
+        fade: Option<Duration>,
+        override_panning: Option<PanWithRange>,
+    ) {
         if let Some(sample) = self
             .sound_bank
             .clips()
@@ -123,6 +122,7 @@ impl Model {
                 &sample,
                 should_loop,
                 fade,
+                override_panning,
                 &self.output_stream_handle,
             );
             self.clips_playing.push(clip_with_sink);
@@ -142,7 +142,7 @@ impl Model {
         if let Some(remote_control) = &mut self.remote_control {
             while let Some((plug_name, message)) = self.tether.check_messages() {
                 match remote_control.parse_instructions(&plug_name, &message) {
-                    Ok(Instruction::Add(clip_name, should_loop, fade_ms, _panning)) => {
+                    Ok(Instruction::Add(clip_name, should_loop, fade_ms, panning)) => {
                         self.action_queue.push(ActionQueueItem::Play(
                             clip_name,
                             match fade_ms {
@@ -150,9 +150,8 @@ impl Model {
                                 None => None,
                             },
                             should_loop,
-                            None,
+                            panning,
                         ));
-                        // self.play_one_clip(clip_name, should_loop, fade_ms);
                     }
                     Ok(Instruction::Remove(clip_name, fade_ms)) => {
                         for clip in self
@@ -256,8 +255,8 @@ impl Model {
         }
         while let Some(command) = self.action_queue.pop() {
             match command {
-                ActionQueueItem::Play(clip_name, fade, should_loop, _panning) => {
-                    self.play_one_clip(clip_name, should_loop, fade);
+                ActionQueueItem::Play(clip_name, fade, should_loop, panning) => {
+                    self.play_one_clip(clip_name, should_loop, fade, panning);
                 }
                 ActionQueueItem::Stop(id, fade) => {
                     if let Some(clip) = self.clips_playing.iter_mut().find(|x| x.id() == id) {

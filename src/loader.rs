@@ -5,8 +5,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::remote_control::PanWithRange;
 
-// use crate::remote_control::SimplePanning;
-
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SoundBank {
