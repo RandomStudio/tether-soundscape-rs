@@ -1,6 +1,7 @@
 use std::{
     fs::File,
     io::BufReader,
+    sync::mpsc,
     time::{Duration, SystemTime},
 };
 
@@ -29,6 +30,8 @@ pub struct ClipWithSink {
     duration: Option<Duration>,
     started: SystemTime,
     last_known_progress: Option<f32>,
+    last_known_sample: Option<i16>,
+    rx_sample: mpsc::Receiver<i16>,
     is_looping: bool,
     name: String,
     current_phase: PlaybackPhase,
@@ -58,12 +61,15 @@ impl ClipWithSink {
             sample.panning()
         };
 
+        let (tx, rx) = mpsc::sync_channel(64);
+
         if let Some((position, spread)) = panning {
             // let file = BufReader::new(File::open(sample.path()).unwrap());
             let source = ChannelVolume::new(
                 Decoder::new(file).unwrap(),
                 simple_panning_channel_volumes(position, spread, output_channels),
             );
+
             duration = source.total_duration();
 
             if should_loop {
@@ -72,7 +78,23 @@ impl ClipWithSink {
                 sink.append(source);
             }
         } else {
-            let source = Decoder::new(file).unwrap();
+            let source =
+                Decoder::new(file)
+                    .unwrap()
+                    .periodic_access(Duration::from_millis(40), move |s| {
+                        let mut x = s.by_ref().peekable();
+                        let i = x.peek();
+
+                        if let Some(i) = i {
+                            let _attempt = tx.try_send(*i);
+                        }
+
+                        // match i {
+                        //     Some(length) => println!("current_frame_len: {}", length),
+                        //     None => {}
+                        // };
+                    });
+
             duration = source.total_duration();
 
             if should_loop {
@@ -96,6 +118,8 @@ impl ClipWithSink {
             duration,
             started: SystemTime::now(),
             last_known_progress: Some(0.),
+            last_known_sample: None,
+            rx_sample: rx,
             name: String::from(sample.name()),
             current_phase: PlaybackPhase::Attack(stored_tweener),
             current_volume: 0.,
@@ -141,10 +165,19 @@ impl ClipWithSink {
             let progress = (elapsed.as_millis() % d.as_millis()) as f32 / d.as_millis() as f32;
             self.last_known_progress = Some(progress);
         }
+
+        // Check receiver for sample updates...
+        while let Ok(s) = self.rx_sample.try_recv() {
+            self.last_known_sample = Some(s);
+        }
     }
 
     pub fn progress(&self) -> Option<f32> {
         self.last_known_progress
+    }
+
+    pub fn sample(&self) -> Option<i16> {
+        self.last_known_sample
     }
 
     pub fn stop(&self) {
