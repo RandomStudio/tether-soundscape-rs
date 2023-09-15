@@ -5,6 +5,7 @@ use std::{
     time::{Duration, SystemTime},
 };
 
+use circular_buffer::CircularBuffer;
 use rodio::{source::ChannelVolume, Decoder, OutputStreamHandle, Sink, Source};
 use tween::{Linear, Tween, Tweener};
 
@@ -30,7 +31,7 @@ pub struct ClipWithSink {
     duration: Option<Duration>,
     started: SystemTime,
     last_known_progress: Option<f32>,
-    last_known_sample: Option<i16>,
+    sample_circular_buffer: CircularBuffer<8, i16>,
     rx_sample: mpsc::Receiver<i16>,
     is_looping: bool,
     name: String,
@@ -63,10 +64,12 @@ impl ClipWithSink {
 
         let (tx, rx) = mpsc::sync_channel(64);
 
+        let decoder = Decoder::new(file).unwrap();
+
         if let Some((position, spread)) = panning {
             // let file = BufReader::new(File::open(sample.path()).unwrap());
             let source = ChannelVolume::new(
-                Decoder::new(file).unwrap(),
+                decoder,
                 simple_panning_channel_volumes(position, spread, output_channels),
             );
 
@@ -78,22 +81,11 @@ impl ClipWithSink {
                 sink.append(source);
             }
         } else {
-            let source =
-                Decoder::new(file)
-                    .unwrap()
-                    .periodic_access(Duration::from_millis(40), move |s| {
-                        let mut x = s.by_ref().peekable();
-                        let i = x.peek();
-
-                        if let Some(i) = i {
-                            let _attempt = tx.try_send(*i);
-                        }
-
-                        // match i {
-                        //     Some(length) => println!("current_frame_len: {}", length),
-                        //     None => {}
-                        // };
-                    });
+            let source = decoder.periodic_access(Duration::from_millis(40), move |s| {
+                for amp in s.take(s.channels() as usize) {
+                    tx.try_send(amp);
+                }
+            });
 
             duration = source.total_duration();
 
@@ -118,7 +110,7 @@ impl ClipWithSink {
             duration,
             started: SystemTime::now(),
             last_known_progress: Some(0.),
-            last_known_sample: None,
+            sample_circular_buffer: CircularBuffer::new(),
             rx_sample: rx,
             name: String::from(sample.name()),
             current_phase: PlaybackPhase::Attack(stored_tweener),
@@ -166,9 +158,9 @@ impl ClipWithSink {
             self.last_known_progress = Some(progress);
         }
 
-        // Check receiver for sample updates...
-        while let Ok(s) = self.rx_sample.try_recv() {
-            self.last_known_sample = Some(s);
+        //Check receiver for sample updates...
+        if let Ok(s) = self.rx_sample.try_recv() {
+            self.sample_circular_buffer.push_back(s.abs());
         }
     }
 
@@ -176,8 +168,13 @@ impl ClipWithSink {
         self.last_known_progress
     }
 
-    pub fn sample(&self) -> Option<i16> {
-        self.last_known_sample
+    pub fn average_volume(&self) -> f32 {
+        let total: f32 = self
+            .sample_circular_buffer
+            .iter()
+            .map(|i| (*i).abs() as f32 / (i16::MAX as f32 / 2.0))
+            .sum();
+        total / self.sample_circular_buffer.len() as f32
     }
 
     pub fn stop(&self) {

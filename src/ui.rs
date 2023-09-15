@@ -175,10 +175,7 @@ pub fn render_vis(ui: &mut Ui, model: &mut Model) {
         });
         ui.horizontal(|ui| {
             ui.label("Volume");
-            ui.add(
-                ProgressBar::new(clip.sample().unwrap_or(0).abs() as f32 / i16::MAX as f32)
-                    .fill(Color32::GREEN),
-            );
+            ui.add(ProgressBar::new(clip.average_volume()).fill(Color32::GREEN));
         });
     }
 }
