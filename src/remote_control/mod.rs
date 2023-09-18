@@ -6,7 +6,7 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-use tether_agent::{PlugDefinition, PlugOptionsBuilder, TetherAgent};
+use tether_agent::{build_topic, PlugDefinition, PlugOptionsBuilder, TetherAgent};
 
 pub struct RemoteControl {
     state_output_plug: PlugDefinition,
@@ -21,14 +21,23 @@ pub struct RemoteControl {
 impl RemoteControl {
     pub fn new(
         tether_agent: &TetherAgent,
+        override_subscribe_id: &Option<String>,
         state_send_interval: Duration,
         state_max_empty: usize,
     ) -> Self {
         let mut input_plugs: HashMap<String, PlugDefinition> = HashMap::new();
+
+        let (role, _id) = tether_agent.description();
+        let id = match override_subscribe_id {
+            Some(s) => String::from(s),
+            None => String::from("+"),
+        };
+
         input_plugs.insert(
             "clipCommands".into(),
             PlugOptionsBuilder::create_input("clipCommands")
                 .qos(2)
+                .topic(&build_topic("+".into(), &id, "clipCommands"))
                 .build(tether_agent)
                 .expect("failed to create clipCommands Input"), // tether_agent
                                                                 //     .create_input_plug("clipCommands", Some(2), None)
@@ -38,6 +47,7 @@ impl RemoteControl {
             "scenes".into(),
             PlugOptionsBuilder::create_input("scenes")
                 .qos(2)
+                .topic(&build_topic("+".into(), &id, "scenes"))
                 .build(tether_agent)
                 .expect("failed to create scenes Input"), // tether_agent
                                                           //     .create_input_plug("scenes", Some(2), None)
@@ -47,10 +57,9 @@ impl RemoteControl {
             "globalControls".into(),
             PlugOptionsBuilder::create_input("globalControls")
                 .qos(2)
+                .topic(&build_topic("+".into(), &id, "globalControls"))
                 .build(tether_agent)
                 .expect("failed to create globalCommands Input"), // tether_agent
-                                                                  //     .create_input_plug("globalControls", Some(2), None)
-                                                                  //     .unwrap(),
         );
 
         let state_output_plug = PlugOptionsBuilder::create_output("state")

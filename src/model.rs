@@ -73,6 +73,7 @@ impl Model {
         } else {
             tether_options
                 .host(&cli.tether_host.to_string())
+                .id(&cli.tether_publish_id)
                 .auto_connect(true)
                 .build()
                 .expect("failed to connect Tether")
@@ -83,6 +84,7 @@ impl Model {
         } else {
             Some(RemoteControl::new(
                 &tether,
+                &cli.tether_subscribe_id,
                 Duration::from_millis(cli.state_interval),
                 cli.state_max_empty,
             ))

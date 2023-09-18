@@ -109,8 +109,8 @@ ___
 - [x] Demonstrate running (headless?) on Raspberry Pi
 - [ ] Volume should be overrideable (as is the case for panning) in messages
 - [ ] Refine the panning position/spread format and document it. Should panning be normalised or in range [0;channels-1]? Should spread have a minimum of 1 (="only target channel or adding up to 1 if between two channels")?
-- [ ] Must be able to specify Group/ID for Tether (publishing)
-- [ ] Allow input plugs to be subscribed to with a specified group (optional), so `+/someGroup/clipCommands` rather than the default `+/+/clipCommands`, and also publish on `soundscape/someGroup/state` 
+- [x] Must be able to specify Group/ID for Tether (publishing)
+- [x] Allow input plugs to be subscribed to with a specified group (optional), so `+/someGroup/clipCommands` rather than the default `+/+/clipCommands`, and also publish on `soundscape/someGroup/state` 
 - [ ] Stream/global level instructions, e.g. "play", "pause" (all), "silenceAll", "master volume", etc.
 - [ ] Allow MIDI to trigger clips (MIDI Mediator and/or directly)
 - [ ] Allow bank to be created, edited, saved directly from GUI, start from "blank" or load demo if nothing

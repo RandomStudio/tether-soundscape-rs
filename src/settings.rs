@@ -27,6 +27,15 @@ pub struct Cli {
     #[arg(long = "tether.host", default_value_t=TETHER_HOST)]
     pub tether_host: std::net::IpAddr,
 
+    /// ID/Group to use when publishing messages (state, events)
+    #[arg(long = "tether.publish.id", default_value_t=String::from("any"))]
+    pub tether_publish_id: String,
+
+    /// ID/Group to use for remote control subscription. Useful if you need to restrict
+    /// which controller agent you "listen" to. By default, will use wildcard (+)
+    #[arg(long = "tether.subscribe.id")]
+    pub tether_subscribe_id: Option<String>,
+
     /// Preferred output device name; use host default device if not supplied
     #[arg(long = "output.device")]
     pub preferred_output_device: Option<String>,
