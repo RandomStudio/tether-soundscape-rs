@@ -16,8 +16,14 @@ pub enum ScenePickMode {
 
 type FadeDurationMS = u64;
 pub enum Instruction {
-    // Clip name, should_loop, optional fade duration, optional panning
-    Add(ClipName, bool, Option<FadeDurationMS>, Option<PanWithRange>),
+    // Clip name, should_loop, optional volume (override), fade duration, optional panning
+    Add(
+        ClipName,
+        bool,
+        Option<f32>,
+        Option<FadeDurationMS>,
+        Option<PanWithRange>,
+    ),
     // Clip name, option fade duration
     Remove(ClipName, Option<FadeDurationMS>),
     Scene(ScenePickMode, Vec<ClipName>, Option<FadeDurationMS>),
@@ -31,6 +37,7 @@ pub struct SingleClipMessage {
     pub fade_duration: Option<FadeDurationMS>,
     pub pan_position: Option<f32>,
     pub pan_spread: Option<f32>,
+    pub volume: Option<f32>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -74,12 +81,14 @@ impl RemoteControl {
                             "hit" => Ok(Instruction::Add(
                                 parsed.clip_name,
                                 false,
+                                parsed.volume,
                                 parsed.fade_duration,
                                 panning,
                             )),
                             "add" => Ok(Instruction::Add(
                                 parsed.clip_name,
                                 true,
+                                parsed.volume,
                                 parsed.fade_duration,
                                 panning,
                             )),

@@ -40,6 +40,7 @@ impl ClipWithSink {
         id: usize,
         sample: &AudioClipOnDisk,
         should_loop: bool,
+        override_volume: Option<f32>,
         fade_in: Option<Duration>,
         override_panning: Option<PanWithRange>,
         output_stream_handle: &OutputStreamHandle,
@@ -84,7 +85,7 @@ impl ClipWithSink {
         let tween: Box<dyn Tween<f32> + Send + Sync> = Box::new(Linear);
         let stored_tweener = Tweener::new(
             0.,
-            sample.volume().unwrap_or(1.0),
+            parse_optional_volume(sample.volume(), override_volume),
             fade_in.unwrap_or(Duration::from_millis(8)).as_millis(),
             tween,
         );
@@ -175,5 +176,12 @@ impl ClipWithSink {
 
     pub fn phase(&self) -> &PlaybackPhase {
         &self.current_phase
+    }
+}
+
+fn parse_optional_volume(sample_volume: Option<f32>, override_volume: Option<f32>) -> f32 {
+    match override_volume {
+        Some(v) => v,
+        None => sample_volume.unwrap_or(1.0),
     }
 }

@@ -28,6 +28,7 @@ pub fn render_local_controls(ui: &mut Ui, model: &mut Model) {
                 model.action_queue.push(ActionQueueItem::Play(
                     sample.name().into(),
                     None,
+                    None,
                     false,
                     None,
                 ));
@@ -45,6 +46,7 @@ pub fn render_local_controls(ui: &mut Ui, model: &mut Model) {
                 // model.clips_playing.push(clip_with_sink);
                 model.action_queue.push(ActionQueueItem::Play(
                     sample.name().into(),
+                    None,
                     Some(Duration::from_secs(2)),
                     false,
                     None,
@@ -64,6 +66,7 @@ pub fn render_local_controls(ui: &mut Ui, model: &mut Model) {
                 model.action_queue.push(ActionQueueItem::Play(
                     sample.name().into(),
                     None,
+                    None,
                     true,
                     None,
                 ));
@@ -81,6 +84,7 @@ pub fn render_local_controls(ui: &mut Ui, model: &mut Model) {
                 // model.clips_playing.push(clip_with_sink);
                 model.action_queue.push(ActionQueueItem::Play(
                     sample.name().into(),
+                    None,
                     Some(Duration::from_secs(5)),
                     true,
                     None,

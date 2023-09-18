@@ -22,9 +22,15 @@ use crate::{
 };
 
 pub enum ActionQueueItem {
-    /// Start playback: name, optional fade duration, should_loop,
+    /// Start playback: name, optional volume override, optional fade duration, should_loop,
     /// optional pan position with range
-    Play(String, Option<Duration>, bool, Option<PanWithRange>),
+    Play(
+        String,
+        Option<f32>,
+        Option<Duration>,
+        bool,
+        Option<PanWithRange>,
+    ),
     /// Stop/fade out: id in currently_playing Vec, optional fade duration
     Stop(usize, Option<Duration>),
 }
@@ -145,6 +151,7 @@ impl Model {
         &mut self,
         clip_name: &str,
         should_loop: bool,
+        volume_override: Option<f32>,
         fade: Option<Duration>,
         override_panning: Option<PanWithRange>,
     ) {
@@ -158,6 +165,7 @@ impl Model {
                 self.clips_playing.len(),
                 &sample,
                 should_loop,
+                volume_override,
                 fade,
                 override_panning,
                 &self.output_stream_handle,
@@ -178,11 +186,12 @@ impl Model {
         if let Some(remote_control) = &mut self.remote_control {
             while let Some((plug_name, message)) = self.tether.check_messages() {
                 match remote_control.parse_instructions(&plug_name, &message) {
-                    Ok(Instruction::Add(clip_name, should_loop, fade_ms, panning)) => {
+                    Ok(Instruction::Add(clip_name, should_loop, volume, fade_ms, panning)) => {
                         self.message_stats.last_clip_message = Some(SystemTime::now());
 
                         self.action_queue.push(ActionQueueItem::Play(
                             clip_name,
+                            volume,
                             match fade_ms {
                                 Some(ms) => Some(Duration::from_millis(ms)),
                                 None => None,
@@ -226,6 +235,7 @@ impl Model {
                                     for name in clip_names {
                                         self.action_queue.push(ActionQueueItem::Play(
                                             name,
+                                            None,
                                             match fade_ms {
                                                 Some(ms) => Some(Duration::from_millis(ms)),
                                                 None => None,
@@ -268,6 +278,7 @@ impl Model {
                                     for name in to_add {
                                         self.action_queue.push(ActionQueueItem::Play(
                                             name.into(),
+                                            None,
                                             optional_ms_to_duration(fade_ms),
                                             true,
                                             None,
@@ -285,6 +296,7 @@ impl Model {
                                 let pick_name = pick_random_clip(clip_names);
                                 self.action_queue.push(ActionQueueItem::Play(
                                     pick_name,
+                                    None,
                                     optional_ms_to_duration(fade_ms),
                                     false,
                                     None,
@@ -300,8 +312,8 @@ impl Model {
         }
         while let Some(command) = self.action_queue.pop() {
             match command {
-                ActionQueueItem::Play(clip_name, fade, should_loop, panning) => {
-                    self.play_one_clip(&clip_name, should_loop, fade, panning);
+                ActionQueueItem::Play(clip_name, volume, fade, should_loop, panning) => {
+                    self.play_one_clip(&clip_name, should_loop, volume, fade, panning);
                     if let Some(remote) = &self.remote_control {
                         remote.publish_event(SoundscapeEvent::ClipStarted(clip_name), &self.tether)
                     }
