@@ -72,7 +72,7 @@ impl RemoteControl {
         // Check if we have already sent too many "zero length" states
         if *no_clips_playing {
             if let Some(count) = self.count_empty_state_sends {
-                if count > self.state_max_empty {
+                if count > self.state_max_empty && self.state_max_empty > 0 {
                     return false;
                 }
                 self.count_empty_state_sends = Some(count + 1);
