@@ -27,7 +27,6 @@ impl RemoteControl {
     ) -> Self {
         let mut input_plugs: HashMap<String, PlugDefinition> = HashMap::new();
 
-        let (role, _id) = tether_agent.description();
         let id = match override_subscribe_id {
             Some(s) => String::from(s),
             None => String::from("+"),

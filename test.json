@@ -12,8 +12,7 @@
     },
     {
       "name": "frog",
-      "path": "demo/frog.wav",
-      "volume": 0.3
+      "path": "demo/frog.wav"
     },
     {
       "name": "frogLeft",

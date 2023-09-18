@@ -1,23 +1,10 @@
 use crate::utils::map_range;
 
-// pub fn equalise_channel_volumes(output_channel_count: u32) -> Vec<f32> {
-//     let mut result: Vec<f32> = Vec::new();
-//     let max_volume = 1.0 / (output_channel_count as f32);
-//     for _i in 0..output_channel_count {
-//         result.push(max_volume);
-//     }
-//     if result.len() != output_channel_count as usize {
-//         panic!(
-//             "Per-channel vector should have {} values, got {}",
-//             output_channel_count,
-//             result.len()
-//         );
-//     }
-//     result
-// }
-
 /// Calculates a final set of per-channel volume levels, given a "position" and a "spread" value,
-/// as well as the number of output channels available
+/// as well as the number of output channels available.
+///
+/// `position` is a value in the range [0; output_channel_count - 1]. So, in a 4 channel setup, position 3.0 would be "full right".
+/// `spread` is a multiple of the "width" of a channel. So, `0.0` means that the signal will be as focussed as possible, i.e. "1 channel width".
 pub fn simple_panning_channel_volumes(
     position: f32,
     spread: f32,
@@ -25,45 +12,90 @@ pub fn simple_panning_channel_volumes(
 ) -> Vec<f32> {
     let mut result: Vec<f32> = Vec::new();
     for i in 0..output_channel_count {
-        let distance = (position - (i as f32)).abs();
-        let this_channel_volume = f32::max(map_range(distance, 0. ..spread, 1.0..0.), 0.);
+        let distance = (position - i as f32).abs();
+        let this_channel_volume = f32::max(map_range(distance, 0. ..(1. + spread), 1.0..0.), 0.);
         result.push(this_channel_volume);
     }
     result
 }
 
-// /// Calculate a final set of per-channel volume levels in a "default case", suitable for a given
-// /// channel count
-// pub fn default_panning_channel_volumes(output_channel_count: u16) -> Vec<f32> {
-//     let position = ((output_channel_count as f32) - 1.0) / 2.;
-//     simple_panning_channel_volumes(position, 1.0, output_channel_count)
-// }
+#[cfg(test)]
+#[test]
+fn zero_distance_is_max_volume() {
+    let output_channel_count: u16 = 2;
 
-// /// Three possible levels (higher override lower):
-// /// - Panning provided by Tether Message
-// /// - Panning provided from clip settings
-// /// - None provided; use default (equalise channels)
-// pub fn provided_or_default_panning(
-//     message_provided_panning: Option<PanWithRange>,
-//     clip_default_panning: Option<PanWithRange>,
-//     output_channel_count: u16,
-// ) -> Vec<f32> {
-//     debug!("Message provided panning: {:?}", message_provided_panning);
-//     debug!("Clip default panning: {:?}", clip_default_panning);
-//     match message_provided_panning {
-//         Some((position, spread)) => {
-//             debug!("Use message provided panning");
-//             simple_panning_channel_volumes(position, spread, output_channel_count)
-//         }
-//         None => match clip_default_panning {
-//             Some((position, spread)) => {
-//                 debug!("Use clip default panning");
-//                 simple_panning_channel_volumes(position, spread, output_channel_count)
-//             }
-//             None => {
-//                 debug!("No overrides; use equalised channels");
-//                 default_panning_channel_volumes(output_channel_count)
-//             }
-//         },
-//     }
-// }
+    assert_eq!(
+        simple_panning_channel_volumes(0., 0., output_channel_count),
+        vec![1.0, 0.],
+    );
+}
+
+#[test]
+fn halfway_is_half_volume() {
+    let output_channel_count: u16 = 2;
+
+    assert_eq!(
+        simple_panning_channel_volumes(0.5, 0., output_channel_count),
+        vec![0.5, 0.5]
+    );
+}
+
+#[test]
+fn whole_channel_spread_stereo() {
+    let output_channel_count: u16 = 2;
+
+    assert_eq!(
+        simple_panning_channel_volumes(1.0, 1.0, output_channel_count),
+        vec![0.5, 1.0]
+    );
+}
+
+#[test]
+fn zero_spread_quad_right() {
+    let output_channel_count: u16 = 4;
+
+    assert_eq!(
+        simple_panning_channel_volumes(3.0, 0., output_channel_count),
+        vec![0., 0., 0., 1.0]
+    );
+}
+
+#[test]
+fn whole_channel_spread_quad() {
+    let output_channel_count: u16 = 4;
+
+    assert_eq!(
+        simple_panning_channel_volumes(1.0, 1.0, output_channel_count),
+        vec![0.5, 1.0, 0.5, 0.]
+    );
+}
+
+#[test]
+fn centred_quad_zero_spread() {
+    let output_channel_count: u16 = 4;
+
+    assert_eq!(
+        simple_panning_channel_volumes(1.5, 0., output_channel_count),
+        vec![0., 0.5, 0.5, 0.]
+    );
+}
+
+#[test]
+fn centred_quad_whole_spread() {
+    let output_channel_count: u16 = 4;
+
+    assert_eq!(
+        simple_panning_channel_volumes(1.5, 1.0, output_channel_count),
+        vec![0.25, 0.75, 0.75, 0.25]
+    );
+}
+
+#[test]
+fn centred_eight_double_spread() {
+    let output_channel_count: u16 = 8;
+
+    assert_eq!(
+        simple_panning_channel_volumes(3.0, 2.0, output_channel_count),
+        vec![0., 0.3333333, 0.6666666, 1.0, 0.6666666, 0.3333333, 0., 0.]
+    );
+}

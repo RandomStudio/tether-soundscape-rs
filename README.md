@@ -7,6 +7,15 @@ A multi-layered audio sequencer, remote-controllable via Tether, to create sound
 ## Sample bank JSON
 Currently, the Sample Bank JSON files are created "by hand". Later versions will allow creation, editing and saving of these via the GUI. See `./test.json` file for an example.
 
+### Volume and Panning defaults and overrides
+Clips in the Sample Bank may optionally be given a `volume` and/or `panning` setting.
+
+If an incoming `clipCommands` message specifies `volume` or `panning` values, then these will override any defaults specified in the JSON.
+
+If neither a JSON-specified value nor a message-specified override is available for one or both of these, a default will be applied (full volume and centred panning).
+
+See
+
 ## Remote control (Input from Tether)
 
 ### Single Clip Commands
@@ -19,6 +28,8 @@ Has the following fields
 - `clipName` (required): string name for the targetted clip
 - `fadeDuration` (optional): an integer value for milliseconds to fade in or out (command-dependent)
 - `panPosition`, `panSpread` (both optional): if `panPosition` is specified, this will override any per-clip panning specified in the Sample Bank JSON
+
+See the [Conventions](#conventions) section for more detail on how these values are defined. 
 
 ### Scene Messages
 On the topic `+/+/scenes`
@@ -86,32 +97,33 @@ This agent publishes frequently (every UPDATE_INTERVAL ms) on the topic `soundsc
 To minimise traffic, the agent will only publish an empty clip list (`clips: []`) **once** and then resume as soon as at least one clip begins playing again.
 
 ### Events
-TODO: discrete events (clip begin/end) should be published in addition to the stream of "state" messages. This could be useful for driving external applications that only need to subscribe to significant begin/end events.
+Discrete events (clip begin/end) are published on the `events` Plug, e.g. `soundscape/any/events`. This can be useful for driving external applications that only need to subscribe to significant begin/end events.
+
+## Conventions
+`volume` values are a multiplier, so `0.0` means silence and `1.0` means "full volume". A value > 1.0 will amplify the volume relative to the original source.
+
+`panning` values are a two-element array (in JSON) and a tuple (in Rust, internally) - `position` followed by `spread`. These values are meant to be used as follows:
+ - `position` is a value in the range `[0; output_channel_count - 1]`. So, in a 4 channel setup, position `3.0` would be "full right", i.e. loudest in channel 4.
+ - `spread` is a multiple of the "width" of a channel. So, `0.0` means that the signal will be as focussed as possible, i.e. "1 channel width".
+
+
 
 ___
 ## Why 🦀 Rust?:
 - Minimal memory/CPU footprint for high performance
 - Cross-platform but without any need to install browser, use Electron, etc.
-- Visualisation via Nannou
-- Great way to learn about low-level audio sample/buffer control, multi-threading in Rust (Nannou always uses separate "realtime" thread for audio)
+- Full GUI or headless (text-only) modes are possible
+- Great way to learn about low-level audio sample/buffer control, multi-threading in Rust
 
 ___ 
 
 ## TODO - rodio/egui version:
-- [x] Re-implement Phases
-- [x] Fade in/out should use Phase/Tweens
-- [x] Volume respected from sample bank?
-- [x] Text-only mode
-- [x] Panning reimplemented: use https://docs.rs/rodio/latest/rodio/source/struct.ChannelVolume.html ?
-- [x] GUI show Tether enabled/connected status
-- [x] Publish state regularly / events on events
-- [x] GUI show incoming messages and/or counts
 - [x] Demonstrate running (headless?) on Raspberry Pi
-- [ ] Volume should be overrideable (as is the case for panning) in messages
-- [ ] Refine the panning position/spread format and document it. Should panning be normalised or in range [0;channels-1]? Should spread have a minimum of 1 (="only target channel or adding up to 1 if between two channels")?
+- [x] Volume should be overrideable (as is the case for panning) in messages
+- [x] Refine the panning position/spread format and document it. Should panning be normalised or in range [0;channels-1]? Should spread have a minimum of 1 (="only target channel or adding up to 1 if between two channels")?
 - [x] Must be able to specify Group/ID for Tether (publishing)
 - [x] Allow input plugs to be subscribed to with a specified group (optional), so `+/someGroup/clipCommands` rather than the default `+/+/clipCommands`, and also publish on `soundscape/someGroup/state` 
-- [ ] Stream/global level instructions, e.g. "play", "pause" (all), "silenceAll", "master volume", etc.
+- [ ] Stream/global level instructions, e.g. "play", "pause" (all), "silence all", "master volume", etc.
 - [ ] Allow MIDI to trigger clips (MIDI Mediator and/or directly)
 - [ ] Allow bank to be created, edited, saved directly from GUI, start from "blank" or load demo if nothing
 - [ ] Drag and drop samples into bank
