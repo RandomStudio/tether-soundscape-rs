@@ -168,11 +168,15 @@ pub fn render_vis(ui: &mut Ui, model: &mut Model) {
             }
             let brightness: u8 = (clip.current_volume() * 255.) as u8;
             let c = Color32::from_rgb(0, 0, brightness);
-            ui.add(
-                ProgressBar::new(clip.progress().unwrap_or(0.))
-                    .show_percentage()
-                    .fill(c),
-            );
+            if clip.is_paused() {
+                ui.label(RichText::new("Paused").color(Color32::GRAY));
+            } else {
+                ui.add(
+                    ProgressBar::new(clip.progress().unwrap_or(0.))
+                        .show_percentage()
+                        .fill(c),
+                );
+            }
         });
     }
 }

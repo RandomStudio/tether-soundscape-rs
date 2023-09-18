@@ -197,6 +197,50 @@
         },
         "value": "{\"command\":\"hit\",\"clipName\":\"frog\",\"volume\":0.1}"
       }
+    },
+    {
+      "generic": {
+        "common": {
+          "name": "clipCommands",
+          "description": "Testing panning override",
+          "plug": {
+            "OutputPlugDefinition": {
+              "common": {
+                "name": "clipCommands",
+                "topic": "gui/any/clipCommands",
+                "qos": 0
+              },
+              "retain": false
+            }
+          },
+          "midiMapping": null,
+          "qos": "AtMostOnce",
+          "retain": false
+        },
+        "value": "{\"command\":\"hit\",\"clipName\":\"ding-dong-stereo\"}"
+      }
+    },
+    {
+      "generic": {
+        "common": {
+          "name": "globalControls",
+          "description": "Test play and pause",
+          "plug": {
+            "OutputPlugDefinition": {
+              "common": {
+                "name": "globalControls",
+                "topic": "gui/any/globalControls",
+                "qos": 0
+              },
+              "retain": false
+            }
+          },
+          "midiMapping": null,
+          "qos": "AtMostOnce",
+          "retain": false
+        },
+        "value": "{\"command\":\"play\"}"
+      }
     }
   ],
   "tetherSettings": null

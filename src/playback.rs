@@ -159,6 +159,10 @@ impl ClipWithSink {
         self.sink.play();
     }
 
+    pub fn is_paused(&self) -> bool {
+        self.sink.is_paused()
+    }
+
     pub fn fade_out(&mut self, duration: Duration) {
         let tween: Box<dyn Tween<f32> + Send + Sync> = Box::new(Linear);
         let stored_tweener = Tweener::new(self.current_volume, 0., duration.as_millis(), tween);
