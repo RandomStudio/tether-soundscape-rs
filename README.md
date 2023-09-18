@@ -106,7 +106,7 @@ ___
 - [x] GUI show Tether enabled/connected status
 - [x] Publish state regularly / events on events
 - [x] GUI show incoming messages and/or counts
-- [ ] Demonstrate running (headless?) on Raspberry Pi
+- [x] Demonstrate running (headless?) on Raspberry Pi
 - [ ] Volume should be overrideable (as is the case for panning) in messages
 - [ ] Refine the panning position/spread format and document it. Should panning be normalised or in range [0;channels-1]? Should spread have a minimum of 1 (="only target channel or adding up to 1 if between two channels")?
 - [ ] Must be able to specify Group/ID for Tether (publishing)
