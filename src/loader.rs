@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use log::{debug, info};
 use serde::{Deserialize, Serialize};
 
-use crate::playback::PanWithRange;
+use crate::{playback::PanWithRange, utils::parse_optional_panning};
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -22,7 +22,8 @@ pub struct AudioClipOnDisk {
     // #[serde(default)]
     // sample_rate: u32,
     volume: Option<f32>,
-    panning: Option<PanWithRange>,
+    pan_position: Option<f32>,
+    pan_spread: Option<f32>,
 }
 
 // #[derive(Serialize, Deserialize)]
@@ -48,7 +49,7 @@ impl AudioClipOnDisk {
         self.volume
     }
     pub fn panning(&self) -> Option<PanWithRange> {
-        self.panning
+        parse_optional_panning(self.pan_position, self.pan_spread)
     }
 }
 
@@ -75,12 +76,14 @@ impl SoundBank {
                             let path = Path::new(&path_str);
                             // let (frames_count, sample_rate) = read_length_and_rate(path, mono_only);
                             let volume = sample.volume;
-                            let panning = sample.panning;
+                            // let panning =
+                            //     parse_optional_panning(sample.pan_position, sample.pan_spread);
                             let entry = AudioClipOnDisk {
                                 name: String::from(&sample.name),
                                 path: String::from(path.to_str().unwrap()),
                                 volume,
-                                panning,
+                                pan_position: sample.pan_position,
+                                pan_spread: sample.pan_spread,
                             };
                             debug!("Created sample bank entry OK: {:?}", entry);
                             entry

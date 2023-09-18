@@ -1,10 +1,22 @@
 use rand::Rng;
 use std::{ops::Range, time::Duration};
 
+use crate::playback::PanWithRange;
+
 pub fn map_range(value: f32, in_range: Range<f32>, out_range: Range<f32>) -> f32 {
     // NumCast::from((val_f - in_min_f) / (in_max_f - in_min_f) * (out_max_f - out_min_f) + out_min_f)
     (value - in_range.start) / (in_range.end - in_range.start) * (out_range.end - out_range.start)
         + out_range.start
+}
+
+/// If at least a pan position is provided, then return a valid "SimplePanning" tuple,
+/// and use a default "pan spread" unless provided with one as well;
+/// otherwise, return None
+pub fn parse_optional_panning(position: Option<f32>, spread: Option<f32>) -> Option<PanWithRange> {
+    match position {
+        None => None,
+        Some(pan_position) => Some((pan_position, spread.unwrap_or(0.))),
+    }
 }
 
 // pub fn get_clip_index_with_name<'a>(

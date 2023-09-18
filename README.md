@@ -1,8 +1,16 @@
 # Tether Soundscape rs
 
-A multi-layered audio sequencer, remote-controllable via Tether, to create soundscapes.
+A multi-layered audio sequencer, remote-controllable via Tether, to create soundscapes. Runs in a full GUI mode or headless - even on a Raspberry Pi!
 
 ![screenshot animation](./soundscape.gif)
+
+
+## Why 🦀 Rust?:
+- Minimal memory/CPU footprint for high performance
+- Cross-platform but without any need to install browser, use Electron, etc.
+- Full GUI or headless (text-only) modes are possible
+- Great way to learn about low-level audio sample/buffer control, multi-threading in Rust
+
 
 ## Sample bank JSON
 Currently, the Sample Bank JSON files are created "by hand". Later versions will allow creation, editing and saving of these via the GUI. See `./test.json` file for an example.
@@ -14,7 +22,7 @@ If an incoming `clipCommands` message specifies `volume` or `panning` values, th
 
 If neither a JSON-specified value nor a message-specified override is available for one or both of these, a default will be applied (full volume and centred panning).
 
-See
+See [Conventions](#conventions) for more detail on how these values are intended to be used.
 
 ## Remote control (Input from Tether)
 
@@ -28,6 +36,8 @@ Has the following fields
 - `clipName` (required): string name for the targetted clip
 - `fadeDuration` (optional): an integer value for milliseconds to fade in or out (command-dependent)
 - `panPosition`, `panSpread` (both optional): if `panPosition` is specified, this will override any per-clip panning specified in the Sample Bank JSON
+   - `panSpread` on its own will be ignored
+   - `panPosition` on its own will apply a default spread value (`0.0`)
 
 See the [Conventions](#conventions) section for more detail on how these values are defined. 
 
@@ -44,47 +54,50 @@ On the topic `+/+/globalControls`
 
 **TODO: these are not functional yet**
 ### Examples
+A project file for [Tether Egui](https://github.com/RandomStudio/tether-egui) is provided in `./soundscape-widgets.json` for easy testing of the remote control functions.
+
+Alternatively, use the `tether send` commands below if using [Tether Utils](https://crates.io/crates/tether-utils).
 
 Single clip hit:
 ```
-tether-send --host 127.0.0.1 --topic dummy/dummy/clipCommands --message \{\"command\":\"hit\"\,\"clipName\":\"frog\"\}
+tether send --plug.topic dummy/dummy/clipCommands --message \{\"command\":\"hit\"\,\"clipName\":\"frog\"\}
 ```
 
 Single clip hit, specify panning (ignored if in Stereo Mode):
 ```
-tether-send --host 127.0.0.1 --topic dummy/dummy/clipCommands --message \{\"command\":\"hit\"\,\"clipName\":\"frog\"\,\"panPosition\":0,\"panSpread\":1\}
+tether send --plug.topic dummy/dummy/clipCommands --message \{\"command\":\"hit\"\,\"clipName\":\"frog\"\,\"panPosition\":0,\"panSpread\":1\}
 ```
 
 
 Scene with two clips (default mode is "loopAll"):
 ```
-tether-send --host 127.0.0.1 --topic dummy/dummy/scenes --message \{\"clipNames\":\[\"frog\"\,\"squirrel\"]\}
+tether send --plug.topic dummy/dummy/scenes --message \{\"clipNames\":\[\"frog\"\,\"squirrel\"]\}
 ```
 
 Scene where system should "pick one random" from the list:
 ```
-tether-send --host 127.0.0.1 --topic dummy/dummy/scenes --message \{\"mode\":\"random\",\"clipNames\":\[\"frog\"\,\"squirrel\"]\}
+tether send --plug.topic dummy/dummy/scenes --message \{\"mode\":\"random\",\"clipNames\":\[\"frog\"\,\"squirrel\"]\}
 ```
 
 Remove single clip
 ```
-tether-send --host 127.0.0.1 --topic dummy/dummy/clipCommands --message \{\"command\":\"remove\",\"clipName\":\"frog\"\}
+tether send --plug.topic dummy/dummy/clipCommands --message \{\"command\":\"remove\",\"clipName\":\"frog\"\}
 ```
 
 Add single clip, custom fade duration
 ```
-tether-send --host 127.0.0.1 --topic dummy/dummy/clipCommands --message \{\"command\":\"add\",\"clipName\":\"squirrel2\",\"fadeDuration\":5000\}
+tether send --plug.topic dummy/dummy/clipCommands --message \{\"command\":\"add\",\"clipName\":\"squirrel2\",\"fadeDuration\":5000\}
 ```
 
 Scene with zero clips (silence all), custom fade duration:
 ```
-tether-send --host 127.0.0.1 --topic dummy/dummy/scenes --message \{\"clipNames\":\[\],\"fadeDuration\":500\}
+tether send --plug.topic dummy/dummy/scenes --message \{\"clipNames\":\[\],\"fadeDuration\":500\}
 ```
 
 ## Output to Tether
 
 ### State
-This agent publishes frequently (every UPDATE_INTERVAL ms) on the topic `soundscape/unknown/state`, which can be useful for driving animation, lighting effects, visualisation, etc. in sync with playback. The state messages include the following fields:
+This agent publishes frequently on the topic `soundscape/any/state`, which can be useful for driving animation, lighting effects, visualisation, etc. in sync with playback. The state messages include the following fields:
 
 - `isPlaying`: whether or not the audio stream is playing
 - `clips`: an array of currently playing clips (only), with the following information for each:
@@ -102,22 +115,12 @@ Discrete events (clip begin/end) are published on the `events` Plug, e.g. `sound
 ## Conventions
 `volume` values are a multiplier, so `0.0` means silence and `1.0` means "full volume". A value > 1.0 will amplify the volume relative to the original source.
 
-`panning` values are a two-element array (in JSON) and a tuple (in Rust, internally) - `position` followed by `spread`. These values are meant to be used as follows:
- - `position` is a value in the range `[0; output_channel_count - 1]`. So, in a 4 channel setup, position `3.0` would be "full right", i.e. loudest in channel 4.
- - `spread` is a multiple of the "width" of a channel. So, `0.0` means that the signal will be as focussed as possible, i.e. "1 channel width".
+`panning` is separated into two distance keys (in JSON file and/or messages) and a tuple (in Rust, internally) - `position` followed by `spread`. These values are meant to be used as follows:
+ - `position` (`panPosition` in JSON) is a value in the range `[0; output_channel_count - 1]`. So, in a 4 channel setup, position `3.0` would be "full right", i.e. loudest in channel 4.
+ - `spread` (`panSpread` in JSON) is a multiple of the "width" of a channel. So, `0.0` means that the signal will be as focussed as possible, i.e. "1 channel width".
 
 
-
-___
-## Why 🦀 Rust?:
-- Minimal memory/CPU footprint for high performance
-- Cross-platform but without any need to install browser, use Electron, etc.
-- Full GUI or headless (text-only) modes are possible
-- Great way to learn about low-level audio sample/buffer control, multi-threading in Rust
-
-___ 
-
-## TODO - rodio/egui version:
+## TODO:
 - [x] Demonstrate running (headless?) on Raspberry Pi
 - [x] Volume should be overrideable (as is the case for panning) in messages
 - [x] Refine the panning position/spread format and document it. Should panning be normalised or in range [0;channels-1]? Should spread have a minimum of 1 (="only target channel or adding up to 1 if between two channels")?

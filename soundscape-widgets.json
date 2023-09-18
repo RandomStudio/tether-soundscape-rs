@@ -151,7 +151,7 @@
           "qos": "AtMostOnce",
           "retain": false
         },
-        "value": "{\"mode\":\"loopAll\",\"clipNames\":[],\"fadeDuration\":3000}"
+        "value": "{\"clipNames\":[],\"fadeDuration\":3000}"
       }
     },
     {
@@ -174,6 +174,28 @@
           "retain": false
         },
         "value": "{\"mode\":\"onceRandom\",\"clipNames\":[\"frog\",\"mice\"],\"fadeDuration\":2000}"
+      }
+    },
+    {
+      "generic": {
+        "common": {
+          "name": "clipCommands",
+          "description": "Frog with volume override",
+          "plug": {
+            "OutputPlugDefinition": {
+              "common": {
+                "name": "clipCommands",
+                "topic": "gui/any/clipCommands",
+                "qos": 0
+              },
+              "retain": false
+            }
+          },
+          "midiMapping": null,
+          "qos": "AtMostOnce",
+          "retain": false
+        },
+        "value": "{\"command\":\"hit\",\"clipName\":\"frog\",\"volume\":0.1}"
       }
     }
   ],

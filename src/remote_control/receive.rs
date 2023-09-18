@@ -2,7 +2,7 @@ use log::{error, info, warn};
 use serde::Deserialize;
 use tether_agent::mqtt::Message;
 
-use crate::playback::PanWithRange;
+use crate::{playback::PanWithRange, utils::parse_optional_panning};
 
 use super::RemoteControl;
 
@@ -48,16 +48,6 @@ pub struct SceneMessage {
     pub fade_duration: Option<FadeDurationMS>,
 }
 
-/// If at least a pan position is provided, then return a valid "SimplePanning" tuple,
-/// and use a default "pan spread" unless provided with one as well;
-/// otherwise, return None
-fn parse_optional_panning(parsed: &SingleClipMessage) -> Option<PanWithRange> {
-    match parsed.pan_position {
-        None => None,
-        Some(pan_position) => Some((pan_position, parsed.pan_spread.unwrap_or(1.0))),
-    }
-}
-
 impl RemoteControl {
     pub fn parse_instructions(
         &self,
@@ -75,7 +65,8 @@ impl RemoteControl {
                     if let Ok(parsed) = clip_message {
                         info!("Parsed Single Clip Message: {parsed:?}");
 
-                        let panning: Option<PanWithRange> = parse_optional_panning(&parsed);
+                        let panning: Option<PanWithRange> =
+                            parse_optional_panning(parsed.pan_position, parsed.pan_spread);
 
                         match parsed.command.as_str() {
                             "hit" => Ok(Instruction::Add(

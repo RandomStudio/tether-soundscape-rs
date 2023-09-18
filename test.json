@@ -18,13 +18,14 @@
       "name": "frogLeft",
       "path": "demo/frog.wav",
       "volume": 1.0,
-      "panning": [0, 1.0]
+      "panPosition": 0
     },
     {
       "name": "frogRight",
       "path": "demo/frog.wav",
       "volume": 1.0,
-      "panning": [1, 1.0]
+      "panPosition": 0.8,
+      "panSpread": 0.25
     },
     {
       "name": "mice",
