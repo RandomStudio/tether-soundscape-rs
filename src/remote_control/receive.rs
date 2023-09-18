@@ -27,6 +27,8 @@ pub enum Instruction {
     // Clip name, option fade duration
     Remove(ClipName, Option<FadeDurationMS>),
     Scene(ScenePickMode, Vec<ClipName>, Option<FadeDurationMS>),
+    PauseAll(),
+    ResumeAll(),
 }
 
 #[derive(Deserialize, Debug)]
@@ -46,6 +48,13 @@ pub struct SceneMessage {
     pub mode: Option<String>,
     pub clip_names: Vec<ClipName>,
     pub fade_duration: Option<FadeDurationMS>,
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct GlobalMessage {
+    pub command: String,
+    pub volume: Option<f32>,
 }
 
 impl RemoteControl {
@@ -137,9 +146,24 @@ impl RemoteControl {
                     }
                 }
                 "globalControls" => {
-                    // TODO
-                    warn!("globalControls not handled yet");
-                    Err(())
+                    let global_message: Result<GlobalMessage, rmp_serde::decode::Error> =
+                        rmp_serde::from_slice(&payload);
+
+                    if let Ok(parsed) = global_message {
+                        match parsed.command.as_str() {
+                            "pause" => Ok(Instruction::PauseAll()),
+                            "play" => Ok(Instruction::ResumeAll()),
+                            _ => {
+                                error!(
+                                    "Unrecognised command option for GlobalCommand Message: {}",
+                                    &parsed.command
+                                );
+                                Err(())
+                            }
+                        }
+                    } else {
+                        Err(())
+                    }
                 }
                 &_ => {
                     error!("Unrecognised plug name");

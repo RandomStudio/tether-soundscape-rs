@@ -136,3 +136,4 @@ Discrete events (clip begin/end) are published on the `events` Plug, e.g. `sound
 - [ ] Optionally connect to [Ableton link](https://docs.rs/ableton-link/latest/ableton_link/)
 - [ ] Basic ADSR (or just Attack-Release) triggering for samples
 - [ ] GUI show output levels per channel somehow? (depends on https://github.com/RustAudio/rodio/issues/475)
+- [ ] Replace generic/empty `Err(())` returns with something better, e.g. anyhow crate

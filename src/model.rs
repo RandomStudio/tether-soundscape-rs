@@ -304,6 +304,12 @@ impl Model {
                             }
                         }
                     }
+                    Ok(Instruction::PauseAll()) => {
+                        todo!();
+                    }
+                    Ok(Instruction::ResumeAll()) => {
+                        todo!();
+                    }
                     Err(_) => {
                         error!("Failed to parse remote Instruction");
                     }
