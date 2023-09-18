@@ -7,10 +7,7 @@ use std::time::{Duration, SystemTime};
 
 use egui::{Color32, ProgressBar, RichText, Ui};
 
-use crate::{
-    model::{ActionQueueItem, MessageStats, Model},
-    playback::ClipWithSink,
-};
+use crate::model::{ActionQueueItem, MessageStats, Model};
 
 pub fn render_local_controls(ui: &mut Ui, model: &mut Model) {
     ui.heading("Sample Bank");
@@ -172,10 +169,6 @@ pub fn render_vis(ui: &mut Ui, model: &mut Model) {
                     .show_percentage()
                     .fill(c),
             );
-        });
-        ui.horizontal(|ui| {
-            ui.label("Volume");
-            ui.add(ProgressBar::new(clip.average_volume()).fill(Color32::GREEN));
         });
     }
 }
