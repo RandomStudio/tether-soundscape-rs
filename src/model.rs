@@ -305,10 +305,14 @@ impl Model {
                         }
                     }
                     Ok(Instruction::PauseAll()) => {
-                        todo!();
+                        for clip in &self.clips_playing {
+                            clip.pause();
+                        }
                     }
                     Ok(Instruction::ResumeAll()) => {
-                        todo!();
+                        for clip in &self.clips_playing {
+                            clip.resume();
+                        }
                     }
                     Err(_) => {
                         error!("Failed to parse remote Instruction");

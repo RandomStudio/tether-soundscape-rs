@@ -150,12 +150,13 @@ impl RemoteControl {
                         rmp_serde::from_slice(&payload);
 
                     if let Ok(parsed) = global_message {
+                        info!("Paused GlobalCommand message: {parsed:?}");
                         match parsed.command.as_str() {
                             "pause" => Ok(Instruction::PauseAll()),
                             "play" => Ok(Instruction::ResumeAll()),
                             _ => {
                                 error!(
-                                    "Unrecognised command option for GlobalCommand Message: {}",
+                                    "Unrecognised command option for GlobalControls Message: {}",
                                     &parsed.command
                                 );
                                 Err(())
