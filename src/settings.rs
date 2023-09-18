@@ -42,6 +42,12 @@ pub struct Cli {
     #[arg(long = "statePublish.updateInterval", default_value_t = 40)]
     pub state_interval: u64,
 
+    /// How many "empty" state messages (no clips currently) playing, will be
+    /// allowed before the state publishing temporarily pauses. This avoids message
+    /// clutter. Set a value <= 0 to disable this behaviour and ensure messages continuously send.
+    #[arg(long = "statePublish.emptyMax", default_value_t = 8)]
+    pub state_max_empty: usize,
+
     /// How often to publish state via Tether (ignored if disabled)
     #[arg(long = "statePublish.disable")]
     pub state_disable: bool,

@@ -83,6 +83,7 @@ impl Model {
             Some(RemoteControl::new(
                 &tether,
                 Duration::from_millis(cli.state_interval),
+                cli.state_max_empty,
             ))
         };
 

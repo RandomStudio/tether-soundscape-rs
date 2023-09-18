@@ -13,11 +13,17 @@ pub struct RemoteControl {
     events_output_plug: PlugDefinition,
     input_plugs: HashMap<String, PlugDefinition>,
     state_send_interval: Duration,
+    state_max_empty: usize,
+    count_empty_state_sends: Option<usize>,
     last_update_sent: SystemTime, // last_clip_count_sent: Option<usize>,
 }
 
 impl RemoteControl {
-    pub fn new(tether_agent: &TetherAgent, state_send_interval: Duration) -> Self {
+    pub fn new(
+        tether_agent: &TetherAgent,
+        state_send_interval: Duration,
+        state_max_empty: usize,
+    ) -> Self {
         let mut input_plugs: HashMap<String, PlugDefinition> = HashMap::new();
         input_plugs.insert(
             "clipCommands".into(),
@@ -58,10 +64,12 @@ impl RemoteControl {
             .expect("failed to create state Output");
 
         RemoteControl {
+            count_empty_state_sends: None,
             state_output_plug,
             events_output_plug,
             input_plugs,
             state_send_interval,
+            state_max_empty,
             last_update_sent: SystemTime::now(), // last_clip_count_sent: None,
         }
     }
