@@ -72,6 +72,7 @@ impl Model {
                 .expect("failed to init (not connect) Tether")
         } else {
             tether_options
+                .host(&cli.tether_host.to_string())
                 .auto_connect(true)
                 .build()
                 .expect("failed to connect Tether")
