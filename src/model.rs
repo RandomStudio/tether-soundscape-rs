@@ -314,6 +314,14 @@ impl Model {
                             clip.resume();
                         }
                     }
+                    Ok(Instruction::SilenceAll()) => {
+                        for clip in &self.clips_playing {
+                            self.action_queue.push(ActionQueueItem::Stop(
+                                clip.id(),
+                                Some(Duration::from_secs(1)),
+                            ));
+                        }
+                    }
                     Err(_) => {
                         error!("Failed to parse remote Instruction");
                     }

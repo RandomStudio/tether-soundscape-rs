@@ -29,6 +29,7 @@ pub enum Instruction {
     Scene(ScenePickMode, Vec<ClipName>, Option<FadeDurationMS>),
     PauseAll(),
     ResumeAll(),
+    SilenceAll(),
 }
 
 #[derive(Deserialize, Debug)]
@@ -154,6 +155,7 @@ impl RemoteControl {
                         match parsed.command.as_str() {
                             "pause" => Ok(Instruction::PauseAll()),
                             "play" => Ok(Instruction::ResumeAll()),
+                            "silence" => Ok(Instruction::SilenceAll()),
                             _ => {
                                 error!(
                                     "Unrecognised command option for GlobalControls Message: {}",
