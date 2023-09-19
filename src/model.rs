@@ -14,7 +14,7 @@ use crate::{
     playback::{ClipWithSink, PanWithRange},
     remote_control::{
         publish::SoundscapeEvent,
-        receive::{Instruction, ScenePickMode},
+        receive::{GlobalControlMode, Instruction, ScenePickMode},
         RemoteControl,
     },
     settings::Cli,
@@ -38,6 +38,7 @@ pub enum ActionQueueItem {
 pub struct MessageStats {
     pub last_clip_message: Option<SystemTime>,
     pub last_scene_message: Option<SystemTime>,
+    pub last_global_control_message: Option<SystemTime>,
     pub last_state_message: Option<SystemTime>,
     pub last_events_message: Option<SystemTime>,
 }
@@ -121,6 +122,7 @@ impl Model {
             message_stats: MessageStats {
                 last_clip_message: None,
                 last_scene_message: None,
+                last_global_control_message: None,
                 last_state_message: None,
                 last_events_message: None,
             },
@@ -304,31 +306,41 @@ impl Model {
                             }
                         }
                     }
-                    Ok(Instruction::PauseAll()) => {
-                        for clip in &mut self.clips_playing {
-                            clip.pause();
+                    Ok(Instruction::Global(global_control_mode)) => match global_control_mode {
+                        GlobalControlMode::PauseAll() => {
+                            self.message_stats.last_global_control_message =
+                                Some(SystemTime::now());
+                            for clip in &mut self.clips_playing {
+                                clip.pause();
+                            }
                         }
-                    }
-                    Ok(Instruction::ResumeAll()) => {
-                        for clip in &mut self.clips_playing {
-                            clip.resume();
+                        GlobalControlMode::ResumeAll() => {
+                            self.message_stats.last_global_control_message =
+                                Some(SystemTime::now());
+                            for clip in &mut self.clips_playing {
+                                clip.resume();
+                            }
                         }
-                    }
-                    Ok(Instruction::SilenceAll()) => {
-                        for clip in &self.clips_playing {
-                            self.action_queue.push(ActionQueueItem::Stop(
-                                clip.id(),
-                                Some(Duration::from_millis(100)),
-                            ));
+                        GlobalControlMode::SilenceAll() => {
+                            self.message_stats.last_global_control_message =
+                                Some(SystemTime::now());
+                            for clip in &self.clips_playing {
+                                self.action_queue.push(ActionQueueItem::Stop(
+                                    clip.id(),
+                                    Some(Duration::from_millis(100)),
+                                ));
+                            }
                         }
-                    }
-                    Ok(Instruction::MasterVolume(volume)) => {
-                        for clip in &mut self.clips_playing {
-                            clip.set_volume(volume);
+                        GlobalControlMode::MasterVolume(volume) => {
+                            self.message_stats.last_global_control_message =
+                                Some(SystemTime::now());
+                            for clip in &mut self.clips_playing {
+                                clip.set_volume(volume);
+                            }
                         }
-                    }
+                    },
                     Err(_) => {
-                        error!("Failed to parse remote Instruction");
+                        error!("Failed to parse Remote Instruction {:}", message);
                     }
                 }
             }
@@ -338,7 +350,8 @@ impl Model {
                 ActionQueueItem::Play(clip_name, volume, fade, should_loop, panning) => {
                     self.play_one_clip(&clip_name, should_loop, volume, fade, panning);
                     if let Some(remote) = &self.remote_control {
-                        remote.publish_event(SoundscapeEvent::ClipStarted(clip_name), &self.tether)
+                        remote.publish_event(SoundscapeEvent::ClipStarted(clip_name), &self.tether);
+                        self.message_stats.last_events_message = Some(SystemTime::now());
                     }
                 }
                 ActionQueueItem::Stop(id, fade) => {

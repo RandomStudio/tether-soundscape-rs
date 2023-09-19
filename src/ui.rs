@@ -15,16 +15,6 @@ pub fn render_local_controls(ui: &mut Ui, model: &mut Model) {
         ui.horizontal(|ui| {
             ui.label(sample.name());
             if ui.button("once").clicked() {
-                // let clip_with_sink = ClipWithSink::new(
-                //     model.clips_playing.len(),
-                //     &sample,
-                //     false,
-                //     None,
-                //     None,
-                //     &model.output_stream_handle,
-                //     model.output_channels_used,
-                // );
-                // model.clips_playing.push(clip_with_sink);
                 model.action_queue.push(ActionQueueItem::Play(
                     sample.name().into(),
                     None,
@@ -34,16 +24,6 @@ pub fn render_local_controls(ui: &mut Ui, model: &mut Model) {
                 ));
             }
             if ui.button("once (fade 2s)").clicked() {
-                // let clip_with_sink = ClipWithSink::new(
-                //     model.clips_playing.len(),
-                //     &sample,
-                //     false,
-                //     Some(Duration::from_millis(2000)),
-                //     None,
-                //     &model.output_stream_handle,
-                //     model.output_channels_used,
-                // );
-                // model.clips_playing.push(clip_with_sink);
                 model.action_queue.push(ActionQueueItem::Play(
                     sample.name().into(),
                     None,
@@ -53,16 +33,6 @@ pub fn render_local_controls(ui: &mut Ui, model: &mut Model) {
                 ));
             }
             if ui.button("loop").clicked() {
-                // let clip_with_sink = ClipWithSink::new(
-                //     model.clips_playing.len(),
-                //     &sample,
-                //     true,
-                //     None,
-                //     None,
-                //     &model.output_stream_handle,
-                //     model.output_channels_used,
-                // );
-                // model.clips_playing.push(clip_with_sink);
                 model.action_queue.push(ActionQueueItem::Play(
                     sample.name().into(),
                     None,
@@ -72,16 +42,6 @@ pub fn render_local_controls(ui: &mut Ui, model: &mut Model) {
                 ));
             }
             if ui.button("loop (fade 5s)").clicked() {
-                // let clip_with_sink = ClipWithSink::new(
-                //     model.clips_playing.len(),
-                //     &sample,
-                //     true,
-                //     Some(Duration::from_secs(5)),
-                //     None,
-                //     &model.output_stream_handle,
-                //     model.output_channels_used,
-                // );
-                // model.clips_playing.push(clip_with_sink);
                 model.action_queue.push(ActionQueueItem::Play(
                     sample.name().into(),
                     None,
@@ -128,28 +88,41 @@ pub fn render_vis(ui: &mut Ui, model: &mut Model) {
             ui.label(RichText::new(format!("x{}", model.output_channels_used)).strong());
         });
     }
+
+    ui.separator();
+
     // Message stats
     let MessageStats {
         last_clip_message,
         last_events_message,
+        last_global_control_message,
         last_scene_message,
         last_state_message,
     } = model.message_stats;
-    ui.horizontal(|ui| {
-        ui.label("Clip messages IN");
-        ui.label(RichText::new("⏺").color(colour_by_elapsed(last_clip_message)));
-    });
-    ui.horizontal(|ui| {
-        ui.label("Scene messages IN");
-        ui.label(RichText::new("⏺").color(colour_by_elapsed(last_scene_message)));
-    });
-    ui.horizontal(|ui| {
-        ui.label("State messages OUT");
-        ui.label(RichText::new("⏺").color(colour_by_elapsed(last_state_message)));
-    });
-    ui.horizontal(|ui| {
-        ui.label("Event messages OUT");
-        ui.label(RichText::new("⏺").color(colour_by_elapsed(last_events_message)));
+    ui.columns(2, |columns| {
+        let ui = &mut columns[0];
+        ui.horizontal(|ui| {
+            ui.label("Clip messages IN");
+            ui.label(RichText::new("⏺").color(colour_by_elapsed(last_clip_message)));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Scene messages IN");
+            ui.label(RichText::new("⏺").color(colour_by_elapsed(last_scene_message)));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Global Control messages IN");
+            ui.label(RichText::new("⏺").color(colour_by_elapsed(last_global_control_message)));
+        });
+
+        let ui = &mut columns[1];
+        ui.horizontal(|ui| {
+            ui.label("State messages OUT");
+            ui.label(RichText::new("⏺").color(colour_by_elapsed(last_state_message)));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Event messages OUT");
+            ui.label(RichText::new("⏺").color(colour_by_elapsed(last_events_message)));
+        });
     });
 
     ui.separator();

@@ -1,4 +1,4 @@
-use log::{error, info, warn};
+use log::{error, info};
 use serde::Deserialize;
 use tether_agent::mqtt::Message;
 
@@ -14,6 +14,13 @@ pub enum ScenePickMode {
     OnceRandomSinglePick,
 }
 
+pub enum GlobalControlMode {
+    PauseAll(),
+    ResumeAll(),
+    SilenceAll(),
+    MasterVolume(f32),
+}
+
 type FadeDurationMS = u64;
 pub enum Instruction {
     // Clip name, should_loop, optional volume (override), fade duration, optional panning
@@ -27,10 +34,7 @@ pub enum Instruction {
     // Clip name, option fade duration
     Remove(ClipName, Option<FadeDurationMS>),
     Scene(ScenePickMode, Vec<ClipName>, Option<FadeDurationMS>),
-    PauseAll(),
-    ResumeAll(),
-    SilenceAll(),
-    MasterVolume(f32),
+    Global(GlobalControlMode),
 }
 
 #[derive(Deserialize, Debug)]
@@ -153,13 +157,14 @@ impl RemoteControl {
 
                     if let Ok(parsed) = global_message {
                         info!("Paused GlobalCommand message: {parsed:?}");
+
                         match parsed.command.as_str() {
-                            "pause" => Ok(Instruction::PauseAll()),
-                            "play" => Ok(Instruction::ResumeAll()),
-                            "silence" => Ok(Instruction::SilenceAll()),
-                            "masterVolume" => {
-                                Ok(Instruction::MasterVolume(parsed.volume.unwrap_or_default()))
-                            }
+                            "pause" => Ok(Instruction::Global(GlobalControlMode::PauseAll())),
+                            "play" => Ok(Instruction::Global(GlobalControlMode::ResumeAll())),
+                            "silence" => Ok(Instruction::Global(GlobalControlMode::SilenceAll())),
+                            "masterVolume" => Ok(Instruction::Global(
+                                GlobalControlMode::MasterVolume(parsed.volume.unwrap_or_default()),
+                            )),
                             _ => {
                                 error!(
                                     "Unrecognised command option for GlobalControls Message: {}",
