@@ -322,6 +322,11 @@ impl Model {
                             ));
                         }
                     }
+                    Ok(Instruction::MasterVolume(volume)) => {
+                        for clip in &mut self.clips_playing {
+                            clip.set_volume(volume);
+                        }
+                    }
                     Err(_) => {
                         error!("Failed to parse remote Instruction");
                     }

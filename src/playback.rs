@@ -189,6 +189,10 @@ impl ClipWithSink {
         self.current_volume
     }
 
+    pub fn set_volume(&mut self, volume: f32) {
+        self.current_volume = volume;
+    }
+
     pub fn is_looping(&self) -> bool {
         self.is_looping
     }

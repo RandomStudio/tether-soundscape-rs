@@ -30,6 +30,7 @@ pub enum Instruction {
     PauseAll(),
     ResumeAll(),
     SilenceAll(),
+    MasterVolume(f32),
 }
 
 #[derive(Deserialize, Debug)]
@@ -156,6 +157,9 @@ impl RemoteControl {
                             "pause" => Ok(Instruction::PauseAll()),
                             "play" => Ok(Instruction::ResumeAll()),
                             "silence" => Ok(Instruction::SilenceAll()),
+                            "masterVolume" => {
+                                Ok(Instruction::MasterVolume(parsed.volume.unwrap_or_default()))
+                            }
                             _ => {
                                 error!(
                                     "Unrecognised command option for GlobalControls Message: {}",
