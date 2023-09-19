@@ -28,6 +28,8 @@ pub struct ClipWithSink {
     sink: Sink,
     duration: Option<Duration>,
     started: SystemTime,
+    time_last_paused: Option<SystemTime>,
+    elapsed_to_remove: Option<Duration>,
     last_known_progress: Option<f32>,
     is_looping: bool,
     name: String,
@@ -95,6 +97,8 @@ impl ClipWithSink {
             sink,
             duration,
             started: SystemTime::now(),
+            time_last_paused: None,
+            elapsed_to_remove: None,
             last_known_progress: Some(0.),
             name: String::from(sample.name()),
             current_phase: PlaybackPhase::Attack(stored_tweener),
@@ -108,7 +112,8 @@ impl ClipWithSink {
     }
 
     pub fn update_progress(&mut self) {
-        let elapsed = self.started.elapsed().unwrap_or(Duration::ZERO);
+        let elapsed = self.started.elapsed().unwrap_or(Duration::ZERO)
+            - self.elapsed_to_remove.unwrap_or_default();
 
         // Set volume according to phase...
         self.current_volume = match &mut self.current_phase {
@@ -151,11 +156,17 @@ impl ClipWithSink {
         self.sink.clear();
     }
 
-    pub fn pause(&self) {
+    pub fn pause(&mut self) {
+        self.time_last_paused = Some(SystemTime::now());
         self.sink.pause();
     }
 
-    pub fn resume(&self) {
+    pub fn resume(&mut self) {
+        if let Some(t) = self.time_last_paused {
+            self.elapsed_to_remove =
+                Some(t.elapsed().unwrap_or_default() + self.elapsed_to_remove.unwrap_or_default());
+            self.time_last_paused = None;
+        }
         self.sink.play();
     }
 

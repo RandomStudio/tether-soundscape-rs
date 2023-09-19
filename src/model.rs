@@ -305,12 +305,12 @@ impl Model {
                         }
                     }
                     Ok(Instruction::PauseAll()) => {
-                        for clip in &self.clips_playing {
+                        for clip in &mut self.clips_playing {
                             clip.pause();
                         }
                     }
                     Ok(Instruction::ResumeAll()) => {
-                        for clip in &self.clips_playing {
+                        for clip in &mut self.clips_playing {
                             clip.resume();
                         }
                     }
