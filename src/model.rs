@@ -318,7 +318,7 @@ impl Model {
                         for clip in &self.clips_playing {
                             self.action_queue.push(ActionQueueItem::Stop(
                                 clip.id(),
-                                Some(Duration::from_secs(1)),
+                                Some(Duration::from_millis(100)),
                             ));
                         }
                     }
