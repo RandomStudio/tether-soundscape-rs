@@ -133,7 +133,7 @@ Discrete events (clip begin/end) are published on the `events` Plug, e.g. `sound
 - [x] Refine the panning position/spread format and document it. Should panning be normalised or in range [0;channels-1]? Should spread have a minimum of 1 (="only target channel or adding up to 1 if between two channels")?
 - [x] Must be able to specify Group/ID for Tether (publishing)
 - [x] Allow input plugs to be subscribed to with a specified group (optional), so `+/someGroup/clipCommands` rather than the default `+/+/clipCommands`, and also publish on `soundscape/someGroup/state` 
-- x ] Stream/global level instructions, e.g. "play", "pause" (all), "silence all", "master volume", etc.
+- [x] Stream/global level instructions, e.g. "play", "pause" (all), "silence all", "master volume", etc.
 - [ ] Allow MIDI to trigger clips (MIDI Mediator and/or directly)
 - [ ] Allow bank to be created, edited, saved directly from GUI, start from "blank" or load demo if nothing
 - [ ] Drag and drop samples into bank
