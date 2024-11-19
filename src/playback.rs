@@ -54,7 +54,7 @@ impl ClipWithSink {
         let file = BufReader::new(File::open(sample.path()).unwrap());
         // let source = Decoder::new(file).unwrap();
         // let duration = source.total_duration();
-        let mut duration = None;
+        // let mut duration = None;
 
         let panning: Option<PanWithRange> = if override_panning.is_some() {
             override_panning
@@ -64,26 +64,26 @@ impl ClipWithSink {
 
         let decoder = Decoder::new(file).unwrap();
 
-        let mut source: Option<Box<dyn Source<Item = _> + Send>> = None;
-
-        if let Some((position, spread)) = panning {
-            let s = ChannelVolume::new(
-                decoder,
-                simple_panning_channel_volumes(position, spread, output_channels),
-            );
-            source = Some(Box::new(s));
-        } else {
-            source = Some(Box::new(decoder));
-        }
-
-        if let Some(src) = source {
-            duration = src.total_duration();
-            if should_loop {
-                sink.append(src.repeat_infinite());
+        let source: Box<dyn Source<Item = _> + Send> = {
+            if let Some((position, spread)) = panning {
+                let s = ChannelVolume::new(
+                    decoder,
+                    simple_panning_channel_volumes(position, spread, output_channels),
+                );
+                Box::new(s)
             } else {
-                sink.append(src);
+                Box::new(decoder)
             }
+        };
+
+        // if let Some(src) = source {
+        let duration = source.total_duration();
+        if should_loop {
+            sink.append(source.repeat_infinite());
+        } else {
+            sink.append(source);
         }
+        // }
 
         let tween: Box<dyn Tween<f32> + Send + Sync> = Box::new(Linear);
         let stored_tweener = Tweener::new(
