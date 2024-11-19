@@ -13,10 +13,7 @@ pub fn map_range(value: f32, in_range: Range<f32>, out_range: Range<f32>) -> f32
 /// and use a default "pan spread" unless provided with one as well;
 /// otherwise, return None
 pub fn parse_optional_panning(position: Option<f32>, spread: Option<f32>) -> Option<PanWithRange> {
-    match position {
-        None => None,
-        Some(pan_position) => Some((pan_position, spread.unwrap_or(0.))),
-    }
+    position.map(|pan_position| (pan_position, spread.unwrap_or(0.)))
 }
 
 // pub fn get_clip_index_with_name<'a>(
@@ -66,10 +63,7 @@ pub fn pick_random_clip(clip_names: Vec<String>) -> String {
 }
 
 pub fn optional_ms_to_duration(ms: Option<u64>) -> Option<Duration> {
-    match ms {
-        None => None,
-        Some(ms) => Some(Duration::from_millis(ms)),
-    }
+    ms.map(Duration::from_millis)
 }
 
 // pub fn get_duration_range(clips: &[AudioClipOnDisk]) -> [u32; 2] {

@@ -38,6 +38,7 @@ pub struct ClipWithSink {
 }
 
 impl ClipWithSink {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         id: usize,
         sample: &AudioClipOnDisk,

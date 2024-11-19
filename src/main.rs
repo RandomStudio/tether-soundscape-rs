@@ -39,7 +39,7 @@ fn main() {
         Some(preferred_name) => devices
             .enumerate()
             .find(|(i, cpal_device)| {
-                let rodio_device: &rodio::Device = cpal_device.into();
+                let rodio_device: &rodio::Device = cpal_device;
 
                 let channels = rodio_device.default_output_config().unwrap().channels();
 
@@ -50,13 +50,15 @@ fn main() {
                     i, name, channels
                 );
 
-                return &name == preferred_name;
+                &name == preferred_name
             })
             .map(|(_usize, device)| device)
-            .expect(&format!(
-                "failed to find device by preferred name \"{}\"",
-                preferred_name
-            )),
+            .unwrap_or_else(|| {
+                panic!(
+                    "failed to find device by preferred name \"{}\"",
+                    preferred_name
+                )
+            }),
     };
 
     match device.name() {

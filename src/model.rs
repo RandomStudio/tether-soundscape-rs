@@ -54,7 +54,7 @@ pub struct Model {
     // clips_playing: Vec<CurrentlyPlayingClip>,
     // duration_range: [FadeDuration; 2],
     pub action_queue: Vec<ActionQueueItem>,
-    pub last_state_publish: SystemTime,
+    // pub last_state_publish: SystemTime,
     pub tether: TetherAgent,
     pub tether_disabled: bool,
     pub remote_control: Option<RemoteControl>,
@@ -115,7 +115,7 @@ impl Model {
             sound_bank,
             clips_playing: Vec::new(),
             action_queue: Vec::new(),
-            last_state_publish: std::time::SystemTime::now(),
+            // last_state_publish: std::time::SystemTime::now(),
             tether,
             remote_control,
             tether_disabled: cli.tether_disable,
@@ -165,7 +165,7 @@ impl Model {
         {
             let clip_with_sink = ClipWithSink::new(
                 self.clips_playing.len(),
-                &sample,
+                sample,
                 should_loop,
                 volume_override,
                 fade,
@@ -180,7 +180,7 @@ impl Model {
     }
 
     pub fn internal_update(&mut self) {
-        if let Ok(_) = self.request_rx.try_recv() {
+        if self.request_rx.try_recv().is_ok() {
             self.check_progress();
         }
 

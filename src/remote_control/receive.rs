@@ -75,7 +75,7 @@ impl RemoteControl {
             TetherOrCustomTopic::Tether(three_part_topic) => match three_part_topic.plug_name() {
                 "clipCommands" => {
                     let clip_message: Result<SingleClipMessage, rmp_serde::decode::Error> =
-                        rmp_serde::from_slice(&payload);
+                        rmp_serde::from_slice(payload);
 
                     if let Ok(parsed) = clip_message {
                         info!("Parsed Single Clip Message: {parsed:?}");
@@ -116,7 +116,7 @@ impl RemoteControl {
                 }
                 "scenes" => {
                     let scene_message: Result<SceneMessage, rmp_serde::decode::Error> =
-                        rmp_serde::from_slice(&payload);
+                        rmp_serde::from_slice(payload);
 
                     if let Ok(parsed) = scene_message {
                         info!("Parsed Scene Message: {parsed:?}");
@@ -153,7 +153,7 @@ impl RemoteControl {
                 }
                 "globalControls" => {
                     let global_message: Result<GlobalMessage, rmp_serde::decode::Error> =
-                        rmp_serde::from_slice(&payload);
+                        rmp_serde::from_slice(payload);
 
                     if let Ok(parsed) = global_message {
                         info!("Paused GlobalCommand message: {parsed:?}");

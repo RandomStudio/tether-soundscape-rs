@@ -11,7 +11,7 @@ use tether_agent::{PlugDefinition, PlugOptionsBuilder, TetherAgent};
 pub struct RemoteControl {
     state_output_plug: PlugDefinition,
     events_output_plug: PlugDefinition,
-    input_plugs: HashMap<String, PlugDefinition>,
+    // input_plugs: HashMap<String, PlugDefinition>,
     state_send_interval: Duration,
     state_max_empty: usize,
     count_empty_state_sends: Option<usize>,
@@ -25,7 +25,7 @@ impl RemoteControl {
         state_send_interval: Duration,
         state_max_empty: usize,
     ) -> Self {
-        let input_plugs: HashMap<String, PlugDefinition> = HashMap::from([
+        let _input_plugs: HashMap<String, PlugDefinition> = HashMap::from([
             (
                 "clipCommands".into(),
                 PlugOptionsBuilder::create_input("clipCommands")
@@ -69,7 +69,6 @@ impl RemoteControl {
             count_empty_state_sends: None,
             state_output_plug,
             events_output_plug,
-            input_plugs,
             state_send_interval,
             state_max_empty,
             last_update_sent: SystemTime::now(), // last_clip_count_sent: None,

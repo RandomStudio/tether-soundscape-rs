@@ -67,8 +67,7 @@ impl SoundBank {
                     let clips = bank
                         .clips
                         .iter()
-                        .enumerate()
-                        .map(|(_i, sample)| {
+                        .map(|sample| {
                             let path_str = get_sound_asset_path(
                                 Path::new("assets").to_path_buf(),
                                 &sample.path,
