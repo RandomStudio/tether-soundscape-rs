@@ -5,7 +5,6 @@ use clap::Parser;
 pub struct Cli {
     /// Path to JSON file with clips array; if omitted, a suitable demo
     /// file will be used
-    #[arg(long = "sampleBank")]
     pub sample_bank_path: Option<String>,
 
     /// Flag to disable GUI and run in text-only mode

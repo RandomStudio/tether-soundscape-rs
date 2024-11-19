@@ -1,5 +1,6 @@
 use log::{debug, error, warn};
 use std::{
+    ops::Deref,
     path::Path,
     sync::mpsc::{self, Receiver},
     thread::{self, JoinHandle},
@@ -67,10 +68,10 @@ impl Model {
         output_stream_handle: OutputStreamHandle,
         output_channels_used: u16,
     ) -> Model {
-        let sound_bank = SoundBank::new(Path::new("test.json"));
-        // let duration_range = get_duration_range(sound_bank.clips());
-
-        // let tether = TetherAgent::new("soundscape", None, None);
+        let sound_bank = SoundBank::new(Path::new(match &cli.sample_bank_path {
+            None => "soundbank-demo.json",
+            Some(p) => p.deref(),
+        }));
         let tether_options = TetherAgentOptionsBuilder::new("soundscape").auto_connect(false);
         let tether = if cli.tether_disable {
             warn!("Tether connection disabled");

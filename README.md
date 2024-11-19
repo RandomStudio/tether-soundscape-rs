@@ -1,19 +1,26 @@
-# Tether Soundscape rs
+# Tether Soundscape
 
 A multi-layered audio sequencer, remote-controllable via Tether, to create soundscapes. Runs in a full GUI mode or headless - even on a Raspberry Pi!
 
 ![screenshot animation](./soundscape.gif)
+## Quick Start
+Install:
+```
+cargo install tether-soundscape
+```
 
+Run, pointing to your sample bank JSON:
+```
+tether-soundscape mysoundbank.json
+```
 
-## Why 🦀 Rust?:
-- Minimal memory/CPU footprint for high performance
-- Cross-platform but without any need to install browser, use Electron, etc.
-- Full GUI or headless (text-only) modes are possible
-- Great way to learn about low-level audio sample/buffer control, multi-threading in Rust
-
+If you have tether-egui installed (`cargo install tether-egui`), you can test remote control:
+```
+tether-egui egui-demo.json
+```
 
 ## Sample bank JSON
-Currently, the Sample Bank JSON files are created "by hand". Later versions will allow creation, editing and saving of these via the GUI. See `./test.json` file for an example.
+Currently, the Sample Bank JSON files are created "by hand". Later versions will allow creation, editing and saving of these via the GUI. See `./soundbank-demo.json` file for an example.
 
 ### Volume and Panning defaults and overrides
 Clips in the Sample Bank may optionally be given a `volume` and/or `panning` setting.
@@ -39,7 +46,7 @@ Has the following fields
    - `panSpread` on its own will be ignored
    - `panPosition` on its own will apply a default spread value (`0.0`)
 
-See the [Conventions](#conventions) section for more detail on how these values are defined. 
+See the [Conventions](#conventions) section for more detail on how these values are defined.
 
 ### Scene Messages
 On the topic `+/+/scenes`
@@ -61,7 +68,7 @@ Has the following fields:
 - `volume`: only used when command is "masterVolume"
 
 ### Examples
-A project file for [Tether Egui](https://github.com/RandomStudio/tether-egui) is provided in `./soundscape-widgets.json` for easy testing of the remote control functions.
+A project file for [Tether Egui](https://github.com/RandomStudio/tether-egui) is provided in `./egui-demo.json` for easy testing of the remote control functions.
 
 Alternatively, use the `tether send` commands below if using [Tether Utils](https://crates.io/crates/tether-utils).
 
@@ -127,12 +134,19 @@ Discrete events (clip begin/end) are published on the `events` Plug, e.g. `sound
  - `spread` (`panSpread` in JSON) is a multiple of the "width" of a channel. So, `0.0` means that the signal will be as focussed as possible, i.e. "1 channel width".
 
 
+## Why 🦀 Rust?:
+- Minimal memory/CPU footprint for high performance
+- Cross-platform but without any need to install browser, use Electron, etc.
+- Full GUI or headless (text-only) modes are possible
+- Great way to learn about low-level audio sample/buffer control, multi-threading in Rust
+
+
 ## TODO:
 - [x] Demonstrate running (headless?) on Raspberry Pi
 - [x] Volume should be overrideable (as is the case for panning) in messages
 - [x] Refine the panning position/spread format and document it. Should panning be normalised or in range [0;channels-1]? Should spread have a minimum of 1 (="only target channel or adding up to 1 if between two channels")?
 - [x] Must be able to specify Group/ID for Tether (publishing)
-- [x] Allow input plugs to be subscribed to with a specified group (optional), so `+/someGroup/clipCommands` rather than the default `+/+/clipCommands`, and also publish on `soundscape/someGroup/state` 
+- [x] Allow input plugs to be subscribed to with a specified group (optional), so `+/someGroup/clipCommands` rather than the default `+/+/clipCommands`, and also publish on `soundscape/someGroup/state`
 - [x] Stream/global level instructions, e.g. "play", "pause" (all), "silence all", "master volume", etc.
 - [ ] Allow MIDI to trigger clips (MIDI Mediator and/or directly)
 - [ ] Allow bank to be created, edited, saved directly from GUI, start from "blank" or load demo if nothing
