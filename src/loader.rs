@@ -54,7 +54,7 @@ impl AudioClipOnDisk {
 }
 
 pub fn get_sound_asset_path(assets_path: PathBuf, base_path: &str) -> String {
-    let path = assets_path.join("sounds").join(base_path);
+    let path = assets_path.join(base_path);
     path.to_str().unwrap().into()
 }
 
