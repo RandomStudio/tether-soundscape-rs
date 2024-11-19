@@ -6,7 +6,7 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-use tether_agent::{build_topic, PlugDefinition, PlugOptionsBuilder, TetherAgent};
+use tether_agent::{PlugDefinition, PlugOptionsBuilder, TetherAgent};
 
 pub struct RemoteControl {
     state_output_plug: PlugDefinition,
@@ -21,49 +21,47 @@ pub struct RemoteControl {
 impl RemoteControl {
     pub fn new(
         tether_agent: &TetherAgent,
-        override_subscribe_id: &Option<String>,
+        override_subscribe_id: Option<&str>,
         state_send_interval: Duration,
         state_max_empty: usize,
     ) -> Self {
-        let id = match override_subscribe_id {
-            Some(s) => String::from(s),
-            None => String::from("+"),
-        };
-
         let input_plugs: HashMap<String, PlugDefinition> = HashMap::from([
             (
                 "clipCommands".into(),
                 PlugOptionsBuilder::create_input("clipCommands")
-                    .qos(2)
-                    .topic(&build_topic("+".into(), &id, "clipCommands"))
+                    .qos(Some(2))
+                    // .topic(&build_topic("+".into(), &id, "clipCommands"))
+                    .id(override_subscribe_id)
                     .build(tether_agent)
                     .expect("failed to create clipCommands Input"), // tether_agent
             ),
             (
                 "scenes".into(),
                 PlugOptionsBuilder::create_input("scenes")
-                    .qos(2)
-                    .topic(&build_topic("+".into(), &id, "scenes"))
+                    .qos(Some(2))
+                    // .topic(&build_topic("+".into(), &id, "scenes"))
+                    .id(override_subscribe_id)
                     .build(tether_agent)
                     .expect("failed to create scenes Input"), // tether_agent
             ),
             (
                 "globalControls".into(),
                 PlugOptionsBuilder::create_input("globalControls")
-                    .qos(2)
-                    .topic(&build_topic("+".into(), &id, "globalControls"))
+                    .qos(Some(2))
+                    // .topic(&build_topic("+".into(), &id, "globalControls"))
+                    .id(override_subscribe_id)
                     .build(tether_agent)
                     .expect("failed to create globalCommands Input"), // tether_agent
             ),
         ]);
 
         let state_output_plug = PlugOptionsBuilder::create_output("state")
-            .qos(0)
+            .qos(Some(0))
             .build(tether_agent)
             .expect("failed to create state Output");
 
         let events_output_plug = PlugOptionsBuilder::create_output("events")
-            .qos(2)
+            .qos(Some(2))
             .build(tether_agent)
             .expect("failed to create state Output");
 

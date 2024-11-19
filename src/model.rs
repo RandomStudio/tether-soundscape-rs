@@ -79,8 +79,8 @@ impl Model {
                 .expect("failed to init (not connect) Tether")
         } else {
             tether_options
-                .host(&cli.tether_host.to_string())
-                .id(&cli.tether_publish_id)
+                .host(cli.tether_host.as_deref())
+                // .id(cli.tether_publish_id.map(|x| x.as_str()))
                 .auto_connect(true)
                 .build()
                 .expect("failed to connect Tether")
@@ -91,7 +91,7 @@ impl Model {
         } else {
             Some(RemoteControl::new(
                 &tether,
-                &cli.tether_subscribe_id,
+                cli.tether_subscribe_id.as_deref(),
                 Duration::from_millis(cli.state_interval),
                 cli.state_max_empty,
             ))
@@ -186,18 +186,15 @@ impl Model {
 
         // Parse any remote control messages, which may generate CommandQueue items
         if let Some(remote_control) = &mut self.remote_control {
-            while let Some((plug_name, message)) = self.tether.check_messages() {
-                match remote_control.parse_instructions(&plug_name, &message) {
+            while let Some((topic, message)) = self.tether.check_messages() {
+                match remote_control.parse_instructions(&topic, &message) {
                     Ok(Instruction::Add(clip_name, should_loop, volume, fade_ms, panning)) => {
                         self.message_stats.last_clip_message = Some(SystemTime::now());
 
                         self.action_queue.push(ActionQueueItem::Play(
                             clip_name,
                             volume,
-                            match fade_ms {
-                                Some(ms) => Some(Duration::from_millis(ms)),
-                                None => None,
-                            },
+                            fade_ms.map(Duration::from_millis),
                             should_loop,
                             panning,
                         ));
@@ -217,7 +214,7 @@ impl Model {
                             // }
                             self.action_queue.push(ActionQueueItem::Stop(
                                 clip.id(),
-                                fade_ms.map(|fade| Duration::from_millis(fade)),
+                                fade_ms.map(Duration::from_millis),
                             ))
                         }
                     }
@@ -225,7 +222,7 @@ impl Model {
                         self.message_stats.last_scene_message = Some(SystemTime::now());
                         match scene_pick_mode {
                             ScenePickMode::OnceAll => {
-                                if clip_names.len() == 0 {
+                                if clip_names.is_empty() {
                                     debug!("Empty scene list; stop all currently playing");
                                     for clip in &self.clips_playing {
                                         self.action_queue.push(ActionQueueItem::Stop(
@@ -238,10 +235,7 @@ impl Model {
                                         self.action_queue.push(ActionQueueItem::Play(
                                             name,
                                             None,
-                                            match fade_ms {
-                                                Some(ms) => Some(Duration::from_millis(ms)),
-                                                None => None,
-                                            },
+                                            fade_ms.map(Duration::from_millis),
                                             false,
                                             None,
                                         ));
@@ -252,7 +246,7 @@ impl Model {
                                 // TODO: check for
                                 // - empty list (stop all)
                                 // - clips already playing (and LOOPING) (do not add)
-                                if clip_names.len() == 0 {
+                                if clip_names.is_empty() {
                                     debug!("Empty scene list; stop all currently playing that are looping");
                                     for clip in &self.clips_playing {
                                         self.action_queue.push(ActionQueueItem::Stop(
@@ -262,20 +256,16 @@ impl Model {
                                     }
                                 } else {
                                     let to_add = clip_names.iter().filter(|candidate| {
-                                        self.clips_playing
-                                            .iter()
-                                            .find(|playing| {
-                                                playing.name().eq_ignore_ascii_case(&candidate)
-                                            })
-                                            .is_none()
+                                        Option::is_none(&self.clips_playing.iter().find(
+                                            |playing| {
+                                                playing.name().eq_ignore_ascii_case(candidate)
+                                            },
+                                        ))
                                     });
                                     let to_remove = self.clips_playing.iter().filter(|playing| {
-                                        clip_names
-                                            .iter()
-                                            .find(|requested| {
-                                                requested.eq_ignore_ascii_case(&playing.name())
-                                            })
-                                            .is_none()
+                                        Option::is_none(&clip_names.iter().find(|requested| {
+                                            requested.eq_ignore_ascii_case(playing.name())
+                                        }))
                                     });
                                     for name in to_add {
                                         self.action_queue.push(ActionQueueItem::Play(

@@ -6,12 +6,17 @@
           "name": "clipCommands",
           "description": "demo single hit",
           "plug": {
-            "OutputPlugDefinition": {
-              "common": {
-                "name": "clipCommands",
-                "topic": "gui/any/clipCommands",
-                "qos": 2
+            "OutputPlug": {
+              "name": "clipCommands",
+              "topic": {
+                "Tether": {
+                  "full_topic": "gui/any/clipCommands",
+                  "role": "gui",
+                  "id": "any",
+                  "plug_name": "clipCommands"
+                }
               },
+              "qos": 2,
               "retain": false
             }
           },
@@ -28,12 +33,17 @@
           "name": "clipCommands",
           "description": "demo fade in",
           "plug": {
-            "OutputPlugDefinition": {
-              "common": {
-                "name": "clipCommands",
-                "topic": "gui/any/clipCommands",
-                "qos": 2
+            "OutputPlug": {
+              "name": "clipCommands",
+              "topic": {
+                "Tether": {
+                  "full_topic": "gui/any/clipCommands",
+                  "role": "gui",
+                  "id": "any",
+                  "plug_name": "clipCommands"
+                }
               },
+              "qos": 2,
               "retain": false
             }
           },
@@ -50,12 +60,17 @@
           "name": "clipCommands",
           "description": "demo fade out",
           "plug": {
-            "OutputPlugDefinition": {
-              "common": {
-                "name": "clipCommands",
-                "topic": "gui/any/clipCommands",
-                "qos": 2
+            "OutputPlug": {
+              "name": "clipCommands",
+              "topic": {
+                "Tether": {
+                  "full_topic": "gui/any/clipCommands",
+                  "role": "gui",
+                  "id": "any",
+                  "plug_name": "clipCommands"
+                }
               },
+              "qos": 2,
               "retain": false
             }
           },
@@ -72,12 +87,17 @@
           "name": "scenes",
           "description": "demo scene with 2 clips once off",
           "plug": {
-            "OutputPlugDefinition": {
-              "common": {
-                "name": "scenes",
-                "topic": "gui/any/scenes",
-                "qos": 0
+            "OutputPlug": {
+              "name": "scenes",
+              "topic": {
+                "Tether": {
+                  "full_topic": "gui/any/scenes",
+                  "role": "gui",
+                  "id": "any",
+                  "plug_name": "scenes"
+                }
               },
+              "qos": 0,
               "retain": false
             }
           },
@@ -94,12 +114,17 @@
           "name": "scenes",
           "description": "demo scene1 looping",
           "plug": {
-            "OutputPlugDefinition": {
-              "common": {
-                "name": "scenes",
-                "topic": "gui/any/scenes",
-                "qos": 0
+            "OutputPlug": {
+              "name": "scenes",
+              "topic": {
+                "Tether": {
+                  "full_topic": "gui/any/scenes",
+                  "role": "gui",
+                  "id": "any",
+                  "plug_name": "scenes"
+                }
               },
+              "qos": 0,
               "retain": false
             }
           },
@@ -116,12 +141,17 @@
           "name": "scenes",
           "description": "demo scene2 looping",
           "plug": {
-            "OutputPlugDefinition": {
-              "common": {
-                "name": "scenes",
-                "topic": "gui/any/scenes",
-                "qos": 0
+            "OutputPlug": {
+              "name": "scenes",
+              "topic": {
+                "Tether": {
+                  "full_topic": "gui/any/scenes",
+                  "role": "gui",
+                  "id": "any",
+                  "plug_name": "scenes"
+                }
               },
+              "qos": 0,
               "retain": false
             }
           },
@@ -138,12 +168,17 @@
           "name": "scenes",
           "description": "Empty scene (fade out all)",
           "plug": {
-            "OutputPlugDefinition": {
-              "common": {
-                "name": "scenes",
-                "topic": "gui/any/scenes",
-                "qos": 0
+            "OutputPlug": {
+              "name": "scenes",
+              "topic": {
+                "Tether": {
+                  "full_topic": "gui/any/scenes",
+                  "role": "gui",
+                  "id": "any",
+                  "plug_name": "scenes"
+                }
               },
+              "qos": 0,
               "retain": false
             }
           },
@@ -160,12 +195,17 @@
           "name": "scenes",
           "description": "random pick from scene list",
           "plug": {
-            "OutputPlugDefinition": {
-              "common": {
-                "name": "scenes",
-                "topic": "gui/any/scenes",
-                "qos": 0
+            "OutputPlug": {
+              "name": "scenes",
+              "topic": {
+                "Tether": {
+                  "full_topic": "gui/any/scenes",
+                  "role": "gui",
+                  "id": "any",
+                  "plug_name": "scenes"
+                }
               },
+              "qos": 0,
               "retain": false
             }
           },
@@ -182,12 +222,17 @@
           "name": "clipCommands",
           "description": "Frog with volume override",
           "plug": {
-            "OutputPlugDefinition": {
-              "common": {
-                "name": "clipCommands",
-                "topic": "gui/any/clipCommands",
-                "qos": 0
+            "OutputPlug": {
+              "name": "clipCommands",
+              "topic": {
+                "Tether": {
+                  "full_topic": "gui/any/clipCommands",
+                  "role": "gui",
+                  "id": "any",
+                  "plug_name": "clipCommands"
+                }
               },
+              "qos": 0,
               "retain": false
             }
           },
@@ -204,12 +249,17 @@
           "name": "clipCommands",
           "description": "Testing panning override",
           "plug": {
-            "OutputPlugDefinition": {
-              "common": {
-                "name": "clipCommands",
-                "topic": "gui/any/clipCommands",
-                "qos": 0
+            "OutputPlug": {
+              "name": "clipCommands",
+              "topic": {
+                "Tether": {
+                  "full_topic": "gui/any/clipCommands",
+                  "role": "gui",
+                  "id": "any",
+                  "plug_name": "clipCommands"
+                }
               },
+              "qos": 0,
               "retain": false
             }
           },
@@ -226,12 +276,17 @@
           "name": "globalControls",
           "description": "Test play and pause",
           "plug": {
-            "OutputPlugDefinition": {
-              "common": {
-                "name": "globalControls",
-                "topic": "gui/any/globalControls",
-                "qos": 0
+            "OutputPlug": {
+              "name": "globalControls",
+              "topic": {
+                "Tether": {
+                  "full_topic": "gui/any/globalControls",
+                  "role": "gui",
+                  "id": "any",
+                  "plug_name": "globalControls"
+                }
               },
+              "qos": 0,
               "retain": false
             }
           },

@@ -1,12 +1,12 @@
 [package]
 name = "tether-soundscape-rs"
-version = "0.3.1"
+version = "0.4.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-tether-agent = "0.9"
+tether-agent = "0.13"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.91"
 rmp-serde = "1.1.1"

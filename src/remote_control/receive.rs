@@ -1,6 +1,6 @@
 use log::{error, info};
 use serde::Deserialize;
-use tether_agent::mqtt::Message;
+use tether_agent::{mqtt::Message, TetherOrCustomTopic};
 
 use crate::{playback::PanWithRange, utils::parse_optional_panning};
 
@@ -66,13 +66,13 @@ pub struct GlobalMessage {
 impl RemoteControl {
     pub fn parse_instructions(
         &self,
-        plug_name: &str,
+        plug: &TetherOrCustomTopic,
         message: &Message,
     ) -> Result<Instruction, ()> {
         let payload = message.payload();
 
-        if let Some(matched_plug) = self.input_plugs.get(plug_name) {
-            match matched_plug.name() {
+        match plug {
+            TetherOrCustomTopic::Tether(three_part_topic) => match three_part_topic.plug_name() {
                 "clipCommands" => {
                     let clip_message: Result<SingleClipMessage, rmp_serde::decode::Error> =
                         rmp_serde::from_slice(&payload);
@@ -181,10 +181,8 @@ impl RemoteControl {
                     error!("Unrecognised plug name");
                     Err(())
                 }
-            }
-        } else {
-            error!("Could not match any plug");
-            Err(())
+            },
+            TetherOrCustomTopic::Custom(_) => panic!("Not a valid Tether topic"),
         }
     }
 }

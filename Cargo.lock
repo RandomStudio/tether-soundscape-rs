@@ -2107,6 +2107,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1782b5e75d712f951a2a4c7d3175a2ef37d93ddb3ad8656b37092f3f05464bc9"
 dependencies = [
  "cmake",
+ "openssl-sys",
 ]
 
 [[package]]
@@ -2703,9 +2704,9 @@ dependencies = [
 
 [[package]]
 name = "tether-agent"
-version = "0.9.0"
+version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1ebdd57c587062a032caa9b48ddf2b6ae8648a3dfe2c0678e88ecfdc4e0066b5"
+checksum = "454aca3b82275f123a46401d25b424b31e6e8ce47c77499f7f66629101df8fd5"
 dependencies = [
  "anyhow",
  "env_logger",
@@ -2718,7 +2719,7 @@ dependencies = [
 
 [[package]]
 name = "tether-soundscape-rs"
-version = "0.3.1"
+version = "0.4.0"
 dependencies = [
  "clap",
  "eframe",

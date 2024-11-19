@@ -1,7 +1,4 @@
 use clap::Parser;
-use std::net::{IpAddr, Ipv4Addr};
-
-const TETHER_HOST: std::net::IpAddr = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -23,13 +20,13 @@ pub struct Cli {
     #[arg(long = "tether.disable")]
     pub tether_disable: bool,
 
-    /// The IP address of the Tether MQTT broker (server)
-    #[arg(long = "tether.host", default_value_t=TETHER_HOST)]
-    pub tether_host: std::net::IpAddr,
+    /// The hostname or IP address of the Tether MQTT broker (server)
+    #[arg(long = "tether.host")]
+    pub tether_host: Option<String>,
 
-    /// ID/Group to use when publishing messages (state, events)
-    #[arg(long = "tether.publish.id", default_value_t=String::from("any"))]
-    pub tether_publish_id: String,
+    /// ID/Group to use when publishing messages, instead of "any"
+    #[arg(long = "tether.publish.id")]
+    pub tether_publish_id: Option<String>,
 
     /// ID/Group to use for remote control subscription. Useful if you need to restrict
     /// which controller agent you "listen" to. By default, will use wildcard (+)
