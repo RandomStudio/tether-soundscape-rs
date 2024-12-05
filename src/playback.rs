@@ -4,6 +4,7 @@ use std::{
     time::{Duration, SystemTime},
 };
 
+use log::debug;
 use rodio::{source::ChannelVolume, Decoder, OutputStreamHandle, Sink, Source};
 use tween::{Linear, Tween, Tweener};
 
@@ -50,7 +51,7 @@ impl ClipWithSink {
         output_channels: u16,
     ) -> Self {
         let sink = Sink::try_new(output_stream_handle).expect("failed to create sink");
-
+        debug!("Attempt to play {}", sample.path());
         let file = BufReader::new(File::open(sample.path()).unwrap());
         // let source = Decoder::new(file).unwrap();
         // let duration = source.total_duration();

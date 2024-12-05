@@ -69,7 +69,7 @@ impl SoundBank {
                         .iter()
                         .map(|sample| {
                             let path_str = get_sound_asset_path(
-                                Path::new("assets").to_path_buf(),
+                                json_path.parent().unwrap().to_path_buf(),
                                 &sample.path,
                             );
                             let path = Path::new(&path_str);
