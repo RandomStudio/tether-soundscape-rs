@@ -25,6 +25,8 @@ fn main() {
 
     env_logger::Builder::from_env(Env::default().default_filter_or(&cli.log_level))
         .filter_module("paho_mqtt", log::LevelFilter::Warn)
+        .filter_module("symphonia_core", log::LevelFilter::Warn)
+        .filter_module("symphonia_bundle_mp3", log::LevelFilter::Warn)
         .init();
 
     let host = rodio::cpal::default_host();
