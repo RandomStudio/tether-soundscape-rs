@@ -20,7 +20,7 @@ pub struct RemoteControl {
 
 impl RemoteControl {
     pub fn new(
-        tether_agent: &TetherAgent,
+        tether_agent: &mut TetherAgent,
         override_subscribe_id: Option<&str>,
         state_send_interval: Duration,
         state_max_empty: usize,

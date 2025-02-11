@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use log::{debug, info};
+use log::*;
 use serde::{Deserialize, Serialize};
 
 use crate::{playback::PanWithRange, utils::parse_optional_panning};

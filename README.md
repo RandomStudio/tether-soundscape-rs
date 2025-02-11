@@ -74,38 +74,38 @@ Alternatively, use the `tether send` commands below if using [Tether Utils](http
 
 Single clip hit:
 ```
-tether send --plug.topic dummy/dummy/clipCommands --message \{\"command\":\"hit\"\,\"clipName\":\"frog\"\}
+tether send --plug.name clipCommands --message \{\"command\":\"hit\"\,\"clipName\":\"frog\"\}
 ```
 
 Single clip hit, specify panning (ignored if in Stereo Mode):
 ```
-tether send --plug.topic dummy/dummy/clipCommands --message \{\"command\":\"hit\"\,\"clipName\":\"frog\"\,\"panPosition\":0,\"panSpread\":1\}
+tether send --plug.name clipCommands --message \{\"command\":\"hit\"\,\"clipName\":\"frog\"\,\"panPosition\":0,\"panSpread\":1\}
 ```
 
 
 Scene with two clips (default mode is "loopAll"):
 ```
-tether send --plug.topic dummy/dummy/scenes --message \{\"clipNames\":\[\"frog\"\,\"squirrel\"]\}
+tether send --plug.name scenes --message \{\"clipNames\":\[\"frog\"\,\"squirrel\"]\}
 ```
 
 Scene where system should "pick one random" from the list:
 ```
-tether send --plug.topic dummy/dummy/scenes --message \{\"mode\":\"random\",\"clipNames\":\[\"frog\"\,\"squirrel\"]\}
+tether send --plug.name scenes --message \{\"mode\":\"random\",\"clipNames\":\[\"frog\"\,\"squirrel\"]\}
 ```
 
 Remove single clip
 ```
-tether send --plug.topic dummy/dummy/clipCommands --message \{\"command\":\"remove\",\"clipName\":\"frog\"\}
+tether send --plug.name clipCommands --message \{\"command\":\"remove\",\"clipName\":\"frog\"\}
 ```
 
 Add single clip, custom fade duration
 ```
-tether send --plug.topic dummy/dummy/clipCommands --message \{\"command\":\"add\",\"clipName\":\"squirrel2\",\"fadeDuration\":5000\}
+tether send --plug.name clipCommands --message \{\"command\":\"add\",\"clipName\":\"squirrel2\",\"fadeDuration\":5000\}
 ```
 
 Scene with zero clips (silence all), custom fade duration:
 ```
-tether send --plug.topic dummy/dummy/scenes --message \{\"clipNames\":\[\],\"fadeDuration\":500\}
+tether send --plug.name scenes --message \{\"clipNames\":\[\],\"fadeDuration\":500\}
 ```
 
 ## Output to Tether

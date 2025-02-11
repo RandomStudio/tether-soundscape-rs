@@ -1,4 +1,4 @@
-use log::{debug, error, warn};
+use log::*;
 use std::{
     ops::Deref,
     path::Path,
@@ -73,7 +73,7 @@ impl Model {
             Some(p) => p.deref(),
         }));
         let tether_options = TetherAgentOptionsBuilder::new("soundscape").auto_connect(false);
-        let tether = if cli.tether_disable {
+        let mut tether = if cli.tether_disable {
             warn!("Tether connection disabled");
             tether_options
                 .build()
@@ -91,7 +91,7 @@ impl Model {
             None
         } else {
             Some(RemoteControl::new(
-                &tether,
+                &mut tether,
                 cli.tether_subscribe_id.as_deref(),
                 Duration::from_millis(cli.state_interval),
                 cli.state_max_empty,
@@ -331,7 +331,7 @@ impl Model {
                         }
                     },
                     Err(_) => {
-                        error!("Failed to parse Remote Instruction {:}", message);
+                        error!("Failed to parse Remote Instruction");
                     }
                 }
             }

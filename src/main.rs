@@ -1,7 +1,7 @@
 use clap::Parser;
 
 use env_logger::Env;
-use log::{info, warn};
+use log::*;
 
 use rodio::{cpal::traits::HostTrait, DeviceTrait, OutputStream};
 use std::time::Duration;
