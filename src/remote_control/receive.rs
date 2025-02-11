@@ -1,6 +1,6 @@
 use log::{error, info};
 use serde::Deserialize;
-use tether_agent::{mqtt::Message, TetherOrCustomTopic};
+use tether_agent::three_part_topic::TetherOrCustomTopic;
 
 use crate::{playback::PanWithRange, utils::parse_optional_panning};
 
@@ -67,10 +67,8 @@ impl RemoteControl {
     pub fn parse_instructions(
         &self,
         plug: &TetherOrCustomTopic,
-        message: &Message,
+        payload: &[u8],
     ) -> Result<Instruction, ()> {
-        let payload = message.payload();
-
         match plug {
             TetherOrCustomTopic::Tether(three_part_topic) => match three_part_topic.plug_name() {
                 "clipCommands" => {
