@@ -1,4 +1,5 @@
-use log::{error, info};
+use ::anyhow::anyhow;
+use log::*;
 use serde::Deserialize;
 use tether_agent::three_part_topic::TetherOrCustomTopic;
 
@@ -68,7 +69,7 @@ impl RemoteControl {
         &self,
         plug: &TetherOrCustomTopic,
         payload: &[u8],
-    ) -> Result<Instruction, ()> {
+    ) -> anyhow::Result<Instruction> {
         match plug {
             TetherOrCustomTopic::Tether(three_part_topic) => match three_part_topic.plug_name() {
                 "clipCommands" => {
@@ -99,17 +100,13 @@ impl RemoteControl {
                             "remove" => {
                                 Ok(Instruction::Remove(parsed.clip_name, parsed.fade_duration))
                             }
-                            _ => {
-                                error!(
-                                    "Unrecognised command for Single Clip Message: {}",
-                                    &parsed.command
-                                );
-                                Err(())
-                            }
+                            _ => Err(anyhow!(
+                                "Unrecognised command for Single Clip Message: {}",
+                                &parsed.command
+                            )),
                         }
                     } else {
-                        error!("Error parsing Single Clip Message");
-                        Err(())
+                        Err(anyhow!("Error parsing Single Clip Message"))
                     }
                 }
                 "scenes" => {
@@ -136,17 +133,13 @@ impl RemoteControl {
                                 parsed.clip_names,
                                 parsed.fade_duration,
                             )),
-                            _ => {
-                                error!(
-                                    "Unrecognised 'pick' option for Scene Message: {}",
-                                    &pick_mode
-                                );
-                                Err(())
-                            }
+                            _ => Err(anyhow!(
+                                "Unrecognised 'pick' option for Scene Message: {}",
+                                &pick_mode
+                            )),
                         }
                     } else {
-                        error!("Error parsing Scene Message");
-                        Err(())
+                        Err(anyhow!("Error parsing Scene Message"))
                     }
                 }
                 "globalControls" => {
@@ -163,22 +156,16 @@ impl RemoteControl {
                             "masterVolume" => Ok(Instruction::Global(
                                 GlobalControlMode::MasterVolume(parsed.volume.unwrap_or_default()),
                             )),
-                            _ => {
-                                error!(
-                                    "Unrecognised command option for GlobalControls Message: {}",
-                                    &parsed.command
-                                );
-                                Err(())
-                            }
+                            _ => Err(anyhow!(
+                                "Unrecognised command option for GlobalControls Message: {}",
+                                &parsed.command
+                            )),
                         }
                     } else {
-                        Err(())
+                        Err(anyhow!("Failed to parse GlobalCommand message"))
                     }
                 }
-                &_ => {
-                    error!("Unrecognised plug name");
-                    Err(())
-                }
+                &_ => Err(anyhow!("Unrecognised plug name")),
             },
             TetherOrCustomTopic::Custom(_) => panic!("Not a valid Tether topic"),
         }
