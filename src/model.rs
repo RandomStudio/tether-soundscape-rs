@@ -330,8 +330,8 @@ impl Model {
                             }
                         }
                     },
-                    Err(_) => {
-                        error!("Failed to parse Remote Instruction");
+                    Err(e) => {
+                        error!("Failed to parse Remote Instruction: {e}");
                     }
                 }
             }

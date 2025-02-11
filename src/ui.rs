@@ -156,7 +156,7 @@ pub fn render_vis(ui: &mut Ui, model: &mut Model) {
 
 fn colour_by_elapsed(last_time: Option<SystemTime>) -> Color32 {
     match last_time {
-        None => Color32::DARK_RED,
+        None => Color32::DARK_GRAY,
         Some(t) => match t.elapsed().expect("elapsed fail").as_millis() {
             0..=1000 => Color32::GREEN,
             1001..=3000 => Color32::YELLOW,
