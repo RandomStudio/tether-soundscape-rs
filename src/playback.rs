@@ -1,111 +1,216 @@
-use std::{fs::File, io::BufReader};
+use std::{
+    fs::File,
+    io::BufReader,
+    time::{Duration, SystemTime},
+};
 
-use audrey::Reader;
-use nannou_audio::Buffer;
-use rtrb::Producer;
+use log::debug;
+use rodio::{source::ChannelVolume, Decoder, OutputStreamHandle, Sink, Source};
+use tween::{Linear, Tween, Tweener};
 
-use crate::settings::UPDATE_INTERVAL;
-pub struct BufferedClip {
+use crate::{loader::AudioClipOnDisk, panning::simple_panning_channel_volumes};
+
+// use crate::utils::millis_to_frames;
+
+/// Volume value, duration in milliseconds
+type StoredTweener = Tweener<f32, u128, Box<dyn Tween<f32> + Send + Sync>>;
+
+/// Position (in range 0>numChannels-1) and spread (in range 1>numChannels)
+pub type PanWithRange = (f32, f32);
+
+pub enum PlaybackPhase {
+    Attack(StoredTweener),
+    Sustain(),
+    Release(SystemTime, StoredTweener),
+}
+
+pub struct ClipWithSink {
     id: usize,
-    reader: audrey::read::BufFileReader,
-    frames_played: usize,
-    last_update_sent: std::time::SystemTime,
+    sink: Sink,
+    duration: Option<Duration>,
+    started: SystemTime,
+    time_last_paused: Option<SystemTime>,
+    elapsed_to_remove: Option<Duration>,
+    last_known_progress: Option<f32>,
+    is_looping: bool,
+    name: String,
+    current_phase: PlaybackPhase,
+    current_volume: f32,
 }
 
-impl BufferedClip {
-    pub fn new(id: usize, reader: Reader<BufReader<File>>) -> Self {
-        BufferedClip {
-            id,
-            reader,
-            frames_played: 0,
-            last_update_sent: std::time::SystemTime::now(),
-        }
-    }
-}
-
-/// ID of the clip, followed by frames played (count)
-pub type ProgressUpdate = (usize, usize);
-
-/// ID of the clip
-pub type CompleteUpdate = usize;
-
-pub enum PlaybackState {
-    Ready(),
-    Playing(usize),
-    Complete(),
-}
-
-pub struct Audio {
-    sounds: Vec<BufferedClip>,
-    tx_progress: Producer<ProgressUpdate>,
-    tx_complete: Producer<CompleteUpdate>,
-}
-
-impl Audio {
+impl ClipWithSink {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
-        tx_progress: Producer<ProgressUpdate>,
-        tx_complete: Producer<CompleteUpdate>,
+        id: usize,
+        sample: &AudioClipOnDisk,
+        should_loop: bool,
+        override_volume: Option<f32>,
+        fade_in: Option<Duration>,
+        override_panning: Option<PanWithRange>,
+        output_stream_handle: &OutputStreamHandle,
+        output_channels: u16,
     ) -> Self {
-        Audio {
-            sounds: Vec::new(),
-            tx_progress,
-            tx_complete,
+        let sink = Sink::try_new(output_stream_handle).expect("failed to create sink");
+        debug!("Attempt to play {}", sample.path());
+        let file = BufReader::new(File::open(sample.path()).unwrap());
+        // let source = Decoder::new(file).unwrap();
+        // let duration = source.total_duration();
+        // let mut duration = None;
+
+        let panning: Option<PanWithRange> = if override_panning.is_some() {
+            override_panning
+        } else {
+            sample.panning()
+        };
+
+        let decoder = Decoder::new(file).unwrap();
+
+        let source: Box<dyn Source<Item = _> + Send> = {
+            if let Some((position, spread)) = panning {
+                let s = ChannelVolume::new(
+                    decoder,
+                    simple_panning_channel_volumes(position, spread, output_channels),
+                );
+                Box::new(s)
+            } else {
+                Box::new(decoder)
+            }
+        };
+
+        // if let Some(src) = source {
+        let duration = source.total_duration();
+        if should_loop {
+            sink.append(source.repeat_infinite());
+        } else {
+            sink.append(source);
+        }
+        // }
+
+        let tween: Box<dyn Tween<f32> + Send + Sync> = Box::new(Linear);
+        let stored_tweener = Tweener::new(
+            0.,
+            parse_optional_volume(sample.volume(), override_volume),
+            fade_in.unwrap_or(Duration::from_millis(8)).as_millis(),
+            tween,
+        );
+
+        ClipWithSink {
+            id,
+            sink,
+            duration,
+            started: SystemTime::now(),
+            time_last_paused: None,
+            elapsed_to_remove: None,
+            last_known_progress: Some(0.),
+            name: String::from(sample.name()),
+            current_phase: PlaybackPhase::Attack(stored_tweener),
+            current_volume: 0.,
+            is_looping: should_loop,
         }
     }
-    pub fn add_sound(&mut self, new_clip: BufferedClip) {
-        self.sounds.push(new_clip);
+
+    pub fn is_completed(&self) -> bool {
+        self.sink.empty()
     }
-    pub fn remove_sound(&mut self, id: usize) {
-        if let Some(to_remove) = self
-            .sounds
-            .iter()
-            .enumerate()
-            .find(|(_index, s)| s.id == id)
-        {
-            let (index, _s) = to_remove;
-            self.sounds.remove(index);
+
+    pub fn update_progress(&mut self) {
+        let elapsed = self.started.elapsed().unwrap_or(Duration::ZERO)
+            - self.elapsed_to_remove.unwrap_or_default();
+
+        // Set volume according to phase...
+        self.current_volume = match &mut self.current_phase {
+            PlaybackPhase::Attack(tween) => tween.move_to(elapsed.as_millis()),
+            PlaybackPhase::Sustain() => self.current_volume,
+            PlaybackPhase::Release(fade_start, tween) => {
+                let elapsed_since_fade_start = fade_start.elapsed().unwrap_or_default();
+                tween.move_to(elapsed_since_fade_start.as_millis())
+            }
+        };
+
+        self.sink.set_volume(self.current_volume);
+
+        // Transition phases automatically in some cases...
+        match &mut self.current_phase {
+            PlaybackPhase::Attack(tween) => {
+                if tween.is_finished() {
+                    self.current_phase = PlaybackPhase::Sustain();
+                }
+            }
+            PlaybackPhase::Release(_fade_start, tween) => {
+                if tween.is_finished() {
+                    self.stop();
+                }
+            }
+            _ => {}
         }
+
+        if let Some(d) = self.duration {
+            let progress = (elapsed.as_millis() % d.as_millis()) as f32 / d.as_millis() as f32;
+            self.last_known_progress = Some(progress);
+        }
+    }
+
+    pub fn progress(&self) -> Option<f32> {
+        self.last_known_progress
+    }
+
+    pub fn stop(&self) {
+        self.sink.clear();
+    }
+
+    pub fn pause(&mut self) {
+        self.time_last_paused = Some(SystemTime::now());
+        self.sink.pause();
+    }
+
+    pub fn resume(&mut self) {
+        if let Some(t) = self.time_last_paused {
+            self.elapsed_to_remove =
+                Some(t.elapsed().unwrap_or_default() + self.elapsed_to_remove.unwrap_or_default());
+            self.time_last_paused = None;
+        }
+        self.sink.play();
+    }
+
+    pub fn is_paused(&self) -> bool {
+        self.sink.is_paused()
+    }
+
+    pub fn fade_out(&mut self, duration: Duration) {
+        let tween: Box<dyn Tween<f32> + Send + Sync> = Box::new(Linear);
+        let stored_tweener = Tweener::new(self.current_volume, 0., duration.as_millis(), tween);
+
+        self.current_phase = PlaybackPhase::Release(SystemTime::now(), stored_tweener);
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn current_volume(&self) -> f32 {
+        self.current_volume
+    }
+
+    pub fn set_volume(&mut self, volume: f32) {
+        self.current_volume = volume;
+    }
+
+    pub fn is_looping(&self) -> bool {
+        self.is_looping
+    }
+
+    pub fn id(&self) -> usize {
+        self.id
+    }
+
+    pub fn phase(&self) -> &PlaybackPhase {
+        &self.current_phase
     }
 }
 
-pub fn render_audio(audio: &mut Audio, buffer: &mut Buffer) {
-    let mut have_ended = vec![];
-    let len_frames = buffer.len_frames();
-
-    // Sum all of the sounds onto the buffer.
-    for (i, sound) in audio.sounds.iter_mut().enumerate() {
-        let mut frame_count = 0;
-        let file_frames = sound.reader.frames::<[f32; 2]>().filter_map(Result::ok);
-        for (frame, file_frame) in buffer.frames_mut().zip(file_frames) {
-            for (sample, file_sample) in frame.iter_mut().zip(&file_frame) {
-                *sample += *file_sample;
-            }
-            frame_count += 1;
-        }
-
-        // If the sound yielded less samples than are in the buffer, it must have ended.
-        if frame_count < len_frames {
-            if !audio.tx_complete.is_full() {
-                have_ended.push(i);
-                audio.tx_complete.push(sound.id).unwrap();
-            }
-        } else {
-            sound.frames_played += frame_count;
-
-            if sound.last_update_sent.elapsed().unwrap() > UPDATE_INTERVAL
-                && !audio.tx_progress.is_full()
-            {
-                sound.last_update_sent = std::time::SystemTime::now();
-                audio
-                    .tx_progress
-                    .push((sound.id, sound.frames_played))
-                    .unwrap();
-            }
-        }
-    }
-
-    // Remove all sounds that have ended.
-    for i in have_ended.into_iter().rev() {
-        audio.sounds.remove(i);
+fn parse_optional_volume(sample_volume: Option<f32>, override_volume: Option<f32>) -> f32 {
+    match override_volume {
+        Some(v) => v,
+        None => sample_volume.unwrap_or(1.0),
     }
 }

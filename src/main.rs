@@ -1,340 +1,133 @@
-use std::path::Path;
+use clap::Parser;
 
-use nannou::prelude::*;
-use nannou_audio as audio;
+use env_logger::Env;
+use log::{info, warn};
 
-use playback::{render_audio, Audio, BufferedClip, CompleteUpdate, PlaybackState, ProgressUpdate};
-use rtrb::{Consumer, RingBuffer};
-use settings::{get_sound_asset_path, load_sample_bank, AudioClipOnDisk, CLIP_HEIGHT, CLIP_WIDTH};
+use rodio::{cpal::traits::HostTrait, DeviceTrait, OutputStream};
+use std::time::Duration;
+use ui::{render_local_controls, render_vis};
 
+use settings::Cli;
+
+use crate::model::Model;
+
+mod loader;
+mod model;
+mod panning;
 mod playback;
+mod remote_control;
 mod settings;
-
-struct Model {
-    rx_progress: Consumer<ProgressUpdate>,
-    rx_complete: Consumer<CompleteUpdate>,
-    stream: audio::Stream<Audio>,
-    clips_available: Vec<AudioClipOnDisk>,
-    clips_playing: Vec<CurrentlyPlayingClip>,
-    left_shift_key_down: bool,
-    right_shift_key_down: bool,
-    action_queue: Vec<QueueItem>,
-}
-enum QueueItem {
-    /// name, should_loop
-    Play(String, bool),
-    /// id in currently_playing Vec
-    Stop(usize),
-    /// index in currentl_playing Vec, id for audio model
-    Remove(usize, usize),
-}
-
-pub struct CurrentlyPlayingClip {
-    id: usize,
-    name: String,
-    length: usize,
-    state: PlaybackState,
-    should_loop: bool,
-}
+mod ui;
+mod utils;
 
 fn main() {
-    nannou::app(model).update(update).run();
-}
+    let cli = Cli::parse();
 
-fn model(app: &App) -> Model {
-    // Create a window to receive key pressed events.
-    app.new_window()
-        .key_pressed(key_pressed)
-        .key_released(key_released)
-        .view(view)
-        .build()
-        .unwrap();
+    env_logger::Builder::from_env(Env::default().default_filter_or(&cli.log_level))
+        .filter_module("paho_mqtt", log::LevelFilter::Warn)
+        .filter_module("symphonia_core", log::LevelFilter::Warn)
+        .filter_module("symphonia_bundle_mp3", log::LevelFilter::Warn)
+        .init();
 
-    // Initialise the audio host so we can spawn an audio stream.
-    let audio_host = audio::Host::new();
+    let host = rodio::cpal::default_host();
+    let devices = host
+        .output_devices()
+        .expect("failed to retrieve host audio devices");
 
-    let (tx_progress, rx_progress) = RingBuffer::new(2);
-    let (tx_complete, rx_complete) = RingBuffer::new(32);
-    let audio_model = Audio::new(tx_progress, tx_complete);
-    // Initialise the state that we want to live on the audio thread.
-    let stream = audio_host
-        .new_output_stream(audio_model)
-        .render(render_audio)
-        .sample_rate(96000)
-        .build()
-        .unwrap();
+    let device = match &cli.preferred_output_device {
+        None => host
+            .default_output_device()
+            .expect("failed to get default output device"),
+        Some(preferred_name) => devices
+            .enumerate()
+            .find(|(i, cpal_device)| {
+                let rodio_device: &rodio::Device = cpal_device;
 
-    Model {
-        stream,
-        clips_available: load_sample_bank(app, Path::new("./test_bank.json")),
-        clips_playing: Vec::new(),
-        rx_progress,
-        rx_complete,
-        left_shift_key_down: false,
-        right_shift_key_down: false,
-        action_queue: Vec::new(),
-    }
-}
+                let channels = rodio_device.default_output_config().unwrap().channels();
 
-fn get_highest_id(clips: &[CurrentlyPlayingClip]) -> usize {
-    let mut highest_so_far = 0;
-    for el in clips {
-        if el.id >= highest_so_far {
-            highest_so_far = el.id + 1;
-        }
-    }
-    highest_so_far
-}
+                let name = rodio_device.name().unwrap_or(String::from("unknown"));
 
-fn trigger_clip(app: &App, model: &mut Model, name: &str, should_loop: bool) -> Result<(), ()> {
-    if let Some(clip_matched) = model
-        .clips_available
-        .iter()
-        .find(|c| c.name().eq_ignore_ascii_case(name))
-    {
-        let path_str = get_sound_asset_path(app, clip_matched.path());
-        if let Ok(reader) = audrey::open(Path::new(&path_str)) {
-            let clips_playing = &mut model.clips_playing;
-            let id = get_highest_id(clips_playing);
+                info!(
+                    "Device #{}: \"{}\" with x{} output channels",
+                    i, name, channels
+                );
 
-            println!(
-                "Start playback for clip name {}, given playing ID #{}",
-                clip_matched.name(),
-                id
-            );
-            let new_clip = BufferedClip::new(id, reader);
-            clips_playing.push(CurrentlyPlayingClip {
-                id,
-                name: String::from(clip_matched.name()),
-                length: clip_matched.length().unwrap_or(0),
-                state: PlaybackState::Ready(),
-                should_loop,
-            });
-            model
-                .stream
-                .send(move |audio| {
-                    audio.add_sound(new_clip);
-                })
-                .ok();
-            Ok(())
-        } else {
-            println!("No clip found with name {}", name);
-            Err(())
-        }
-    } else {
-        Err(())
-    }
-}
-
-fn key_pressed(_app: &App, model: &mut Model, key: Key) {
-    match key {
-        Key::Space => {
-            if model.stream.is_paused() {
-                model.stream.play().expect("failed to start stream");
-            } else {
-                model.stream.pause().expect("failed to pause stream");
-            }
-        }
-        Key::Key1 => {
-            if model.right_shift_key_down {
-                if let Some((_index, info)) = get_clip_index_with_name(&model.clips_playing, "frog")
-                {
-                    model.action_queue.push(QueueItem::Stop(info.id));
-                }
-            } else {
-                model.action_queue.push(QueueItem::Play(
-                    String::from("frog"),
-                    model.left_shift_key_down,
-                ));
-            }
-        }
-        Key::Key2 => {
-            if model.right_shift_key_down {
-                if let Some((_index, info)) = get_clip_index_with_name(&model.clips_playing, "mice")
-                {
-                    model.action_queue.push(QueueItem::Stop(info.id));
-                }
-            } else {
-                model.action_queue.push(QueueItem::Play(
-                    String::from("mice"),
-                    model.left_shift_key_down,
-                ));
-            }
-        }
-        Key::Key3 => {
-            if model.right_shift_key_down {
-                if let Some((_index, info)) =
-                    get_clip_index_with_name(&model.clips_playing, "squirrel")
-                {
-                    model.action_queue.push(QueueItem::Stop(info.id));
-                }
-            } else {
-                model.action_queue.push(QueueItem::Play(
-                    String::from("squirrel"),
-                    model.left_shift_key_down,
-                ));
-            }
-        }
-
-        Key::LShift => {
-            model.left_shift_key_down = true;
-        }
-        Key::RShift => {
-            model.right_shift_key_down = true;
-        }
-        _ => {}
-    }
-}
-
-fn key_released(_app: &App, model: &mut Model, key: Key) {
-    if key == Key::LShift {
-        model.left_shift_key_down = false;
-    }
-    if key == Key::RShift {
-        model.right_shift_key_down = false;
-    }
-}
-
-fn get_clip_index_with_name<'a>(
-    clips: &'a [CurrentlyPlayingClip],
-    name: &str,
-) -> Option<(usize, &'a CurrentlyPlayingClip)> {
-    clips
-        .iter()
-        .enumerate()
-        .find(|(_index, c)| c.name == name)
-        .map(|(index, c)| (index, c))
-}
-
-fn get_clip_index_with_id(
-    clips: &[CurrentlyPlayingClip],
-    id: usize,
-) -> Option<(usize, &CurrentlyPlayingClip)> {
-    clips
-        .iter()
-        .enumerate()
-        .find(|(_index, c)| c.id == id)
-        .map(|(index, c)| (index, c))
-}
-
-fn update(app: &App, model: &mut Model, _update: Update) {
-    if let Ok(receive) = model.rx_progress.pop() {
-        let (id, frames_played) = receive;
-        // println!("Got Playing state: {}", frames_played);
-        if let Some(to_update) = get_clip_index_with_id(&model.clips_playing, id) {
-            let (index, _c) = to_update;
-            model.clips_playing[index].state = PlaybackState::Playing(frames_played);
-        }
-    }
-
-    if let Ok(id) = model.rx_complete.pop() {
-        println!("Complete state received for clip ID {}", id);
-        if let Some((index, clip)) = get_clip_index_with_id(&model.clips_playing, id) {
-            if clip.should_loop {
-                println!("Should loop! Repeat clip with name {}", clip.name);
-                model
-                    .action_queue
-                    .push(QueueItem::Play(String::from(&clip.name), true));
-            }
-            model.clips_playing[index].state = PlaybackState::Complete();
-            model.clips_playing.remove(index);
-        } else {
-            panic!("No match for clip id {}", id);
-        }
-    }
-
-    while let Some(queue_item) = model.action_queue.pop() {
-        match queue_item {
-            QueueItem::Play(name, should_loop) => {
-                trigger_clip(app, model, &name, should_loop).unwrap();
-            }
-            QueueItem::Stop(id) => {
-                if let Some((index, clip)) = get_clip_index_with_id(&model.clips_playing, id) {
-                    model.action_queue.push(QueueItem::Remove(index, clip.id));
-                }
-            }
-            QueueItem::Remove(index, id) => {
-                model
-                    .stream
-                    .send(move |audio| {
-                        audio.remove_sound(id);
-                    })
-                    .unwrap();
-                model.clips_playing.remove(index);
-            }
-        }
-    }
-}
-
-fn view(app: &App, model: &Model, frame: Frame) {
-    let draw = app.draw();
-
-    draw.background().color(if model.left_shift_key_down {
-        SLATEGREY
-    } else {
-        DARKSLATEGREY
-    });
-
-    let stream_state = if model.stream.is_playing() {
-        format!("playing {} sounds", model.clips_playing.len())
-    } else {
-        String::from("paused")
+                &name == preferred_name
+            })
+            .map(|(_usize, device)| device)
+            .unwrap_or_else(|| {
+                panic!(
+                    "failed to find device by preferred name \"{}\"",
+                    preferred_name
+                )
+            }),
     };
-    draw.text(&stream_state).y(45.);
 
-    let start_y = 0.;
+    match device.name() {
+        Err(_) => warn!("Device was set, but failed to retrieve name"),
+        Ok(name) => info!("Device was set; name \"{}\"", name),
+    };
 
-    let available_x = -200.;
-    for (i, c) in model.clips_available.iter().enumerate() {
-        let length = match c.length() {
-            Some(frames) => format!("{} fr", frames),
-            None => String::from("unknown"),
-        };
-        draw.text(&format!("KEY #{} ({}) : {}", (i + 1), c.name(), &length))
-            .left_justify()
-            .x(available_x)
-            .y(start_y - (i).to_f32().unwrap() * CLIP_HEIGHT);
-    }
+    let (_output_stream, stream_handle) =
+        OutputStream::try_from_device(&device).expect("failed to open device");
 
-    for (i, c) in model.clips_playing.iter().enumerate() {
-        let x = 0.;
-        let y = start_y - (i).to_f32().unwrap() * CLIP_HEIGHT;
+    let mut model = Model::new(
+        &cli,
+        stream_handle,
+        match cli.output_channels {
+            Some(c) => c,
+            None => device.default_output_config().unwrap().channels(),
+        },
+    );
 
-        // Empty box
-        draw.rect()
-            .no_fill()
-            .stroke(BLUE)
-            .stroke_weight(1.0)
-            .w_h(CLIP_WIDTH, CLIP_HEIGHT)
-            .x_y(x, y);
-
-        if let PlaybackState::Playing(frames_played) = c.state {
-            // Filling box
-            let progress = frames_played.to_f32().unwrap() / c.length.to_f32().unwrap();
-            let width = map_range(progress, 0., 1., 0., CLIP_WIDTH);
-            draw.rect()
-                .color(DARKBLUE)
-                .x_y(x + width / 2. - CLIP_WIDTH / 2., y)
-                .w_h(width, CLIP_HEIGHT);
+    if cli.headless_mode {
+        info!("Running headless mode; Ctrl+C to quit");
+        loop {
+            model.internal_update();
+            std::thread::sleep(Duration::from_millis(1));
         }
-
-        let state_text = match c.state {
-            PlaybackState::Playing(frames_played) => {
-                let progress = frames_played.to_f32().unwrap() / c.length.to_f32().unwrap();
-                format!("{}%", (progress * 100.).trunc())
-            }
-            PlaybackState::Complete() => String::from("DONE"),
-            PlaybackState::Ready() => String::from("READY"),
+    } else {
+        info!("Running graphics mode; close the window to quit");
+        let options = eframe::NativeOptions {
+            initial_window_size: Some(egui::vec2(1280.0, 550.)),
+            ..Default::default()
         };
-        let loop_text = if c.should_loop { "LOOP" } else { "ONCE" };
-        draw.text(&format!(
-            "#{} ({}): ({}) - {}",
-            c.id, &c.name, state_text, loop_text
-        ))
-        .left_justify()
-        .x(x)
-        .y(y);
+        eframe::run_native(
+            "Tether Remote Soundscape",
+            options,
+            Box::new(|_cc| Box::<Model>::new(model)),
+        )
+        .expect("Failed to launch GUI");
+        info!("GUI ended; exit now...");
+        std::process::exit(0);
     }
-
-    // draw.to_frame(app, &frame).unwrap();
 }
+
+impl eframe::App for Model {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        // TODO: continuous mode essential?
+        ctx.request_repaint();
+        egui::CentralPanel::default().show(ctx, |ui| {
+            let rect = ctx.screen_rect();
+            egui::Window::new("Local Control")
+                .default_pos([rect.width() * 0.75, rect.height() / 2.])
+                .min_width(320.0)
+                .show(ctx, |ui| {
+                    render_local_controls(ui, self);
+                });
+            render_vis(ui, self);
+        });
+
+        self.internal_update();
+    }
+}
+
+//     if model.last_state_publish.elapsed().unwrap() > UPDATE_INTERVAL {
+//         if let Some(remote_control) = &mut model.remote_control {
+//             remote_control.publish_state(
+//                 model.output_stream_handle.is_playing(),
+//                 &model.clips_playing,
+//                 &model.tether,
+//             );
+//         }
+//     }

@@ -1,66 +1,78 @@
-use std::{path::Path, time::Duration};
+use clap::Parser;
 
-use nannou::App;
-use serde::{Deserialize, Serialize};
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
+pub struct Cli {
+    /// Path to JSON file with clips array; if omitted, a suitable demo
+    /// file will be used
+    pub sample_bank_path: Option<String>,
 
-pub const UPDATE_INTERVAL: Duration = Duration::from_millis(8);
-pub const CLIP_HEIGHT: f32 = 15.;
-pub const CLIP_WIDTH: f32 = 200.;
-#[derive(Serialize, Deserialize)]
-pub struct AudioClipOnDisk {
-    name: String,
-    path: String,
-    length: Option<usize>,
+    /// Flag to disable GUI and run in text-only mode
+    #[arg(long = "headless")]
+    pub headless_mode: bool,
+
+    /// How often to update and progress and volume (if fading in/out)
+    #[arg(long = "updateInterval", default_value_t = 16)]
+    pub update_interval: u64,
+
+    /// Flag to disable Tether connection
+    #[arg(long = "tether.disable")]
+    pub tether_disable: bool,
+
+    /// The hostname or IP address of the Tether MQTT broker (server)
+    #[arg(long = "tether.host")]
+    pub tether_host: Option<String>,
+
+    /// ID/Group to use when publishing messages, instead of "any"
+    #[arg(long = "tether.publish.id")]
+    pub tether_publish_id: Option<String>,
+
+    /// ID/Group to use for remote control subscription. Useful if you need to restrict
+    /// which controller agent you "listen" to. By default, will use wildcard (+)
+    #[arg(long = "tether.subscribe.id")]
+    pub tether_subscribe_id: Option<String>,
+
+    /// Preferred output device name; use host default device if not supplied
+    #[arg(long = "output.device")]
+    pub preferred_output_device: Option<String>,
+
+    /// How many channels to use for output; use max available for the device if omitted
+    #[arg(long = "output.channels")]
+    pub output_channels: Option<u16>,
+
+    #[arg(long = "loglevel",default_value_t=String::from("info"))]
+    pub log_level: String,
+
+    /// How often to publish state via Tether (ignored if disabled)
+    #[arg(long = "statePublish.updateInterval", default_value_t = 40)]
+    pub state_interval: u64,
+
+    /// How many "empty" state messages (no clips currently) playing, will be
+    /// allowed before the state publishing temporarily pauses. This avoids message
+    /// clutter. Set a value <= 0 to disable this behaviour and ensure messages continuously send.
+    #[arg(long = "statePublish.emptyMax", default_value_t = 8)]
+    pub state_max_empty: usize,
+
+    /// How often to publish state via Tether (ignored if disabled)
+    #[arg(long = "statePublish.disable")]
+    pub state_disable: bool,
 }
+// pub struct ManualSettings {
+//     pub fadein_duration: u32,
+//     pub fadeout_duration: u32,
+//     pub simple_pan_position: f32,
+//     pub simple_pan_spread: f32,
+//     pub ignore_panning: bool,
+// }
 
-impl AudioClipOnDisk {
-    pub fn name(&self) -> &str {
-        &self.name
-    }
-    pub fn length(&self) -> Option<usize> {
-        self.length
-    }
-    pub fn path(&self) -> &str {
-        &self.path
-    }
-}
-
-pub fn get_sound_asset_path(app: &App, base_path: &str) -> String {
-    let assets = app.assets_path().expect("could not find assets directory");
-    let path = assets.join("sounds").join(base_path);
-    path.to_str().unwrap().into()
-}
-
-fn calculate_length(path: &std::path::Path) -> usize {
-    let mut reader = audrey::open(path).unwrap();
-    let mut count = 0;
-    reader.frames::<[f32; 2]>().for_each(|_f| count += 1);
-    count
-}
-
-pub fn load_sample_bank(app: &App, json_path: &Path) -> Vec<AudioClipOnDisk> {
-    match std::fs::read_to_string(json_path) {
-        Ok(text) => match serde_json::from_str::<Vec<AudioClipOnDisk>>(&text) {
-            Ok(samples) => samples
-                .iter()
-                .enumerate()
-                .map(|(_i, sample)| {
-                    let path_str = get_sound_asset_path(app, sample.path());
-                    let path = Path::new(&path_str);
-                    let length = calculate_length(path);
-                    AudioClipOnDisk {
-                        name: String::from(&sample.name),
-                        path: String::from(path.to_str().unwrap()),
-                        length: Some(length),
-                    }
-                })
-                .collect(),
-            Err(e) => {
-                panic!("Failed to parse sample bank JSON: {}", e);
-            }
-        },
-        Err(e) => {
-            panic!("Failed to load sample bank JSON: {}", e);
-        }
-    }
-}
+// impl ManualSettings {
+//     pub fn defaults() -> Self {
+//         ManualSettings {
+//             fadein_duration: DEFAULT_FADEIN,
+//             fadeout_duration: DEFAULT_FADEOUT,
+//             simple_pan_position: 0.5,
+//             simple_pan_spread: 2.0,
+//             ignore_panning: true,
+//         }
+//     }
+// }

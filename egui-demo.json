@@ -1,0 +1,302 @@
+{
+  "widgets": [
+    {
+      "generic": {
+        "common": {
+          "name": "clipCommands",
+          "description": "demo single hit",
+          "plug": {
+            "OutputPlug": {
+              "name": "clipCommands",
+              "topic": {
+                "Tether": {
+                  "full_topic": "gui/any/clipCommands",
+                  "role": "gui",
+                  "id": "any",
+                  "plug_name": "clipCommands"
+                }
+              },
+              "qos": 2,
+              "retain": false
+            }
+          },
+          "midiMapping": null,
+          "qos": "ExactlyOnce",
+          "retain": false
+        },
+        "value": "{\"command\":\"hit\", \"clipName\":\"frog\"}"
+      }
+    },
+    {
+      "generic": {
+        "common": {
+          "name": "clipCommands",
+          "description": "demo fade in",
+          "plug": {
+            "OutputPlug": {
+              "name": "clipCommands",
+              "topic": {
+                "Tether": {
+                  "full_topic": "gui/any/clipCommands",
+                  "role": "gui",
+                  "id": "any",
+                  "plug_name": "clipCommands"
+                }
+              },
+              "qos": 2,
+              "retain": false
+            }
+          },
+          "midiMapping": null,
+          "qos": "ExactlyOnce",
+          "retain": false
+        },
+        "value": "{\"command\":\"hit\", \"clipName\":\"squirrel\", \"fadeDuration\": 5000}"
+      }
+    },
+    {
+      "generic": {
+        "common": {
+          "name": "clipCommands",
+          "description": "demo fade out",
+          "plug": {
+            "OutputPlug": {
+              "name": "clipCommands",
+              "topic": {
+                "Tether": {
+                  "full_topic": "gui/any/clipCommands",
+                  "role": "gui",
+                  "id": "any",
+                  "plug_name": "clipCommands"
+                }
+              },
+              "qos": 2,
+              "retain": false
+            }
+          },
+          "midiMapping": null,
+          "qos": "ExactlyOnce",
+          "retain": false
+        },
+        "value": "{\"command\":\"remove\",  \"clipName\":\"squirrel\",\"fadeDuration\":2000}"
+      }
+    },
+    {
+      "generic": {
+        "common": {
+          "name": "scenes",
+          "description": "demo scene with 2 clips once off",
+          "plug": {
+            "OutputPlug": {
+              "name": "scenes",
+              "topic": {
+                "Tether": {
+                  "full_topic": "gui/any/scenes",
+                  "role": "gui",
+                  "id": "any",
+                  "plug_name": "scenes"
+                }
+              },
+              "qos": 0,
+              "retain": false
+            }
+          },
+          "midiMapping": null,
+          "qos": "AtMostOnce",
+          "retain": false
+        },
+        "value": "{\"mode\":\"onceAll\",\"clipNames\":[\"frog\",\"mice\"]}"
+      }
+    },
+    {
+      "generic": {
+        "common": {
+          "name": "scenes",
+          "description": "demo scene1 looping",
+          "plug": {
+            "OutputPlug": {
+              "name": "scenes",
+              "topic": {
+                "Tether": {
+                  "full_topic": "gui/any/scenes",
+                  "role": "gui",
+                  "id": "any",
+                  "plug_name": "scenes"
+                }
+              },
+              "qos": 0,
+              "retain": false
+            }
+          },
+          "midiMapping": null,
+          "qos": "AtMostOnce",
+          "retain": false
+        },
+        "value": "{\"mode\":\"loopAll\",\"clipNames\":[\"frog\",\"mice\"],\"fadeDuration\":2000}"
+      }
+    },
+    {
+      "generic": {
+        "common": {
+          "name": "scenes",
+          "description": "demo scene2 looping",
+          "plug": {
+            "OutputPlug": {
+              "name": "scenes",
+              "topic": {
+                "Tether": {
+                  "full_topic": "gui/any/scenes",
+                  "role": "gui",
+                  "id": "any",
+                  "plug_name": "scenes"
+                }
+              },
+              "qos": 0,
+              "retain": false
+            }
+          },
+          "midiMapping": null,
+          "qos": "AtMostOnce",
+          "retain": false
+        },
+        "value": "{\"mode\":\"loopAll\",\"clipNames\":[\"frog\",\"squirrel\"],\"fadeDuration\": 3000}"
+      }
+    },
+    {
+      "generic": {
+        "common": {
+          "name": "scenes",
+          "description": "Empty scene (fade out all)",
+          "plug": {
+            "OutputPlug": {
+              "name": "scenes",
+              "topic": {
+                "Tether": {
+                  "full_topic": "gui/any/scenes",
+                  "role": "gui",
+                  "id": "any",
+                  "plug_name": "scenes"
+                }
+              },
+              "qos": 0,
+              "retain": false
+            }
+          },
+          "midiMapping": null,
+          "qos": "AtMostOnce",
+          "retain": false
+        },
+        "value": "{\"clipNames\":[],\"fadeDuration\":3000}"
+      }
+    },
+    {
+      "generic": {
+        "common": {
+          "name": "scenes",
+          "description": "random pick from scene list",
+          "plug": {
+            "OutputPlug": {
+              "name": "scenes",
+              "topic": {
+                "Tether": {
+                  "full_topic": "gui/any/scenes",
+                  "role": "gui",
+                  "id": "any",
+                  "plug_name": "scenes"
+                }
+              },
+              "qos": 0,
+              "retain": false
+            }
+          },
+          "midiMapping": null,
+          "qos": "AtMostOnce",
+          "retain": false
+        },
+        "value": "{\"mode\":\"onceRandom\",\"clipNames\":[\"frog\",\"mice\"],\"fadeDuration\":2000}"
+      }
+    },
+    {
+      "generic": {
+        "common": {
+          "name": "clipCommands",
+          "description": "Frog with volume override",
+          "plug": {
+            "OutputPlug": {
+              "name": "clipCommands",
+              "topic": {
+                "Tether": {
+                  "full_topic": "gui/any/clipCommands",
+                  "role": "gui",
+                  "id": "any",
+                  "plug_name": "clipCommands"
+                }
+              },
+              "qos": 0,
+              "retain": false
+            }
+          },
+          "midiMapping": null,
+          "qos": "AtMostOnce",
+          "retain": false
+        },
+        "value": "{\"command\":\"hit\",\"clipName\":\"frog\",\"volume\":0.1}"
+      }
+    },
+    {
+      "generic": {
+        "common": {
+          "name": "clipCommands",
+          "description": "Testing panning override",
+          "plug": {
+            "OutputPlug": {
+              "name": "clipCommands",
+              "topic": {
+                "Tether": {
+                  "full_topic": "gui/any/clipCommands",
+                  "role": "gui",
+                  "id": "any",
+                  "plug_name": "clipCommands"
+                }
+              },
+              "qos": 0,
+              "retain": false
+            }
+          },
+          "midiMapping": null,
+          "qos": "AtMostOnce",
+          "retain": false
+        },
+        "value": "{\"command\":\"hit\",\"clipName\":\"ding-dong-stereo\"}"
+      }
+    },
+    {
+      "generic": {
+        "common": {
+          "name": "globalControls",
+          "description": "Test play and pause",
+          "plug": {
+            "OutputPlug": {
+              "name": "globalControls",
+              "topic": {
+                "Tether": {
+                  "full_topic": "gui/any/globalControls",
+                  "role": "gui",
+                  "id": "any",
+                  "plug_name": "globalControls"
+                }
+              },
+              "qos": 0,
+              "retain": false
+            }
+          },
+          "midiMapping": null,
+          "qos": "AtMostOnce",
+          "retain": false
+        },
+        "value": "{\"command\":\"play\"}"
+      }
+    }
+  ],
+  "tetherSettings": null
+}
