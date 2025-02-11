@@ -1,10 +1,18 @@
 [package]
 name = "tether-soundscape"
-version = "0.5.1"
+version = "0.5.2"
 edition = "2021"
 description = "A remote-controllable audio sequencer"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/RandomStudio/tether-soundscape-rs"
+authors = ["Stephen Buchanan"]
+homepage = "https://github.com/RandomStudio/tether-soundscape-rs"
+
+[package.metadata.wix]
+upgrade-guid = "1449B795-5DED-47AE-A70D-204E613FA10A"
+path-guid = "3FDFB51D-D8D2-4D89-BD30-725E83DD1738"
+license = false
+eula = false
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -22,3 +30,8 @@ eframe = "0.22.0"
 egui = "0.22.0"
 rodio = "0.17.1"
 anyhow = "1.0.95"
+
+# The profile that 'dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"
