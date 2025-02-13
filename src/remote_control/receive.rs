@@ -8,6 +8,7 @@ use crate::{playback::PanWithRange, utils::parse_optional_panning};
 use super::RemoteControl;
 
 type ClipName = String;
+type FadeDurationMS = u64;
 
 pub enum ScenePickMode {
     LoopAll,
@@ -22,7 +23,6 @@ pub enum GlobalControlMode {
     MasterVolume(f32),
 }
 
-type FadeDurationMS = u64;
 pub enum Instruction {
     // Clip name, should_loop, optional volume (override), fade duration, optional panning
     Add(
