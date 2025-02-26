@@ -12,6 +12,7 @@ pub struct RemoteControl {
     state_output_plug: PlugDefinition,
     events_output_plug: PlugDefinition,
     // input_plugs: HashMap<String, PlugDefinition>,
+    pub state_send_enabled: bool,
     state_send_interval: Duration,
     state_max_empty: usize,
     count_empty_state_sends: Option<usize>,
@@ -24,6 +25,7 @@ impl RemoteControl {
         override_subscribe_id: Option<&str>,
         state_send_interval: Duration,
         state_max_empty: usize,
+        state_send_enabled: bool,
     ) -> Self {
         let _input_plugs: HashMap<String, PlugDefinition> = HashMap::from([
             (
@@ -71,6 +73,7 @@ impl RemoteControl {
             events_output_plug,
             state_send_interval,
             state_max_empty,
+            state_send_enabled,
             last_update_sent: SystemTime::now(), // last_clip_count_sent: None,
         }
     }

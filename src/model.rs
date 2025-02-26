@@ -95,6 +95,7 @@ impl Model {
                 cli.tether_subscribe_id.as_deref(),
                 Duration::from_millis(cli.state_interval),
                 cli.state_max_empty,
+                !cli.state_disable,
             ))
         };
 
@@ -357,7 +358,9 @@ impl Model {
         }
 
         if let Some(remote) = &mut self.remote_control {
-            if remote.publish_state_if_ready(&self.tether, &self.clips_playing) {
+            if remote.state_send_enabled
+                && remote.publish_state_if_ready(&self.tether, &self.clips_playing)
+            {
                 self.message_stats.last_state_message = Some(SystemTime::now());
             }
         }
