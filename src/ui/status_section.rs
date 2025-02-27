@@ -23,7 +23,6 @@ pub fn render_status_section(ui: &mut Ui, model: &mut Model) {
             });
         }
 
-        let ui = &mut cols[0];
         // Message stats
         let MessageStats {
             last_clip_message,
