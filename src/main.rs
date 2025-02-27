@@ -5,7 +5,7 @@ use log::*;
 
 use rodio::{cpal::traits::HostTrait, DeviceTrait, OutputStream};
 use std::time::Duration;
-use ui::{render_local_controls, render_vis};
+use ui::render_gui;
 
 use settings::Cli;
 
@@ -89,7 +89,7 @@ fn main() {
     } else {
         info!("Running graphics mode; close the window to quit");
         let options = eframe::NativeOptions {
-            initial_window_size: Some(egui::vec2(1280.0, 550.)),
+            initial_window_size: Some(egui::vec2(960.0, 960.)),
             ..Default::default()
         };
         eframe::run_native(
@@ -107,27 +107,9 @@ impl eframe::App for Model {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         // TODO: continuous mode essential?
         ctx.request_repaint();
-        egui::CentralPanel::default().show(ctx, |ui| {
-            let rect = ctx.screen_rect();
-            egui::Window::new("Local Control")
-                .default_pos([rect.width() * 0.75, rect.height() / 2.])
-                .min_width(320.0)
-                .show(ctx, |ui| {
-                    render_local_controls(ui, self);
-                });
-            render_vis(ui, self);
-        });
+
+        render_gui(ctx, self);
 
         self.internal_update();
     }
 }
-
-//     if model.last_state_publish.elapsed().unwrap() > UPDATE_INTERVAL {
-//         if let Some(remote_control) = &mut model.remote_control {
-//             remote_control.publish_state(
-//                 model.output_stream_handle.is_playing(),
-//                 &model.clips_playing,
-//                 &model.tether,
-//             );
-//         }
-//     }
