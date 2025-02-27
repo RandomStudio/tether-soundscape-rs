@@ -12,7 +12,7 @@ pub fn render_gui(ctx: &egui::Context, model: &mut Model) {
     egui::TopBottomPanel::top("status").show(ctx, |ui| {
         render_status_section(ui, model);
     });
-    egui::TopBottomPanel::bottom("local_control").show(ctx, |ui| {
+    egui::SidePanel::right("local_control").show(ctx, |ui| {
         render_local_controls(ui, model);
     });
     egui::CentralPanel::default().show(ctx, |ui| {

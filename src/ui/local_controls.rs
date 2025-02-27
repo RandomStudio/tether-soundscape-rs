@@ -9,6 +9,7 @@ pub fn render_local_controls(ui: &mut Ui, model: &mut Model) {
 
     Grid::new("clips_grid")
         .num_columns(2)
+        .spacing([40.0, 4.0])
         .striped(true)
         .show(ui, |ui| {
             for sample in model.sound_bank.clips() {
