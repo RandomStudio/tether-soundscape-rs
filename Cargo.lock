@@ -240,7 +240,7 @@ dependencies = [
  "objc-foundation",
  "objc_id",
  "parking_lot",
- "thiserror",
+ "thiserror 1.0.49",
  "winapi",
  "x11rb",
 ]
@@ -609,7 +609,7 @@ dependencies = [
  "log",
  "nix 0.25.1",
  "slotmap",
- "thiserror",
+ "thiserror 1.0.49",
  "vec_map",
 ]
 
@@ -1009,7 +1009,7 @@ dependencies = [
  "objc",
  "percent-encoding",
  "raw-window-handle",
- "thiserror",
+ "thiserror 1.0.49",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
@@ -1642,7 +1642,7 @@ dependencies = [
  "combine",
  "jni-sys",
  "log",
- "thiserror",
+ "thiserror 1.0.49",
  "walkdir",
 ]
 
@@ -1656,7 +1656,7 @@ dependencies = [
  "combine",
  "jni-sys",
  "log",
- "thiserror",
+ "thiserror 1.0.49",
  "walkdir",
 ]
 
@@ -1671,7 +1671,7 @@ dependencies = [
  "combine",
  "jni-sys",
  "log",
- "thiserror",
+ "thiserror 1.0.49",
  "walkdir",
  "windows-sys 0.45.0",
 ]
@@ -1910,7 +1910,7 @@ dependencies = [
  "ndk-sys",
  "num_enum 0.5.11",
  "raw-window-handle",
- "thiserror",
+ "thiserror 1.0.49",
 ]
 
 [[package]]
@@ -2564,7 +2564,7 @@ dependencies = [
  "rustls-native-certs 0.7.3",
  "rustls-pemfile",
  "rustls-webpki",
- "thiserror",
+ "thiserror 1.0.49",
  "tokio",
  "tokio-native-tls",
  "tokio-rustls",
@@ -3098,6 +3098,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tether-agent",
+ "ts-rs",
  "tween",
 ]
 
@@ -3107,7 +3108,16 @@ version = "1.0.49"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1177e8c6d7ede7afde3585fd2513e611227efd6481bd78d2e82ba1ce16557ed4"
 dependencies = [
- "thiserror-impl",
+ "thiserror-impl 1.0.49",
+]
+
+[[package]]
+name = "thiserror"
+version = "2.0.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "567b8a2dae586314f7be2a752ec7474332959c6460e02bde30d702a66d488708"
+dependencies = [
+ "thiserror-impl 2.0.12",
 ]
 
 [[package]]
@@ -3115,6 +3125,17 @@ name = "thiserror-impl"
 version = "1.0.49"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "10712f02019e9288794769fba95cd6847df9874d49d871d062172f9dd41bc4cc"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.98",
+]
+
+[[package]]
+name = "thiserror-impl"
+version = "2.0.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7f7cf42b4507d8ea322120659672cf1b9dbb93f8f2d4ecfd6e51350ff5b17a1d"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3259,6 +3280,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "ts-rs"
+version = "10.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e640d9b0964e9d39df633548591090ab92f7a4567bc31d3891af23471a3365c6"
+dependencies = [
+ "lazy_static",
+ "thiserror 2.0.12",
+ "ts-rs-macros",
+]
+
+[[package]]
+name = "ts-rs-macros"
+version = "10.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0e9d8656589772eeec2cf7a8264d9cda40fb28b9bc53118ceb9e8c07f8f38730"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.98",
+ "termcolor",
+]
+
+[[package]]
 name = "ttf-parser"
 version = "0.19.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3280,7 +3324,7 @@ dependencies = [
  "rustls",
  "rustls-pki-types",
  "sha1",
- "thiserror",
+ "thiserror 1.0.49",
  "url",
  "utf-8",
 ]

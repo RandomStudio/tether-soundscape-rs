@@ -196,7 +196,7 @@ impl Model {
                         self.action_queue.push(ActionQueueItem::Play(
                             clip_name,
                             volume,
-                            fade_ms.map(Duration::from_millis),
+                            optional_ms_to_duration(fade_ms),
                             should_loop,
                             panning,
                         ));
@@ -216,7 +216,7 @@ impl Model {
                             // }
                             self.action_queue.push(ActionQueueItem::Stop(
                                 clip.id(),
-                                fade_ms.map(Duration::from_millis),
+                                optional_ms_to_duration(fade_ms),
                             ))
                         }
                     }
@@ -237,7 +237,7 @@ impl Model {
                                         self.action_queue.push(ActionQueueItem::Play(
                                             name,
                                             None,
-                                            fade_ms.map(Duration::from_millis),
+                                            optional_ms_to_duration(fade_ms),
                                             false,
                                             None,
                                         ));

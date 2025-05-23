@@ -2,13 +2,11 @@ use ::anyhow::anyhow;
 use log::*;
 use serde::Deserialize;
 use tether_agent::three_part_topic::TetherOrCustomTopic;
+use ts_rs::TS;
 
 use crate::{playback::PanWithRange, utils::parse_optional_panning};
 
 use super::RemoteControl;
-
-type ClipName = String;
-type FadeDurationMS = u64;
 
 pub enum ScenePickMode {
     LoopAll,
@@ -25,25 +23,20 @@ pub enum GlobalControlMode {
 
 pub enum Instruction {
     // Clip name, should_loop, optional volume (override), fade duration, optional panning
-    Add(
-        ClipName,
-        bool,
-        Option<f32>,
-        Option<FadeDurationMS>,
-        Option<PanWithRange>,
-    ),
+    Add(String, bool, Option<f32>, Option<u32>, Option<PanWithRange>),
     // Clip name, option fade duration
-    Remove(ClipName, Option<FadeDurationMS>),
-    Scene(ScenePickMode, Vec<ClipName>, Option<FadeDurationMS>),
+    Remove(String, Option<u32>),
+    Scene(ScenePickMode, Vec<String>, Option<u32>),
     Global(GlobalControlMode),
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, TS)]
+#[ts(export)]
 #[serde(rename_all = "camelCase")]
 pub struct SingleClipMessage {
     pub command: String,
-    pub clip_name: ClipName,
-    pub fade_duration: Option<FadeDurationMS>,
+    pub clip_name: String,
+    pub fade_duration: Option<u32>,
     pub pan_position: Option<f32>,
     pub pan_spread: Option<f32>,
     pub volume: Option<f32>,
@@ -53,8 +46,8 @@ pub struct SingleClipMessage {
 #[serde(rename_all = "camelCase")]
 pub struct SceneMessage {
     pub mode: Option<String>,
-    pub clip_names: Vec<ClipName>,
-    pub fade_duration: Option<FadeDurationMS>,
+    pub clip_names: Vec<String>,
+    pub fade_duration: Option<u32>,
 }
 
 #[derive(Deserialize, Debug)]

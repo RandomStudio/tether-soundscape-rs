@@ -62,8 +62,8 @@ pub fn pick_random_clip(clip_names: Vec<String>) -> String {
     clip_names[index].clone()
 }
 
-pub fn optional_ms_to_duration(ms: Option<u64>) -> Option<Duration> {
-    ms.map(Duration::from_millis)
+pub fn optional_ms_to_duration(ms: Option<u32>) -> Option<Duration> {
+    ms.map(|x| Duration::from_millis(x as u64))
 }
 
 // pub fn get_duration_range(clips: &[AudioClipOnDisk]) -> [u32; 2] {
