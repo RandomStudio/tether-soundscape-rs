@@ -36,17 +36,24 @@ pub enum Instruction {
 pub struct SingleClipMessage {
     pub command: String,
     pub clip_name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub fade_duration: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub pan_position: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub pan_spread: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub volume: Option<f32>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, TS)]
+#[ts(export)]
 #[serde(rename_all = "camelCase")]
 pub struct SceneMessage {
-    pub mode: Option<String>,
     pub clip_names: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mode: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub fade_duration: Option<u32>,
 }
 

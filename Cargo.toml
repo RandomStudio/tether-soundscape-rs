@@ -30,7 +30,7 @@ eframe = "0.22.0"
 egui = "0.22.0"
 rodio = "0.17.1"
 anyhow = "1.0.95"
-ts-rs = "10.1.0"
+ts-rs = { version = "10.1.0", features = ["serde-compat"] }
 
 # The profile that 'dist' will build with
 [profile.dist]
